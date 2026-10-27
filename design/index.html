@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#080f19"/>
+<meta name="description" content="DrFX SignalBridge interface concept — interactive local demo, no live trading."/>
+<title>DrFX SignalBridge — Interface Concept</title>
+<style>
+:root{color-scheme:dark;--bg:#070d16;--sidebar:#0b1420;--panel:#111d2c;--panel2:#152438;--stroke:#26364a;--muted:#96aabd;--txt:#e9f3ff;--cyan:#54cef8;--blue:#647afa;--mint:#48dcb0;--yellow:#f6c46f;--red:#ff7e8a;--radius:15px;--shadow:0 18px 55px #0002;font-family:Inter,"Segoe UI",Arial,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt)}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 70% -13%,#17335458,transparent 52%);z-index:0}.layout{display:grid;grid-template-columns:246px minmax(0,1fr);min-height:100vh;position:relative}
+.sidebar{background:#0a1320d9;border-right:1px solid var(--stroke);padding:27px 15px;position:sticky;top:0;align-self:start;height:100vh;display:flex;flex-direction:column;gap:28px;z-index:5}
+.brand{display:flex;align-items:center;gap:12px;padding:0 10px}.mark{width:39px;height:39px;border:1px solid #66daf980;border-radius:13px;background:linear-gradient(135deg,#1d4b68,#0d1928);display:grid;place-items:center;box-shadow:0 0 26px #43c9fb25;color:var(--cyan);font-weight:900;letter-spacing:-2px}.brand b{font-size:15px;letter-spacing:.3px}.brand small{display:block;color:var(--muted);font-size:11px;margin-top:3px;letter-spacing:1.8px}.nav-label{font-size:10px;color:#6d839a;letter-spacing:1.8px;padding:0 14px 6px;text-transform:uppercase}.nav{display:grid;gap:5px}.nav button{border:1px solid transparent;background:transparent;color:#9caec3;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:11px;text-align:left;font-size:13px;font-weight:600;width:100%;transition:all .18s}.nav button:hover{background:#16273b;color:var(--txt)}.nav button.active{background:linear-gradient(90deg,#153e56,#16253a);color:#bceeff;border-color:#2b6382}.glyph{width:20px;text-align:center;opacity:.92;font-size:16px}.sidebar-bottom{margin-top:auto}.sidebar-bottom .mini{border:1px solid var(--stroke);padding:13px;border-radius:12px;background:#132237}.mini b{font-size:12px;display:block}.mini p{font-size:11px;color:var(--muted);line-height:1.6;margin:5px 0 0}.online-dot{width:8px;height:8px;border-radius:50%;background:var(--mint);display:inline-block;margin-right:6px;box-shadow:0 0 0 3px #43dbac16}
+.content{min-width:0;padding:24px clamp(19px,3.1vw,48px) 45px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:31px}.breadcrumbs{color:var(--muted);font-size:12px}.breadcrumbs strong{color:var(--txt)}.top-actions{display:flex;align-items:center;gap:10px}.pill{border:1px solid #3d6483;color:#9ce2ff;background:#153048;padding:7px 11px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.9px;white-space:nowrap}.pill.preview{border-color:#755b42;color:#ffc88f;background:#382a1b}.avatar{width:35px;height:35px;border:1px solid #43566c;border-radius:12px;display:grid;place-items:center;background:#1c3045;font-size:12px;font-weight:800}
+h1{font-size:clamp(24px,3vw,36px);letter-spacing:-1px;margin:0 0 8px;font-weight:780}h2{font-size:16px;letter-spacing:-.25px;margin:0}h3{margin:0;font-size:14px}p{margin:0}.sub{color:var(--muted);font-size:13px;line-height:1.75}.eyebrow{color:#6ecff1;text-transform:uppercase;font-size:10px;font-weight:800;letter-spacing:2px;margin:0 0 10px}.pagehead{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin:0 0 24px}.pagehead .sub{max-width:650px}
+.btn{background:#1a3046;color:var(--txt);border:1px solid #34516a;border-radius:10px;padding:11px 15px;font-weight:700;font-size:12px;white-space:nowrap}.btn:hover{border-color:#74c3e1;filter:brightness(1.1)}.btn.primary{background:linear-gradient(110deg,#44bfe9,#6a8afd);color:#07121f;border:0;box-shadow:0 6px 25px #49aeea28}.btn.danger{background:#462631;border-color:#8d4851;color:#ffb5ba}.btn.ghost{background:transparent}.btn:disabled{cursor:not-allowed;opacity:.5}
+.card{border:1px solid var(--stroke);border-radius:var(--radius);background:linear-gradient(160deg,#132132,#101a28);box-shadow:var(--shadow)}.section-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px}.section-header small{color:var(--muted);font-size:11px}.muted{color:var(--muted)}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:17px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:19px}.metric{padding:18px;min-height:127px}.metric-label{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}.metric-icon{font-size:18px;color:var(--cyan)}.metric-num{font-size:30px;font-weight:800;letter-spacing:-1.2px;margin:13px 0 4px;font-variant-numeric:tabular-nums}.metric-note{color:#84a5b9;font-size:10px}.metric-note.up{color:var(--mint)}
+.hero{padding:26px;min-height:228px;position:relative;overflow:hidden;margin-bottom:18px;background:linear-gradient(115deg,#152c44,#111b2b 65%)}.hero:after{content:"";position:absolute;width:470px;height:330px;right:-140px;top:-180px;border:1px solid #59daf239;border-radius:50%;box-shadow:0 0 0 36px #4ebde709,0 0 0 82px #4ebde70b,0 0 0 132px #4ebde708;pointer-events:none}.hero-content{position:relative;z-index:1;max-width:660px}.hero h2{font-size:25px;letter-spacing:-.6px;margin:0 0 9px}.hero p{max-width:520px;line-height:1.7;font-size:12px;color:#a7bacb}.hero-buttons{display:flex;gap:11px;margin-top:22px;flex-wrap:wrap}.hero-foot{font-size:10px;color:#89a4bd;margin-top:17px}
+.pipeline{padding:20px;margin-bottom:19px}.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.step{min-width:0;padding:14px 11px;border-radius:11px;background:#17283a;border:1px solid #28425d;text-align:center;position:relative}.step+.step:before{content:"➜";position:absolute;left:-17px;top:50%;transform:translateY(-50%);color:#6b88a1;font-size:13px}.step .bubble{display:grid;place-items:center;margin:0 auto 9px;border-radius:50%;width:30px;height:30px;background:#20506b;color:#8fdefa;font-weight:800}.step b{font-size:12px;display:block}.step small{font-size:10px;color:var(--muted)}
+.table-wrap{overflow-x:auto}.table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap;font-size:12px}.table th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#8299b0;padding:13px 14px;font-weight:700;border-bottom:1px solid var(--stroke)}.table td{padding:15px 14px;border-bottom:1px solid #26364a80}.table tr:last-child td{border-bottom:0}.status{font-size:10px;display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:7px;background:#183b36;color:#70e1b6;border:1px solid #285f4b;font-weight:700}.status:before{content:"";width:5px;height:5px;background:currentColor;border-radius:50%}.status.warn{background:#4a3622;border-color:#7e582b;color:#f0c279}.status.off{background:#412932;border-color:#754351;color:#ff9ca8}
+.lower{display:grid;grid-template-columns:1.27fr 1fr;gap:17px;margin-bottom:17px}.pane{padding:20px;min-width:0}.connect-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #29394b88;gap:10px}.connect-row:last-child{border:0;padding-bottom:0}.conn-label{display:flex;align-items:center;gap:11px}.conn-icon{width:33px;height:33px;background:#1c3651;display:grid;place-items:center;border-radius:10px;color:#9cdfff}.conn-label b{display:block;font-size:12px}.conn-label small{display:block;font-size:10px;color:var(--muted);margin-top:4px}.chart{width:100%;height:130px;display:block;margin:10px 0}.chart text{fill:#7993a9;font-size:9px}.legend{display:flex;gap:12px;align-items:center;font-size:10px;color:var(--muted)}.legend i{width:7px;height:7px;border-radius:50%;background:var(--cyan);display:inline-block;margin-right:3px}
+.view{display:none}.view.active{display:block}.simple-card{padding:22px}.source-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}.source-card{padding:20px}.source-card .conn-icon{margin-bottom:16px}.source-card h3{margin-bottom:8px}.source-card p{font-size:11px;color:var(--muted);line-height:1.65;min-height:42px}.source-card footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px}.linkish{background:none;border:0;color:var(--cyan);font-size:11px;font-weight:750;padding:0}.fineprint{font-size:11px;color:var(--muted);line-height:1.75}.banner{padding:15px 18px;border:1px solid #87653c;background:#44331e70;border-radius:11px;color:#ffcf91;font-size:12px;line-height:1.7;margin-bottom:18px}.route-row{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px solid #2b3d51;padding:16px 0}.route-row:last-child{border:0}.route-main b{font-size:12px;display:block}.route-main small{color:var(--muted);font-size:11px;display:block;margin-top:5px}.switch{width:39px;height:22px;border:0;border-radius:99px;background:#375269;padding:3px;position:relative;vertical-align:middle}.switch:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;background:#c5d5e0;border-radius:50%;transition:transform .2s}.switch[aria-checked=true]{background:#1ba78b}.switch[aria-checked=true]:after{transform:translateX(17px);background:white}
+.risk-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:15px}.field{display:flex;flex-direction:column;gap:7px}.field label{font-size:11px;color:#a9c0d2;font-weight:700}.field input,.field select{width:100%;background:#101b2b;border:1px solid #354e63;color:var(--txt);border-radius:9px;padding:12px 11px;font-size:13px}.field input[type=range]{accent-color:var(--cyan)}.form-help{font-size:10px;color:var(--muted)}.risk-panel{max-width:850px}.inputrow{display:flex;gap:12px;align-items:center}.info-cols{display:grid;grid-template-columns:1.25fr .8fr;gap:18px}.big-symbol{font-size:28px;line-height:1;margin:10px 0;color:var(--cyan)}.empty{padding:22px;border:1px dashed #435973;border-radius:11px;color:var(--muted);font-size:12px}.report-pill{border:1px solid #34546b;padding:7px 10px;border-radius:9px;font-size:10px;color:#9acfe6}.toast{position:fixed;bottom:22px;right:24px;max-width:390px;background:#193046;border:1px solid #39708d;color:#d7f7ff;box-shadow:0 16px 50px #0008;border-radius:12px;padding:13px 17px;font-size:12px;z-index:50;display:none}.toast.show{display:block}
+dialog{border:1px solid #36536a;border-radius:19px;background:#101d2c;color:var(--txt);padding:0;width:min(94vw,530px);box-shadow:0 35px 90px #000b}dialog::backdrop{background:#000b;backdrop-filter:blur(5px)}.modal-head{padding:23px 25px;border-bottom:1px solid var(--stroke);display:flex;justify-content:space-between;align-items:center}.modal-head button{border:0;background:none;color:var(--muted);font-size:24px}.modal-body{padding:23px 25px;display:grid;gap:16px}.modal-actions{display:flex;justify-content:flex-end;gap:9px;padding:0 25px 23px}.foot{text-align:center;font-size:10px;color:#687f94;margin-top:26px;line-height:1.8}.menu-btn{display:none}
+@media(max-width:1150px){.metrics{grid-template-columns:repeat(2,1fr)}.source-cards{grid-template-columns:1fr 1fr}.lower{grid-template-columns:1fr}}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.sidebar{position:fixed;transform:translateX(-100%);transition:transform .2s;left:0;width:255px;box-shadow:0 0 40px #0006}.sidebar.open{transform:translateX(0)}.menu-btn{display:inline-flex}.content{padding:18px 15px 35px}.topbar{margin-bottom:22px}.pagehead{flex-direction:column}.pagehead .btn{align-self:flex-start}.metrics{gap:9px}.metric{padding:14px;min-height:112px}.metric-num{font-size:25px}.grid2,.risk-grid,.info-cols,.source-cards{grid-template-columns:1fr}.steps{gap:5px}.step{padding:11px 3px}.step b{font-size:9px}.step small{font-size:8px}.step+.step:before{display:none}.hero{padding:20px}.hero h2{font-size:20px}.top-actions .pill.preview{display:none}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar" id="sidebar">
+ <div class="brand"><div class="mark">D⌁</div><div><b>DrFX <span style="color:var(--cyan)">SignalBridge</span></b><small>TRADING INFRASTRUCTURE</small></div></div>
+ <div><div class="nav-label">Workspace</div><nav class="nav" aria-label="Main navigation">
+  <button type="button" class="active" data-nav="overview"><span class="glyph">◈</span> Overview</button>
+  <button type="button" data-nav="connections"><span class="glyph">◉</span> Connections</button>
+  <button type="button" data-nav="routes"><span class="glyph">⤳</span> Signal Routes</button>
+  <button type="button" data-nav="activity"><span class="glyph">▤</span> Activity &amp; Events</button>
+  <button type="button" data-nav="risk"><span class="glyph">⬡</span> Risk Manager</button>
+  <button type="button" data-nav="telegram"><span class="glyph">➤</span> Telegram Hub</button>
+  <button type="button" data-nav="settings"><span class="glyph">⚙</span> Settings</button>
+ </nav></div>
+ <div class="sidebar-bottom"><div class="mini"><b><span class="online-dot"></span>Preview workspace</b><p>All metrics and connections shown here are illustrative. No broker account is attached.</p></div></div>
+</aside>
+<main class="content">
+ <header class="topbar">
+  <div style="display:flex;gap:12px;align-items:center">
+   <button class="btn ghost menu-btn" id="menuBtn" aria-label="Open navigation" type="button">☰</button>
+   <div class="breadcrumbs">DrFXAi <span style="opacity:.45;margin:0 8px">/</span> <strong id="crumb">Overview</strong></div>
+  </div>
+  <div class="top-actions"><span class="pill preview">DESIGN PREVIEW</span><span class="pill">● DEMO ONLY</span><span class="avatar" aria-label="Demo workspace">DF</span></div>
+ </header>
+
+ <section class="view active" data-view="overview" aria-label="Overview">
+  <div class="pagehead"><div><div class="eyebrow">YOUR CONTROL CENTER</div><h1>Signal intelligence, unified.</h1><p class="sub">Connect TradingView, Telegram and MetaTrader 5 through one risk-aware routing layer. This is an interactive concept using sample data.</p></div><button class="btn primary" data-open-route type="button">＋ Create Demo Route</button></div>
+  <section class="card hero"><div class="hero-content"><div class="eyebrow">DrFX SIGNALBRIDGE / CONCEPT V0.1</div><h2>From signal to execution.<br/><span style="color:var(--cyan)">Every step accounted for.</span></h2><p>Secure webhook ingress, explainable risk checks, MT5 agent delivery and broker-side reconciliation — designed as one transparent workflow.</p><div class="hero-buttons"><button class="btn primary" id="simulateBtn" type="button">▷ Simulate Signal</button><button class="btn" data-nav="connections" type="button">View Connections ↗</button></div><div class="hero-foot">Simulation does not send an order or contact a broker.</div></div></section>
+  <section class="metrics" aria-label="Illustrative metrics">
+   <div class="card metric"><div class="metric-label">Demo connections <span class="metric-icon">◎</span></div><div class="metric-num">03</div><div class="metric-note">Sample identities only</div></div>
+   <div class="card metric"><div class="metric-label">Configured routes <span class="metric-icon">⤳</span></div><div class="metric-num" id="routeCount">02</div><div class="metric-note up">Local preview</div></div>
+   <div class="card metric"><div class="metric-label">Simulated signals <span class="metric-icon">▥</span></div><div class="metric-num" id="signalCount">24</div><div class="metric-note">Fixture data</div></div>
+   <div class="card metric"><div class="metric-label">Real orders sent <span class="metric-icon">✓</span></div><div class="metric-num" style="color:var(--mint)">0</div><div class="metric-note">Trading not implemented</div></div>
+  </section>
+  <section class="card pipeline"><div class="section-header"><h2>Signal lifecycle</h2><small>Illustrative pipeline</small></div><div class="steps">
+    <div class="step"><span class="bubble">1</span><b>Received</b><small>Webhook / Telegram</small></div>
+    <div class="step"><span class="bubble">2</span><b>Validated</b><small>Schema + Risk</small></div>
+    <div class="step"><span class="bubble">3</span><b>Routed</b><small>Account command</small></div>
+    <div class="step"><span class="bubble">4</span><b>Reconciled</b><small>Broker evidence</small></div>
+   </div></section>
+  <div class="lower">
+   <section class="card pane"><div class="section-header"><h2>Connection health</h2><span class="report-pill">SAMPLE STATES</span></div>
+    <div class="connect-row"><div class="conn-label"><span class="conn-icon">◈</span><div><b>TradingView Ingress</b><small>Simulated webhook source</small></div></div><span class="status">Sample ready</span></div>
+    <div class="connect-row"><div class="conn-label"><span class="conn-icon">➤</span><div><b>Telegram Adapter</b><small>Illustrative authorized bot</small></div></div><span class="status">Sample ready</span></div>
+    <div class="connect-row"><div class="conn-label"><span class="conn-icon">▣</span><div><b>MetaTrader 5 Agent</b><small>No terminal paired</small></div></div><span class="status warn">Not paired</span></div>
+   </section>
+   <section class="card pane"><div class="section-header"><h2>Throughput preview</h2><small>Fictional 7-day series</small></div>
+    <svg class="chart" viewBox="0 0 380 132" preserveAspectRatio="none" role="img" aria-label="Decorative sample throughput chart">
+      <defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#54cef8" stop-opacity=".25"/><stop offset="1" stop-color="#54cef8" stop-opacity="0"/></linearGradient></defs>
+      <path d="M3 110H375 M3 70H375 M3 30H375" stroke="#32485e" stroke-dasharray="4 5" fill="none"/>
+      <path d="M3 104 C40 97 52 51 88 77 S146 98 172 54 S218 76 248 38 S300 60 328 24 S360 32 375 12 L375 127 L3 127Z" fill="url(#area)"/>
+      <path d="M3 104 C40 97 52 51 88 77 S146 98 172 54 S218 76 248 38 S300 60 328 24 S360 32 375 12" fill="none" stroke="#54cef8" stroke-width="2.6" stroke-linecap="round"/>
+    </svg>
+    <div class="legend"><span><i></i> Demo events</span><span>Mon — Sun</span></div>
+   </section>
+  </div>
+  <section class="card pane"><div class="section-header"><h2>Recent demo activity</h2><button class="linkish" data-nav="activity" type="button">View event log →</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Source</th><th>Action</th><th>Symbol</th><th>Pipeline outcome</th></tr></thead><tbody>
+    <tr><td>TradingView</td><td>BUY</td><td>XAUUSD</td><td><span class="status">Simulated validated</span></td></tr>
+    <tr><td>Telegram</td><td>SELL</td><td>EURUSD</td><td><span class="status warn">Simulated review</span></td></tr>
+    <tr><td>TradingView</td><td>MODIFY SL</td><td>GBPUSD</td><td><span class="status">Simulated routed</span></td></tr>
+   </tbody></table></div></section>
+ </section>
+
+ <section class="view" data-view="connections"><div class="pagehead"><div><div class="eyebrow">CONNECT YOUR SYSTEMS</div><h1>Connections</h1><p class="sub">Configure separately scoped access for your signal sources and trading agents. No live connections are made in this preview.</p></div></div>
+  <div class="source-cards">
+   <div class="card source-card"><div class="conn-icon">◈</div><h3>TradingView</h3><p>Generate an authenticated webhook endpoint and map alert payloads to SignalBridge commands.</p><footer><span class="status warn">Not configured</span><button class="linkish" data-demo-action="TradingView configuration is described in docs/API_CONTRACT.md">How to connect ↗</button></footer></div>
+   <div class="card source-card"><div class="conn-icon">➤</div><h3>Telegram Bot</h3><p>Connect permitted channels, publish alerts and preview signal message parsing.</p><footer><span class="status warn">Not configured</span><button class="linkish" data-nav="telegram">Open hub →</button></footer></div>
+   <div class="card source-card"><div class="conn-icon">▣</div><h3>MetaTrader 5</h3><p>Pair an authorized Expert Advisor running on your PC or Windows VPS. Agent not built yet.</p><footer><span class="status off">Not available</span><button class="linkish" data-demo-action="MT5 pairing will be available after the MQL5 EA is developed.">Installation plan ↗</button></footer></div>
+  </div>
+  <div class="banner">⚠ Production connections, tokens, terminals and account credentials are intentionally unavailable in this design demo.</div>
+  <div class="card simple-card"><div class="section-header"><h2>Planned setup journey</h2><small>Preview</small></div><div class="steps"><div class="step"><span class="bubble">1</span><b>Select source</b><small>TV / Telegram</small></div><div class="step"><span class="bubble">2</span><b>Pair terminal</b><small>MT5 / VPS</small></div><div class="step"><span class="bubble">3</span><b>Configure risk</b><small>Hard limits</small></div><div class="step"><span class="bubble">4</span><b>Run demo test</b><small>Verify receipt</small></div></div></div>
+ </section>
+
+ <section class="view" data-view="routes"><div class="pagehead"><div><div class="eyebrow">WORKFLOW AUTOMATION</div><h1>Signal Routes</h1><p class="sub">Each route joins a permitted source to a target with its own risk rules. Switches below affect this local demonstration only.</p></div><button class="btn primary" data-open-route>＋ New Demo Route</button></div>
+  <section class="card pane"><div class="section-header"><h2>Illustrative routes</h2><small id="routeMeta">2 routes in preview</small></div><div id="routesList">
+   <div class="route-row"><div class="route-main"><b>TradingView → MT5 Demo</b><small>Gold alerts · Fixed lots · Standard policy</small></div><button class="switch" role="switch" aria-label="Enable example TradingView route" aria-checked="true"></button></div>
+   <div class="route-row"><div class="route-main"><b>TradingView → Telegram</b><small>Publisher notifications · Example channel</small></div><button class="switch" role="switch" aria-label="Enable example Telegram route" aria-checked="true"></button></div>
+  </div></section>
+ </section>
+
+ <section class="view" data-view="activity"><div class="pagehead"><div><div class="eyebrow">AUDITABLE BY DESIGN</div><h1>Activity &amp; Events</h1><p class="sub">Example trace data: acceptance never means broker execution. This activity is generated locally for illustration.</p></div><button class="btn" id="addExampleEvent">＋ Generate demo event</button></div>
+  <section class="card pane"><div class="section-header"><h2>Event log</h2><span class="report-pill">SIMULATED DATA</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Event</th><th>Source</th><th>Instrument</th><th>Action</th><th>Outcome</th></tr></thead><tbody id="eventTable">
+    <tr><td>demo-024</td><td>TradingView</td><td>XAUUSD</td><td>BUY</td><td><span class="status">Validated</span></td></tr>
+    <tr><td>demo-023</td><td>Telegram</td><td>EURUSD</td><td>SELL</td><td><span class="status warn">Manual review</span></td></tr>
+    <tr><td>demo-022</td><td>TradingView</td><td>GBPUSD</td><td>MODIFY SL</td><td><span class="status">Routed (mock)</span></td></tr>
+   </tbody></table></div></section>
+ </section>
+
+ <section class="view" data-view="risk"><div class="pagehead"><div><div class="eyebrow">TRADE SAFETY FIRST</div><h1>Risk Manager</h1><p class="sub">Define exposure policy before order routing. No setting here is applied to a live trading account.</p></div></div>
+  <div class="risk-panel"><div class="banner">⚠ Risk calculations and broker margin checks require a real terminal and verified instrument specifications. These are draft controls only.</div>
+   <section class="card simple-card"><div class="section-header"><h2>Illustrative risk policy</h2><span class="pill">DEMO DRAFT</span></div>
+    <form id="riskForm" class="risk-grid">
+     <div class="field"><label for="lotSize">Max lot size</label><input id="lotSize" type="number" min="0.01" step="0.01" max="100" value="0.10" required/><span class="form-help">Lot bounds must be checked against MT5 specs.</span></div>
+     <div class="field"><label for="maxPositions">Max open positions</label><input id="maxPositions" type="number" min="1" max="100" step="1" value="3" required/><span class="form-help">Per connected account.</span></div>
+     <div class="field"><label for="maxLoss">Daily loss stop (%)</label><input id="maxLoss" type="number" min="0.1" max="100" step="0.1" value="3.0" required/><span class="form-help">Equity-based stop definition to be finalized.</span></div>
+     <div class="field"><label for="spread">Max spread (points)</label><input id="spread" type="number" min="1" max="10000" step="1" value="50" required/><span class="form-help">Instrument-specific point conversion.</span></div>
+     <div class="field" style="grid-column:1/-1"><button class="btn primary" type="submit" style="align-self:start">Save local preview settings</button></div>
+    </form></section>
+   <section class="card simple-card" style="margin-top:17px"><div class="section-header"><h2>Emergency controls</h2><span class="status warn">Preview only</span></div><p class="sub" style="margin-bottom:17px">Pause new trade intents without liquidating positions. Closing all positions is a separate, protected operation in the planned product.</p><button class="btn danger" id="pauseBtn">⏸ Pause demo routes</button><p id="pauseStatus" class="fineprint" style="margin-top:11px" aria-live="polite">Demo routes currently enabled (in preview).</p></section>
+  </div>
+ </section>
+
+ <section class="view" data-view="telegram"><div class="pagehead"><div><div class="eyebrow">AUTHORIZED COMMUNICATION</div><h1>Telegram Hub</h1><p class="sub">Parse permitted signal messages, deliver alert notifications and access the planned Telegram Mini App.</p></div></div>
+  <div class="info-cols"><section class="card simple-card"><div class="section-header"><h2>Signal parser preview</h2><span class="report-pill">NO EXECUTION</span></div>
+    <div class="field"><label for="telegramText">Example channel message</label><input id="telegramText" value="BUY GOLD 2500 SL 2490 TP1 2510 TP2 2520 TP3 2530" aria-describedby="parseNotice"/></div>
+    <p id="parseNotice" class="fineprint" style="margin-top:10px">Simple English test parser only; not an AI model and not production-ready.</p>
+    <button class="btn primary" id="parseBtn" style="margin:16px 0" type="button">Analyze Example</button>
+    <pre id="parseOutput" style="white-space:pre-wrap;overflow-wrap:anywhere;padding:15px;background:#0b1522;border:1px solid var(--stroke);border-radius:10px;color:#b1e7fd;font-size:11px;line-height:1.7;min-height:140px" aria-live="polite">Click Analyze Example to preview recognized values.</pre>
+    </section><section class="card simple-card"><div class="section-header"><h2>Channel permissions</h2><span class="status warn">No sources</span></div><div class="big-symbol">➤</div><h3>Explicit access required</h3><p class="sub" style="margin-top:9px">A bot does not have permission to read arbitrary private channels. Administrators must authorize the bot and enable access for each source.</p><div class="empty" style="margin-top:19px">No Telegram bot or channel connected. No messages have been retrieved.</div></section></div>
+ </section>
+
+ <section class="view" data-view="settings"><div class="pagehead"><div><div class="eyebrow">WORKSPACE PREFERENCES</div><h1>Settings</h1><p class="sub">Planned settings and configuration disclosure.</p></div></div><section class="card simple-card"><h2>Preview environment</h2><div class="connect-row"><div class="conn-label"><div><b>Execution mode</b><small>Forced demo-only prototype</small></div></div><span class="pill">NO TRADING</span></div><div class="connect-row"><div class="conn-label"><div><b>Secrets and credentials</b><small>No credentials are requested or persisted</small></div></div><span class="status">Safe preview</span></div><div class="connect-row"><div class="conn-label"><div><b>Backend API</b><small>Not implemented</small></div></div><span class="status warn">Offline</span></div><div class="connect-row"><div class="conn-label"><div><b>Design specification</b><small>See docs/UX_UI_SPEC.md</small></div></div><span class="report-pill">v0.1</span></div></section></section>
+
+ <p class="foot">DrFXAi · SignalBridge Product Concept · 2026 · All numbers and accounts on this page are synthetic; no orders or network requests are performed.</p>
+</main>
+</div>
+<dialog id="routeDialog" aria-labelledby="routeTitle"><form method="dialog" id="routeForm"><div class="modal-head"><div><div class="eyebrow">ROUTE BUILDER</div><h2 id="routeTitle">Create a demo route</h2></div><button type="button" id="closeDialog" aria-label="Close">×</button></div>
+ <div class="modal-body"><div class="field"><label for="routeSource">Signal source</label><select id="routeSource"><option>TradingView</option><option>Telegram</option></select></div>
+ <div class="field"><label for="routeTarget">Destination</label><select id="routeTarget"><option>MT5 Demo</option><option>Telegram Notification</option></select></div>
+ <div class="field"><label for="routeName">Route description</label><input id="routeName" maxlength="70" placeholder="e.g. Gold alerts / demo only" value="Example strategy" required/></div>
+ <div class="banner" style="margin:0">This adds an example to this browser session only. No route is deployed.</div></div>
+ <div class="modal-actions"><button type="button" class="btn ghost" id="cancelDialog">Cancel</button><button type="submit" class="btn primary">Add demo route</button></div></form></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+var nav=Array.from(document.querySelectorAll("[data-nav]"));
+var sidebar=document.getElementById("sidebar");
+var crumb=document.getElementById("crumb");
+var toast=document.getElementById("toast");
+var routeDialog=document.getElementById("routeDialog");
+var demoEvents=24;
+var routes=2;
+var paused=false;
+function message(text){toast.textContent=text;toast.classList.add("show");clearTimeout(message.timer);message.timer=setTimeout(function(){toast.classList.remove("show");},4200);}
+function showPage(name){document.querySelectorAll(".view").forEach(function(e){e.classList.toggle("active",e.dataset.view===name);});nav.forEach(function(e){e.classList.toggle("active",e.dataset.nav===name);});crumb.textContent=name.replace(/^./,function(c){return c.toUpperCase();});sidebar.classList.remove("open");window.scrollTo(0,0);}
+nav.forEach(function(button){button.addEventListener("click",function(){showPage(button.dataset.nav);});});
+document.getElementById("menuBtn").addEventListener("click",function(){sidebar.classList.toggle("open");});
+document.querySelectorAll("[data-open-route]").forEach(function(b){b.addEventListener("click",function(){routeDialog.showModal();});});
+document.getElementById("closeDialog").addEventListener("click",function(){routeDialog.close();});
+document.getElementById("cancelDialog").addEventListener("click",function(){routeDialog.close();});
+document.getElementById("routeForm").addEventListener("submit",function(e){
+e.preventDefault();
+var src=document.getElementById("routeSource").value;var dst=document.getElementById("routeTarget").value;
+var note=document.getElementById("routeName").value.trim();
+if(!note){message("Please enter a route description.");return;}
+var row=document.createElement("div");row.className="route-row";
+var main=document.createElement("div");main.className="route-main";
+var label=document.createElement("b");label.textContent=src+" → "+dst;
+var details=document.createElement("small");details.textContent=note+" · Local demo only";
+main.appendChild(label);main.appendChild(details);
+var toggle=document.createElement("button");toggle.className="switch";toggle.type="button";toggle.setAttribute("role","switch");toggle.setAttribute("aria-checked",paused?"false":"true");toggle.setAttribute("aria-label","Toggle "+src+" to "+dst+" demo route");
+row.appendChild(main);row.appendChild(toggle);document.getElementById("routesList").appendChild(row);
+routes++;document.getElementById("routeCount").textContent=String(routes).padStart(2,"0");document.getElementById("routeMeta").textContent=routes+" routes in preview";
+routeDialog.close();showPage("routes");message("Demo route added locally. No external connection created.");
+});
+document.getElementById("routesList").addEventListener("click",function(e){var b=e.target.closest(".switch");if(!b)return;if(paused){message("Resume demo routes from Risk Manager first.");return;}var next=b.getAttribute("aria-checked")!=="true";b.setAttribute("aria-checked",String(next));message("Example route "+(next?"enabled":"paused")+" in local UI.");});
+function appendEvent(){
+demoEvents++;document.getElementById("signalCount").textContent=String(demoEvents);
+var tr=document.createElement("tr"),cells=["demo-"+String(demoEvents).padStart(3,"0"),"TradingView","XAUUSD","BUY"];
+cells.forEach(function(t){var td=document.createElement("td");td.textContent=t;tr.appendChild(td);});
+var last=document.createElement("td"),status=document.createElement("span");status.className="status";status.textContent="Validated (mock)";last.appendChild(status);tr.appendChild(last);
+document.getElementById("eventTable").prepend(tr);message("Simulation generated a mock event — no order executed.");
+}
+document.getElementById("simulateBtn").addEventListener("click",appendEvent);
+document.getElementById("addExampleEvent").addEventListener("click",appendEvent);
+document.getElementById("pauseBtn").addEventListener("click",function(){
+paused=!paused;document.getElementById("pauseBtn").textContent=paused?"▶ Resume demo routes":"⏸ Pause demo routes";
+document.getElementById("pauseStatus").textContent=paused?"All example routes are paused in this browser preview.":"Demo routes currently enabled (in preview).";
+document.querySelectorAll(".switch").forEach(function(s){s.setAttribute("aria-checked",paused?"false":"true");});
+message(paused?"Local preview routes paused.":"Local preview routes resumed.");
+});
+document.getElementById("riskForm").addEventListener("submit",function(e){e.preventDefault();if(!e.target.reportValidity())return;message("Illustrative risk controls updated locally; not connected to any trading system.");});
+document.getElementById("parseBtn").addEventListener("click",function(){
+var s=document.getElementById("telegramText").value.trim().toUpperCase();
+var side=s.match(/\b(BUY|SELL)\b/),symbol=s.match(/\b(XAUUSD|GOLD|EURUSD|GBPUSD|BTCUSD)\b/);
+var sl=s.match(/\bSL\s*[:=]?\s*(\d+(?:\.\d+)?)/),targets=Array.from(s.matchAll(/\bTP\d*\s*[:=]?\s*(\d+(?:\.\d+)?)/g)).map(function(m){return Number(m[1]);});
+var output={mode:"PARSER_PREVIEW_ONLY",side:side?side[1]:null,symbol:symbol?(symbol[1]==="GOLD"?"XAUUSD":symbol[1]):null,stop_loss:sl?Number(sl[1]):null,targets:targets,can_execute:false,warnings:[]};
+if(!output.side||!output.symbol||output.stop_loss===null||!targets.length)output.warnings.push("Incomplete or unrecognized fields. Manual review required.");
+if(/\bGOLD\b/.test(s))output.warnings.push("GOLD normalized to XAUUSD for example only; broker mapping required.");
+output.warnings.push("No account, broker quote, symbol specifications, or valid risk check.");
+document.getElementById("parseOutput").textContent=JSON.stringify(output,null,2);
+message("Text parsed locally; no Telegram account or broker contacted.");
+});
+document.querySelectorAll("[data-demo-action]").forEach(function(b){b.addEventListener("click",function(){message(b.dataset.demoAction);});});
+})();
+</script>
+</body>
+</html>
