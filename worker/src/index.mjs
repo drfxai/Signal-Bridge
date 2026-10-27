@@ -3,6 +3,7 @@ import { validateTradingView, ValidationError, stableStringify } from './validat
 import { authenticateAgent } from './agent-auth.mjs';
 import { createAndDispatch, validateTestSignal } from './command.mjs';
 import { parseTelegramTrade } from './telegram-parser.mjs';
+import { parseGodModeAlert } from './godmode-parser.mjs';
 import { TEST_UI } from './test-ui.mjs';
 export { AgentHub } from './agent-hub.mjs';
 
@@ -39,9 +40,16 @@ async function acceptTradingView(request,env,token){
    "SELECT id,tenant_id,agent_id,delivery_mode FROM ingress_connections WHERE token_sha256=? AND provider='tradingview' AND status='active' LIMIT 1"
  ).bind(digest).first();
  if(!conn)return error('UNAUTHORIZED',401);
- if(!/^application\/json(?:\s*;|\s*$)/i.test(request.headers.get('content-type')||''))return error('UNSUPPORTED_MEDIA_TYPE',415);
- let incoming;try{incoming=await readJson(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
- let signal;try{signal=validateTradingView(incoming)}catch(e){return error(e instanceof ValidationError?e.code:'INVALID_SIGNAL_SCHEMA',422)}
+ const contentType=request.headers.get('content-type')||'';
+ let signal;
+ if(/^application\/json(?:\s*;|\s*$)/i.test(contentType)){
+  let incoming;try{incoming=await readJson(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
+  try{signal=validateTradingView(incoming)}catch(e){return error(e instanceof ValidationError?e.code:'INVALID_SIGNAL_SCHEMA',422)}
+ }else if(/^text\/plain(?:\s*;|\s*$)/i.test(contentType)){
+  let raw;try{raw=await readBounded(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
+  if(!raw.includes('[[DRFX]]'))return error('UNSUPPORTED_MEDIA_TYPE',415);
+  const parsed=parseGodModeAlert(raw);if(!parsed.ok)return error(parsed.reason,422);signal=parsed.signal;
+ }else return error('UNSUPPORTED_MEDIA_TYPE',415);
  const payload=stableStringify(signal),hash=await sha256(payload),id=crypto.randomUUID(),received=new Date().toISOString();
  const result=await env.DB.prepare(
   `INSERT INTO received_signals (id,tenant_id,connection_id,external_signal_id,payload_sha256,normalized_json,received_at,expires_at,status)

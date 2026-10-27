@@ -23,8 +23,11 @@ export function validateTradingView(body, nowMs = Date.now()) {
   if (body.action !== 'OPEN' || !['BUY','SELL'].includes(body.side)) reject('UNSUPPORTED_ACTION');
   if (!S(body.symbol, 32) || !/^[A-Z0-9][A-Z0-9._-]{0,31}$/.test(body.symbol)) reject('INVALID_SYMBOL');
   const {order} = body;
-  if (!PLAIN(order) || !KEYS(order,['type','volume','stop_loss','take_profits']) || order.type !== 'MARKET') reject('INVALID_ORDER');
-  if (!PLAIN(order.volume) || !KEYS(order.volume,['mode','value']) || order.volume.mode !== 'FIXED_LOTS' || !POSITIVE(order.volume.value) || order.volume.value > 100) reject('INVALID_VOLUME');
+  if (!PLAIN(order) || !KEYS(order,['type','volume','stop_loss','take_profits','reference_price']) || order.type !== 'MARKET') reject('INVALID_ORDER');
+  if (!PLAIN(order.volume) || !KEYS(order.volume,['mode','value']) || !['FIXED_LOTS','RISK_PERCENT'].includes(order.volume.mode) || !POSITIVE(order.volume.value)) reject('INVALID_VOLUME');
+  if (order.volume.mode === 'FIXED_LOTS' && order.volume.value > 100) reject('INVALID_VOLUME');
+  if (order.volume.mode === 'RISK_PERCENT' && order.volume.value > 10) reject('INVALID_VOLUME');
+  if (order.reference_price !== undefined && !POSITIVE(order.reference_price)) reject('INVALID_REFERENCE_PRICE');
   if (!POSITIVE(order.stop_loss)) reject('INVALID_STOP_LOSS');
   if (!Array.isArray(order.take_profits) || order.take_profits.length < 1 || order.take_profits.length > 3 || !order.take_profits.every(POSITIVE) || new Set(order.take_profits).size !== order.take_profits.length) reject('INVALID_TAKE_PROFITS');
   const occurred = parseIso(body.occurred_at), expires = parseIso(body.expires_at);
@@ -34,7 +37,7 @@ export function validateTradingView(body, nowMs = Date.now()) {
   return {
     schema_version:'1.0', external_signal_id:body.external_signal_id,
     source_type:'tradingview', action:'OPEN',side:body.side,symbol:body.symbol,
-    order:{type:'MARKET',volume:{mode:'FIXED_LOTS',value:order.volume.value},stop_loss:order.stop_loss,take_profits:[...order.take_profits]},
+    order:{type:'MARKET',volume:{mode:order.volume.mode,value:order.volume.value},stop_loss:order.stop_loss,take_profits:[...order.take_profits],...(order.reference_price!==undefined?{reference_price:order.reference_price}:{})},
     occurred_at:new Date(occurred).toISOString(),expires_at:new Date(expires).toISOString(),
     ...(body.metadata?.strategy ? {metadata:{strategy:body.metadata.strategy}} : {})
   };

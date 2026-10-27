@@ -21,6 +21,8 @@ input group "=== DEMO Execution Safety ==="
 input bool   InpEnableDemoExecution = false;
 input long   InpMagic               = 770425;
 input double InpMaxLot              = 0.10;
+input double InpMaxRiskPercent      = 1.00;
+input double InpMaxPriceDeviationPct= 0.75;
 input int    InpMaxOpenTrades       = 4;
 input int    InpMaxSpreadPoints     = 80;
 input int    InpSlippagePoints      = 20;
@@ -182,6 +184,22 @@ double NormalizeVolume(string sym,double v)
  return NormalizeDouble(lots,digits);
 }
 
+double LotsForRisk(string sym,bool buy,double sl,double riskPct)
+{
+ if(riskPct<=0)return 0;
+ if(riskPct>InpMaxRiskPercent)riskPct=InpMaxRiskPercent;
+ MqlTick tick;if(!SymbolInfoTick(sym,tick))return 0;
+ double entry=buy?tick.ask:tick.bid,dist=MathAbs(entry-sl);
+ double tickSize=SymbolInfoDouble(sym,SYMBOL_TRADE_TICK_SIZE);
+ double tickValue=SymbolInfoDouble(sym,SYMBOL_TRADE_TICK_VALUE_LOSS);
+ if(tickValue<=0)tickValue=SymbolInfoDouble(sym,SYMBOL_TRADE_TICK_VALUE);
+ if(dist<=0||tickSize<=0||tickValue<=0)return 0;
+ double riskMoney=AccountInfoDouble(ACCOUNT_BALANCE)*riskPct/100.0;
+ double lossPerLot=(dist/tickSize)*tickValue;
+ if(riskMoney<=0||lossPerLot<=0)return 0;
+ return NormalizeVolume(sym,riskMoney/lossPerLot);
+}
+
 bool StopsValid(string sym,bool buy,double sl,double tp)
 {
  MqlTick tick;if(!SymbolInfoTick(sym,tick))return false;
@@ -195,18 +213,22 @@ bool StopsValid(string sym,bool buy,double sl,double tp)
 
 void HandleCommand(string parts[])
 {
- if(ArraySize(parts)<12)return;
- string id=parts[1],mode=parts[2],action=parts[3],side=parts[4],requested=parts[5];
- double volume=StringToDouble(parts[6]),sl=StringToDouble(parts[7]),tp1=StringToDouble(parts[8]),tp2=StringToDouble(parts[9]),tp3=StringToDouble(parts[10]);
- long expiresMs=(long)StringToInteger(parts[11]);
- g_lastSignal=side+" "+requested+" "+DoubleToString(volume,2)+"L";
+ if(ArraySize(parts)<14)return;
+ string id=parts[1],mode=parts[2],action=parts[3],side=parts[4],requested=parts[5],volumeMode=parts[6];
+ double volumeValue=StringToDouble(parts[7]),referencePrice=StringToDouble(parts[8]),sl=StringToDouble(parts[9]),tp1=StringToDouble(parts[10]),tp2=StringToDouble(parts[11]),tp3=StringToDouble(parts[12]);
+ long expiresMs=(long)StringToInteger(parts[13]);
+ g_lastSignal=side+" "+requested+" "+volumeMode+" "+DoubleToString(volumeValue,2);
 
  if((long)TimeGMT()*1000>expiresMs){Receipt(id,"EXPIRED","",0,"command expired");return;}
  if(action!="OPEN"||(side!="BUY"&&side!="SELL")){Receipt(id,"REJECTED","",0,"unsupported command");return;}
 
  string sym=ResolveSymbol(requested);if(sym==""){Receipt(id,"REJECTED","",0,"symbol not found");return;}
- double lots=NormalizeVolume(sym,volume);if(lots<=0){Receipt(id,"REJECTED","",0,"invalid volume or MaxLot");return;}
- double finalTp=(tp3>0?tp3:(tp2>0?tp2:tp1));bool buy=(side=="BUY");
+ bool buy=(side=="BUY");MqlTick tick;if(!SymbolInfoTick(sym,tick)){Receipt(id,"REJECTED","",0,"no broker quote");return;}
+ double current=buy?tick.ask:tick.bid;
+ if(referencePrice>0 && MathAbs(current-referencePrice)/referencePrice*100.0>InpMaxPriceDeviationPct){Receipt(id,"REJECTED","",0,"price deviation too large");return;}
+ double lots=(volumeMode=="RISK_PERCENT")?LotsForRisk(sym,buy,sl,volumeValue):NormalizeVolume(sym,volumeValue);
+ if(lots<=0){Receipt(id,"REJECTED","",0,"position size invalid or below broker minimum");return;}
+ double finalTp=(tp3>0?tp3:(tp2>0?tp2:tp1));
  if(finalTp<=0||!StopsValid(sym,buy,sl,finalTp)){Receipt(id,"REJECTED","",0,"SL/TP/spread validation failed");return;}
 
  if(mode=="dry_run"){Receipt(id,"PREVIEWED","",0,"preview accepted by MT5");return;}
