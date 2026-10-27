@@ -1,66 +1,87 @@
 # SignalBridge — Delivery Roadmap
-Planning estimate: ~8–10 weeks for a small experienced team to build a scoped demo MVP, subject to validation. Production live trading requires further gates.
+Updated 2026-10-28 · Free-first deployment strategy
 
-## Milestone 0 — Repository/decisions (now)
-- [x] Product blueprint, routes, information architecture, wireframe prototype
-- [x] Security, API, agent and connector design documents
-- [ ] Confirm deployment vendors, tenant isolation design and product name
-- [ ] Define canonical JSON Schema and golden test fixtures
-**Exit:** architecture review approved and success metrics baseline set.
+## Infrastructure policy
 
-## Milestone 1 — Backend foundation (weeks 1–3)
-- [x] Ingestion-only Worker + D1 schema + secure connection token helper + 22 contract tests
-- [ ] Real D1/Wrangler staging integration, operational rate limiting and credential rotation
-- [ ] TypeScript monorepo structure, lint, tests, format, CI, secret scanning
-- [ ] Auth/tenant DB schema, scoped connection tokens, migrations
-- [x] TradingView ingress validation; persist-before-202 and D1 idempotency (storage only; local contract tested)
-- [ ] Event store + outbox, dispatcher and dead-letter pipeline
-- [ ] Normalizer + account-serialized routing + basic risk gate
-**Exit:** simulated webhook produces one audited command even under retries.
+Launch on Cloudflare Free. Begin Paid migration after ~500 DAU or earlier if usage reaches the operating thresholds in [CLOUDFLARE_FREE_FIRST.md](CLOUDFLARE_FREE_FIRST.md). Complete the migration before routine operation around 1,000 DAU.
 
-## Milestone 2 — MT5 demo execution (weeks 3–5)
-- [ ] MQL5 EA enrollment and heartbeat
-- [ ] Authenticated HTTPS polling + account verification
-- [ ] Market BUY/SELL and correlated CLOSE on demo
-- [ ] Broker trade retcode/events + restart reconciliation
-- [ ] Contract spec / symbol mapping and basic guardrails
-- [ ] E2E tests on hedging/netting accounts
-**Exit:** verified broker deal events and no replay-induced second orders.
+## Milestone 0 — Product and architecture
+- [x] Product blueprint and information architecture
+- [x] Security/risk and API design
+- [x] Premium responsive UI prototype
+- [x] Free-first Cloudflare capacity and migration plan
+- [ ] Canonical JSON Schema/golden fixtures for every trade action
 
-## Milestone 3 — Dashboard and Telegram (weeks 5–8)
-- [ ] Responsive Next.js dashboard: Overview, Connections, Routes, Risk, Activity
-- [ ] Onboarding with dry-run and agent diagnostics
+## Milestone 1 — Free ingress foundation
+- [x] TradingView Worker ingress code
+- [x] D1 schema and connection-token helper
+- [x] Persist-before-accept idempotency path
+- [x] 49 automated parser/risk/ingress tests
+- [ ] Provision dedicated Free `signalbridge-ingress` D1 database
+- [ ] Deploy dedicated Free `drfx-signalbridge-ingress` Worker
+- [ ] Apply production/staging migrations
+- [ ] Measure Worker CPU and D1 row amplification
+- [ ] Add quota/abuse monitoring and credential rotation
+
+**Exit:** real TradingView demo webhook is durably stored on Cloudflare Free with measured resource cost and no trading side effects.
+
+## Milestone 2 — Realtime Agent transport
+- [ ] Implement account-scoped Durable Object Agent Hub
+- [ ] Use Hibernatable WebSockets
+- [ ] Build lightweight Windows SignalBridge Agent
+- [ ] Agent enrollment, heartbeat and reconnect reconciliation
+- [ ] Low-frequency HTTP recovery fallback
+- [ ] Prove no per-terminal high-frequency polling is required
+- [ ] Load test 100 → 250 → 500 simultaneous Agent sessions
+
+**Exit:** 500 simulated agent sessions can remain connected within Free operating budgets under representative sparse signal traffic.
+
+## Milestone 3 — MT5 demo execution
+- [ ] Implement `DrFX_SignalBridge_EA.mq5`
+- [ ] Bind Agent to exact account/server identity
+- [ ] Demo-only market BUY/SELL and correlated CLOSE
+- [ ] Symbol mapping and contract-spec validation
+- [ ] Broker retcode / OnTradeTransaction reconciliation
+- [ ] Restart/unknown-state/duplicate tests
+- [ ] Hedging and netting demo accounts
+
+**Exit:** one command creates at most one intended demo broker action and every outcome is reconciled.
+
+## Milestone 4 — Telegram
+- [ ] Real Telegram Bot webhook
+- [ ] Per-channel authorization/allowlist
+- [ ] Deterministic parser in production path
+- [ ] Edited-message revisions
 - [ ] TradingView → Telegram notifications
-- [ ] Permissioned Telegram → MT5 deterministic parser
-- [ ] Edit/revision handling, allowlists and manual approval
-- [ ] Mini App basic secure login + views
-**Exit:** demo multi-route flows with audit and explicit permissions.
+- [ ] MT5 → Telegram verified status notifications
+- [ ] Mini App secure initData validation
 
-## Milestone 4 — Harden and release MVP (weeks 8–10)
-- [ ] Replay/chaos matrix and rate-limit/latency measurements
-- [ ] Privacy/ToS review, threat model, penetration checks, backup restore drill
-- [ ] Product help, connection guides, error catalog, SLO dashboards
-- [ ] Staged rollout: internal → closed beta → demo-access public
-**Exit:** release checklist approved; live mode remains gated until broker/compliance validation.
+## Milestone 5 — Free beta
+- [ ] 50-user internal beta
+- [ ] 100-user closed beta
+- [ ] 250 DAU load/cost review
+- [ ] 350 DAU capacity-watch mode
+- [ ] 500 DAU scale-readiness review
+- [ ] Keep normal usage <= 50–60% of critical quotas
+- [ ] Preserve quota reserve for ingress and agent traffic
 
-## Beyond MVP
-- [ ] Hosted Windows MT5 provisioner and billing
-- [ ] Multiple accounts, advanced TP/trailing/break-even, portfolio risks
-- [ ] AI-assisted parser + image signals with human verification
-- [ ] Advanced analytics, alerts, enterprise roles and APIs
+## Milestone 6 — Paid migration
+Trigger: >500 DAU **or** sustained quota pressure, whichever comes first.
 
-## Workstream ownership proposal
-- Platform: API/DB/queue/security
-- Execution: MQL5/MT5 integration and broker matrix
-- Integrations: TradingView and Telegram adapters
-- Frontend: dashboard and Telegram Mini App
-- QA/SRE: replay tests, observability and operations
+- [ ] Enable Workers Paid
+- [ ] Introduce Queues + dead-letter dispatch
+- [ ] Shard D1 by measured tenant/account pressure
+- [ ] Increase observability/retention
+- [ ] Run 1,000 DAU / burst load suite
+- [ ] Complete migration before routine ~1,000 DAU operation
+
+## Later
+- Managed Windows MT5 hosting
+- Advanced multi-account portfolio risk
+- Enterprise roles/API
+- AI-assisted extraction with deterministic safety gate
+- Image signal parsing with human review
 
 ## Definition of Done
-Code review, tests, runbook update, signal lifecycle traceability, permissions and error states tested. Demo acceptance evidenced by broker events; no slide/demo-only feature represented as implemented.
 
-## Release risks
-Access to broker demo environments, netting/hedging differences, Telegram channel permissions, external webhook rate and timeout behavior, Windows hosted MT5 infrastructure cost, regional compliance and payments.
-
-## Update — 2026-10-28
-The TradingView webhook **ingress storage** slice is implemented in a feature branch; this is not a full execution backend. No Cloudflare resources were provisioned. See [BACKEND_IMPLEMENTATION.md](BACKEND_IMPLEMENTATION.md) for authenticated intake, deployment prerequisites and missing production controls. Broker execution remains disabled.
+Each milestone requires code review, tests, operational documentation, resource measurements, explicit error states and auditable trade lifecycle evidence. No synthetic UI state is represented as a deployed capability.
