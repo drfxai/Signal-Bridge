@@ -1,0 +1,1 @@
+ALTER TABLE telegram_connections ADD COLUMN pair_code_sha256 TEXT CHECK(pair_code_sha256 IS NULL OR length(pair_code_sha256)=64);
