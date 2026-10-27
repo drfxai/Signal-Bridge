@@ -31,7 +31,8 @@ export class AgentHub {
         connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),account:null
       });
       server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
-      return new Response(null,{status:101,webSocket:client});
+      const selected=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim()).find(x=>x.startsWith('sb-token.'));
+      return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
     }
 
     if(url.pathname==='/dispatch' && request.method==='POST'){

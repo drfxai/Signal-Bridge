@@ -1,16 +1,10 @@
-# SignalBridge Windows Agent v0.20
+# SignalBridge Windows Agent v0.21
 
-Purpose: low-latency bridge between Cloudflare AgentHub and the MT5 EA.
+Requires Node.js 22+ only; there are no npm dependencies.
 
-## Run
-1. Install Node.js 22 LTS.
-2. Copy `config.example.json` to `config.json`.
-3. Put the one-time Agent token in `config.json`.
-4. Run:
-   ```
-   npm install
-   npm start
-   ```
-5. Keep the process running while MT5 is open.
+1. Copy `config.example.json` to `config.json`.
+2. Paste the private 43-character Agent token.
+3. Run `node agent.mjs` (or `npm start`).
+4. Start MT5 and attach the SignalBridge EA.
 
-Cloud path is persistent WebSocket. MT5 path is TCP on `127.0.0.1:17777`; no internet polling is used between the EA and Agent.
+Cloudflare uses a persistent WebSocket. MT5 uses TCP on `127.0.0.1:17777` with TCP_NODELAY; no internet polling is used by the EA.
