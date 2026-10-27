@@ -117,9 +117,9 @@ async function handleTelegram(request,env,connectionId){
  const chatId=String(msg.chat?.id??'');if(!chatId)return json({ok:true,ignored:'NO_CHAT'});
  if(conn.allowed_chat_id && conn.allowed_chat_id!==chatId)return json({ok:true,ignored:'CHAT_NOT_ALLOWED'});
  if(!conn.allowed_chat_id){
-  const pair=msg.text.trim().match(new RegExp('^/signalbridge_pair\\\\s+([A-Za-z0-9_-]{8,64})
-  if(!pair||!conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_REQUIRED'});
-  if(await sha256(pair[1])!==conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_CODE_INVALID'});
+  const pairParts=msg.text.trim().split(/\\s+/);
+  if(pairParts.length!==2||pairParts[0]!=='/signalbridge_pair'||!/^[A-Za-z0-9_-]{8,64}$/.test(pairParts[1])||!conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_REQUIRED'});
+  if(await sha256(pairParts[1])!==conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_CODE_INVALID'});
   const claim=await env.DB.prepare('UPDATE telegram_connections SET allowed_chat_id=?,pair_code_sha256=NULL WHERE id=? AND allowed_chat_id IS NULL AND pair_code_sha256=?').bind(chatId,conn.id,conn.pair_code_sha256).run();
   if(!claim?.success||claim.meta?.changes!==1)return json({ok:true,ignored:'PAIRING_RACE_RETRY'});
   return json({ok:true,paired:true});
