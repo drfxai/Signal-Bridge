@@ -41,16 +41,16 @@ async function acceptTradingView(request,env,token){
  ).bind(digest).first();
  if(!conn)return error('UNAUTHORIZED',401);
  const contentType=request.headers.get('content-type')||'';
- let signal;
+ let signal,sourceHash=null;
  if(/^application\/json(?:\s*;|\s*$)/i.test(contentType)){
   let incoming;try{incoming=await readJson(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
   try{signal=validateTradingView(incoming)}catch(e){return error(e instanceof ValidationError?e.code:'INVALID_SIGNAL_SCHEMA',422)}
  }else if(/^text\/plain(?:\s*;|\s*$)/i.test(contentType)){
   let raw;try{raw=await readBounded(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
   if(!raw.includes('[[DRFX]]'))return error('UNSUPPORTED_MEDIA_TYPE',415);
-  const parsed=parseGodModeAlert(raw);if(!parsed.ok)return error(parsed.reason,422);signal=parsed.signal;
+  const parsed=parseGodModeAlert(raw);if(!parsed.ok)return error(parsed.reason,422);signal=parsed.signal;sourceHash=await sha256(raw.trim());
  }else return error('UNSUPPORTED_MEDIA_TYPE',415);
- const payload=stableStringify(signal),hash=await sha256(payload),id=crypto.randomUUID(),received=new Date().toISOString();
+ const payload=stableStringify(signal),hash=sourceHash||await sha256(payload),id=crypto.randomUUID(),received=new Date().toISOString();
  const result=await env.DB.prepare(
   `INSERT INTO received_signals (id,tenant_id,connection_id,external_signal_id,payload_sha256,normalized_json,received_at,expires_at,status)
    VALUES (?,?,?,?,?,?,?,?, 'RECEIVED') ON CONFLICT(connection_id,external_signal_id) DO NOTHING`

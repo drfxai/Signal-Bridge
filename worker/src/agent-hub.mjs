@@ -29,7 +29,7 @@ export class AgentHub{
    const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
    server.serializeAttachment({agentId,tenantId,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),account:null});
    server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
-   await this.replay(agentId,server);
+   this.ctx.waitUntil(this.replay(agentId,server));
    const selected=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim()).find(x=>x.startsWith('sb-token.'));
    return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
   }

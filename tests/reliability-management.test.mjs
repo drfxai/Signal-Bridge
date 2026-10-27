@@ -25,3 +25,17 @@ test('Telegram requires explicit pairing before chat binding',()=>{
  const index=fs.readFileSync(new URL('../worker/src/index.mjs',import.meta.url),'utf8');
  assert.match(index,/signalbridge_pair/);assert.match(index,/PAIRING_REQUIRED/);assert.match(index,/pair_code_sha256=NULL/);
 });
+
+
+test('God Mode entry uses bar timestamp from signal id and rejects stale entries',()=>{
+ const now=1760000300000;
+ const ok=parseGodModeAlert('[[DRFX]]{"event":"entry","signal_id":"XAUUSD-1760000200000","symbol":"XAUUSD","direction":"long","entry":2750,"sl":2730,"tp1":2770}[[/DRFX]]',now);
+ assert.equal(ok.ok,true);assert.equal(ok.signal.occurred_at,new Date(1760000200000).toISOString());
+ const stale=parseGodModeAlert('[[DRFX]]{"event":"entry","signal_id":"XAUUSD-1759999000000","symbol":"XAUUSD","direction":"long","entry":2750,"sl":2730,"tp1":2770}[[/DRFX]]',now);
+ assert.equal(stale.ok,false);assert.equal(stale.reason,'STALE_GODMODE_ENTRY');
+});
+
+test('AgentHub reconnect replay does not delay WebSocket handshake',()=>{
+ const hub=fs.readFileSync(new URL('../worker/src/agent-hub.mjs',import.meta.url),'utf8');
+ assert.match(hub,/waitUntil\(this\.replay/);
+});
