@@ -56,7 +56,7 @@ async function acceptTradingView(request,env,token){
   signalId=existing.id;
  }
  const dispatch=await createAndDispatch(env,{tenantId:conn.tenant_id,agentId:conn.agent_id,sourceType:'tradingview',sourceRef:conn.id,signalId,signal,mode:conn.delivery_mode});
- return json({accepted:true,duplicate,signal_id:signalId,command_id:dispatch.command_id,dispatch_status:dispatch.status,delivered:dispatch.delivered,execution_mode:conn.delivery_mode},duplicate?200:202);
+ return json({accepted:true,duplicate,signal_id:signalId,status:'RECEIVED',execution_enabled:false,demo_execution_supported:true,command_id:dispatch.command_id,dispatch_status:dispatch.status,delivered:dispatch.delivered,execution_mode:conn.delivery_mode},duplicate?200:202);
 }
 
 async function openAgentSocket(request,env){
@@ -129,7 +129,7 @@ export async function handleRequest(request,env){
  const url=new URL(request.url);
  if(url.pathname==='/'&&request.method==='GET')return new Response(null,{status:302,headers:{location:'/test'}});
  if(url.pathname==='/test'&&request.method==='GET')return html(TEST_UI);
- if(url.pathname==='/health'&&request.method==='GET')return json({service:'signalbridge-ingress',ok:true,deployment_tier:env?.DEPLOYMENT_TIER||'unknown',d1:!!env?.DB,agent_hub:!!env?.AGENT_HUB,websocket_agent_transport:true,execution_enabled:'demo_only'});
+ if(url.pathname==='/health'&&request.method==='GET')return json({service:'signalbridge-ingress',ok:true,deployment_tier:env?.DEPLOYMENT_TIER||'unknown',d1:!!env?.DB,agent_hub:!!env?.AGENT_HUB,websocket_agent_transport:true,execution_enabled:false,demo_execution_supported:true});
  if(url.pathname==='/v1/agent/ws'){if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,allow:'GET'}});try{return await openAgentSocket(request,env)}catch(e){console.error('agent ws',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}}
  if(url.pathname==='/v1/agent/status'&&request.method==='GET')return handleAgentStatus(request,env);
  if(url.pathname==='/v1/test/signal'&&request.method==='POST')return handleTestSignal(request,env);
