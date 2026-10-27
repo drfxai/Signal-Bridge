@@ -52,3 +52,19 @@ DrFX SignalBridge یک محصول مستقل برای اتصال TradingView، M
 
 ## Attribution
 PineConnector and Telegram bot references are for comparative product research only. DrFX SignalBridge is an independent proposed implementation and has no claimed affiliation with those providers.
+
+## Premium product UI — v2.0
+
+The fully restyled, responsive interactive demonstration lives in [`design/index.html`](design/index.html). The v2 UI includes a mission-control dashboard, connector guides, a 3-step demo route wizard, a traceable event monitor, a Telegram parser preview and a local risk-rule simulator, with English/Persian RTL, dark/light themes, keyboard search and mobile navigation.
+
+Run using any static HTTP server (ES modules need HTTP rather than `file://`):
+
+```bash
+npm run dev
+# Open http://localhost:4173
+npm run check
+```
+
+See [UI implementation notes](docs/UI_UPGRADE.md). GitHub Actions runs syntax and nine parser/risk tests.
+
+**Safety boundary:** v2 is a frontend-only design prototype. All routes, signals and metrics are synthetic. There is no deployed webhook, MT5 agent, live account connection, or order execution. Do not enter real broker secrets into the preview.
