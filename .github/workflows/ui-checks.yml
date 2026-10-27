@@ -1,0 +1,29 @@
+name: SignalBridge UI Quality Checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'design/**'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/ui-checks.yml'
+  pull_request:
+    paths:
+      - 'design/**'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/ui-checks.yml'
+permissions:
+  contents: read
+jobs:
+  static-and-unit-tests:
+    name: JavaScript syntax + safety parser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run checks
+        run: npm run check
