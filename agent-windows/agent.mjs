@@ -32,7 +32,7 @@ function encodeCommand(c){
  const tp1=tps[0]??0,tp2=tps[1]??0,tp3=tps[2]??tps[tps.length-1]??0;
  const expiry=Date.parse(c.expires_at)||0;
  return ['CMD',clean(c.command_id),clean(c.execution_mode),clean(c.action),clean(c.side),clean(c.symbol),
-   Number(c.order?.volume?.value||0),Number(c.order?.stop_loss||0),Number(tp1),Number(tp2),Number(tp3),expiry].join('|')+'\n';
+   clean(c.order?.volume?.mode||'FIXED_LOTS'),Number(c.order?.volume?.value||0),Number(c.order?.reference_price||0),Number(c.order?.stop_loss||0),Number(tp1),Number(tp2),Number(tp3),expiry].join('|')+'\n';
 }
 function deliver(c){
  const line=encodeCommand(c);

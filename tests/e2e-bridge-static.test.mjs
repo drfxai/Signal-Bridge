@@ -32,3 +32,12 @@ test('live test UI exposes preview and demo execution modes',()=>{
   assert.match(ui,/demo_execute/);
   assert.match(ui,/\/v1\/test\/signal/);
 });
+
+
+test('Windows Agent command frame matches MT5 v0.20 risk-aware 14-field protocol',()=>{
+  assert.match(agent,/volume\?\.mode\|\|'FIXED_LOTS'/);
+  assert.match(agent,/reference_price/);
+  assert.match(ea,/ArraySize\(parts\)<14/);
+  assert.match(ea,/volumeMode=parts\[6\]/);
+  assert.match(ea,/referencePrice=StringToDouble\(parts\[8\]\)/);
+});
