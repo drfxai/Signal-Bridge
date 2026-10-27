@@ -107,7 +107,7 @@ async function handleTelegram(request,env,connectionId){
  const secret=request.headers.get('x-telegram-bot-api-secret-token')||'';
  if(!AUTH_PATTERN.test(secret))return error('UNAUTHORIZED',401);
  const conn=await env.DB.prepare(
-  "SELECT id,tenant_id,secret_sha256,agent_id,delivery_mode,allowed_chat_id FROM telegram_connections WHERE id=? AND status='active' LIMIT 1"
+  "SELECT id,tenant_id,secret_sha256,agent_id,delivery_mode,allowed_chat_id,pair_code_sha256 FROM telegram_connections WHERE id=? AND status='active' LIMIT 1"
  ).bind(connectionId).first();
  if(!conn||await sha256(secret)!==conn.secret_sha256)return error('UNAUTHORIZED',401);
  let update;try{update=await readJson(request)}catch{return json({ok:true,ignored:'INVALID_JSON'})}
@@ -117,8 +117,12 @@ async function handleTelegram(request,env,connectionId){
  const chatId=String(msg.chat?.id??'');if(!chatId)return json({ok:true,ignored:'NO_CHAT'});
  if(conn.allowed_chat_id && conn.allowed_chat_id!==chatId)return json({ok:true,ignored:'CHAT_NOT_ALLOWED'});
  if(!conn.allowed_chat_id){
-  const claim=await env.DB.prepare('UPDATE telegram_connections SET allowed_chat_id=? WHERE id=? AND allowed_chat_id IS NULL').bind(chatId,conn.id).run();
-  if(!claim?.success)return error('SERVICE_UNAVAILABLE',503);
+  const pair=msg.text.trim().match(/^\\/signalbridge_pair\\s+([A-Za-z0-9_-]{8,64})$/);
+  if(!pair||!conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_REQUIRED'});
+  if(await sha256(pair[1])!==conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_CODE_INVALID'});
+  const claim=await env.DB.prepare('UPDATE telegram_connections SET allowed_chat_id=?,pair_code_sha256=NULL WHERE id=? AND allowed_chat_id IS NULL AND pair_code_sha256=?').bind(chatId,conn.id,conn.pair_code_sha256).run();
+  if(!claim?.success||claim.meta?.changes!==1)return json({ok:true,ignored:'PAIRING_RACE_RETRY'});
+  return json({ok:true,paired:true});
  }
  const parsed=parseTelegramTrade(msg.text);
  const normalized=parsed.ok?JSON.stringify(parsed.signal):null;
