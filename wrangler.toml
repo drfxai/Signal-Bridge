@@ -16,9 +16,12 @@ migrations_dir = "worker/migrations"
 name = "AGENT_HUB"
 class_name = "AgentHub"
 
-[[migrations]]
-tag = "v1-agent-hub"
-new_sqlite_classes = [ "AgentHub" ]
+[exports.AgentHub]
+type = "durable-object"
+storage = "sqlite"
 
+# Production custom domain:
+# https://signalbridge.drfx.online
+#
 # Free launch: no Queues on the critical path.
 # Agent transport uses a hibernatable Durable Object WebSocket.
