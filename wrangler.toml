@@ -1,24 +1,27 @@
 name = "drfx-signalbridge-ingress"
 main = "worker/src/index.mjs"
 compatibility_date = "2026-10-27"
-
-# Launch profile: Cloudflare Free.
-# workers.dev is enabled for the first deployment so a paid/custom-domain dependency
-# is not required. A custom domain can be added later without changing API contracts.
 workers_dev = true
 
 [vars]
 DEPLOYMENT_TIER = "free"
 
-# Create a dedicated Free-plan D1 database for SignalBridge and replace database_id.
-# No paid Cloudflare product is required by this configuration.
-# Do not commit secrets; only token hashes belong in D1.
 [[d1_databases]]
 binding = "DB"
 database_name = "signalbridge-ingress"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "9439ff03-b1ec-47e6-b2b6-b8f2e7d33559"
 migrations_dir = "worker/migrations"
 
-# Cloudflare Queues are intentionally not configured in the Free launch profile.
-# Realtime Agent transport will use Durable Objects + Hibernatable WebSockets.
-# Queues become the standard async dispatcher after the Paid migration gate.
+[[durable_objects.bindings]]
+name = "AGENT_HUB"
+class_name = "AgentHub"
+
+[exports.AgentHub]
+type = "durable-object"
+storage = "sqlite"
+
+# Production custom domain:
+# https://signalbridge.drfx.online
+#
+# Free launch: no Queues on the critical path.
+# Agent transport uses a hibernatable Durable Object WebSocket.
