@@ -1,12 +1,12 @@
 {
-  "name": "drfx-signalbridge",
-  "version": "2.2.0",
-  "private": true,
-  "type": "module",
-  "description": "SignalBridge Cloudflare Free-first ingress, realtime Agent Hub and MT5 UI foundation",
-  "scripts": {
-    "dev": "python3 -m http.server 4173 --directory design",
-    "test": "node --test tests/*.test.mjs",
-    "check": "node --check design/app.js && node --check design/engine.mjs && node --check worker/src/index.mjs && node --check worker/src/validate.mjs && node --check worker/src/agent-auth.mjs && node --check worker/src/agent-hub.mjs && node --check scripts/generate-tv-connection.mjs && node --check scripts/generate-agent-connection.mjs && npm test"
+  "name":"drfx-signalbridge",
+  "version":"2.3.0",
+  "private":true,
+  "type":"module",
+  "description":"SignalBridge low-latency Cloudflare ingress, Agent Hub, Telegram connector and MT5 demo bridge",
+  "scripts":{
+    "dev":"python3 -m http.server 4173 --directory design",
+    "test":"node --test tests/*.test.mjs",
+    "check":"node --check design/app.js && node --check design/engine.mjs && node --check worker/src/index.mjs && node --check worker/src/validate.mjs && node --check worker/src/agent-auth.mjs && node --check worker/src/agent-hub.mjs && node --check worker/src/command.mjs && node --check worker/src/telegram-parser.mjs && node --check worker/src/test-ui.mjs && node --check scripts/generate-tv-connection.mjs && node --check scripts/generate-agent-connection.mjs && npm test"
   }
 }
