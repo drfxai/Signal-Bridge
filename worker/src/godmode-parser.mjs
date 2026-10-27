@@ -5,7 +5,7 @@ function sanitize(s){return String(s).replace(/:\s*NaN\s*([,}])/g,': null$1').re
 function riskFromStrength(v){let s=num(v);if(s==null)return .1;if(s>0&&s<=1)s*=100;s=Math.max(0,Math.min(100,s));return Math.max(.1,Math.min(1,.1+.9*(s/100)))}
 function eventOf(v){const s=String(v||'').toLowerCase().trim();if(['entry','open','filled'].includes(s))return 'ENTRY';if(['tp1','t1','target1'].includes(s))return 'TP1';if(['tp2','t2','target2'].includes(s))return 'TP2';if(['tp3','t3','target3'].includes(s))return 'TP3';if(['sl','stop','stoploss','stop_loss'].includes(s))return 'SL';if(['close','exit','cancel','invalidate','invalidated'].includes(s))return 'CLOSE';return null}
 function fnv(text){let h=0x811c9dc5;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,0x01000193)}return (h>>>0).toString(16).padStart(8,'0')}
-function timeFromSignalId(id){const m=String(id).match(/-(\\d{10,13})$/);if(!m)return null;let t=Number(m[1]);if(m[1].length===10)t*=1000;return Number.isFinite(t)?t:null}
+function timeFromSignalId(id){const m=String(id).match(/-(\d{10,13})$/);if(!m)return null;let t=Number(m[1]);if(m[1].length===10)t*=1000;return Number.isFinite(t)?t:null}
 
 export function parseGodModeAlert(text,nowMs=Date.now()){
  const m=String(text||'').match(TAG);if(!m)return {ok:false,reason:'NO_DRFX_TAG'};
