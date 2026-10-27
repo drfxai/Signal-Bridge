@@ -9,9 +9,11 @@ Planning estimate: ~8–10 weeks for a small experienced team to build a scoped 
 **Exit:** architecture review approved and success metrics baseline set.
 
 ## Milestone 1 — Backend foundation (weeks 1–3)
+- [x] Ingestion-only Worker + D1 schema + secure connection token helper + 22 contract tests
+- [ ] Real D1/Wrangler staging integration, operational rate limiting and credential rotation
 - [ ] TypeScript monorepo structure, lint, tests, format, CI, secret scanning
 - [ ] Auth/tenant DB schema, scoped connection tokens, migrations
-- [ ] TradingView ingress validation; persist-before-202 and idempotency
+- [x] TradingView ingress validation; persist-before-202 and D1 idempotency (storage only; local contract tested)
 - [ ] Event store + outbox, dispatcher and dead-letter pipeline
 - [ ] Normalizer + account-serialized routing + basic risk gate
 **Exit:** simulated webhook produces one audited command even under retries.
@@ -59,3 +61,6 @@ Code review, tests, runbook update, signal lifecycle traceability, permissions a
 
 ## Release risks
 Access to broker demo environments, netting/hedging differences, Telegram channel permissions, external webhook rate and timeout behavior, Windows hosted MT5 infrastructure cost, regional compliance and payments.
+
+## Update — 2026-10-28
+The TradingView webhook **ingress storage** slice is implemented in a feature branch; this is not a full execution backend. No Cloudflare resources were provisioned. See [BACKEND_IMPLEMENTATION.md](BACKEND_IMPLEMENTATION.md) for authenticated intake, deployment prerequisites and missing production controls. Broker execution remains disabled.
