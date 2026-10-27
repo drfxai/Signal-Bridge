@@ -117,7 +117,41 @@ async function handleTelegram(request,env,connectionId){
  const chatId=String(msg.chat?.id??'');if(!chatId)return json({ok:true,ignored:'NO_CHAT'});
  if(conn.allowed_chat_id && conn.allowed_chat_id!==chatId)return json({ok:true,ignored:'CHAT_NOT_ALLOWED'});
  if(!conn.allowed_chat_id){
-  const pair=msg.text.trim().match(/^\\/signalbridge_pair\\s+([A-Za-z0-9_-]{8,64})$/);
+  const pair=msg.text.trim().match(new RegExp('^/signalbridge_pair\\\\s+([A-Za-z0-9_-]{8,64})
+  if(!pair||!conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_REQUIRED'});
+  if(await sha256(pair[1])!==conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_CODE_INVALID'});
+  const claim=await env.DB.prepare('UPDATE telegram_connections SET allowed_chat_id=?,pair_code_sha256=NULL WHERE id=? AND allowed_chat_id IS NULL AND pair_code_sha256=?').bind(chatId,conn.id,conn.pair_code_sha256).run();
+  if(!claim?.success||claim.meta?.changes!==1)return json({ok:true,ignored:'PAIRING_RACE_RETRY'});
+  return json({ok:true,paired:true});
+ }
+ const parsed=parseTelegramTrade(msg.text);
+ const normalized=parsed.ok?JSON.stringify(parsed.signal):null;
+ const textHash=await sha256(msg.text);
+ const ins=await env.DB.prepare(
+  'INSERT INTO telegram_updates (id,tenant_id,connection_id,update_id,chat_id,text_sha256,normalized_json) VALUES (?,?,?,?,?,?,?) ON CONFLICT(connection_id,update_id) DO NOTHING'
+ ).bind(crypto.randomUUID(),conn.tenant_id,conn.id,updateId,chatId,textHash,normalized).run();
+ if(!ins?.success)return error('SERVICE_UNAVAILABLE',503);
+ if(ins.meta?.changes!==1)return json({ok:true,duplicate:true});
+ if(!parsed.ok)return json({ok:true,ignored:parsed.reason});
+ const dispatch=await createAndDispatch(env,{tenantId:conn.tenant_id,agentId:conn.agent_id,sourceType:'telegram',sourceRef:conn.id,signal:parsed.signal,mode:conn.delivery_mode});
+ return json({ok:true,command_id:dispatch.command_id,dispatch_status:dispatch.status});
+}
+
+export async function handleRequest(request,env){
+ const url=new URL(request.url);
+ if(url.pathname==='/'&&request.method==='GET')return new Response(null,{status:302,headers:{location:'/test'}});
+ if(url.pathname==='/test'&&request.method==='GET')return html(TEST_UI);
+ if(url.pathname==='/health'&&request.method==='GET')return json({service:'signalbridge-ingress',ok:true,deployment_tier:env?.DEPLOYMENT_TIER||'unknown',d1:!!env?.DB,agent_hub:!!env?.AGENT_HUB,websocket_agent_transport:true,execution_enabled:false,demo_execution_supported:true});
+ if(url.pathname==='/v1/agent/ws'){if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,allow:'GET'}});try{return await openAgentSocket(request,env)}catch(e){console.error('agent ws',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}}
+ if(url.pathname==='/v1/agent/status'&&request.method==='GET')return handleAgentStatus(request,env);
+ if(url.pathname==='/v1/test/signal'&&request.method==='POST')return handleTestSignal(request,env);
+ const commandMatch=url.pathname.match(/^\/v1\/commands\/([0-9a-f-]{36})$/i);if(commandMatch&&request.method==='GET')return handleCommandStatus(request,env,commandMatch[1]);
+ const tg=url.pathname.match(/^\/v1\/ingress\/telegram\/([A-Za-z0-9_-]{8,80})$/);if(tg){if(request.method!=='POST')return new Response(null,{status:405,headers:{...headers,allow:'POST'}});return handleTelegram(request,env,tg[1])}
+ if(/^\/v1\/ingress\/tradingview\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)){if(request.method!=='POST')return new Response(null,{status:405,headers:{...headers,allow:'POST'}});if(url.search)return error('QUERY_NOT_ALLOWED',400);try{return await acceptTradingView(request,env,url.pathname.split('/')[4])}catch(e){console.error('tv ingress',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}}
+ return error('NOT_FOUND',404);
+}
+export default {fetch:handleRequest};
+));
   if(!pair||!conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_REQUIRED'});
   if(await sha256(pair[1])!==conn.pair_code_sha256)return json({ok:true,ignored:'PAIRING_CODE_INVALID'});
   const claim=await env.DB.prepare('UPDATE telegram_connections SET allowed_chat_id=?,pair_code_sha256=NULL WHERE id=? AND allowed_chat_id IS NULL AND pair_code_sha256=?').bind(chatId,conn.id,conn.pair_code_sha256).run();
