@@ -1,0 +1,5 @@
+{
+  "cloud_url":"wss://signalbridge.drfx.online/v1/agent/ws",
+  "agent_token":"PASTE_43_CHARACTER_AGENT_TOKEN_HERE",
+  "local_port":17777
+}

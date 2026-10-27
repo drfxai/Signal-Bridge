@@ -15,3 +15,10 @@ test('agent bearer auth rejects malformed credentials',()=>{
     assert.equal(parseBearer(request),null);
   }
 });
+
+
+test('agent token can authenticate through WebSocket subprotocol without URL secrets',()=>{
+ const token='B'.repeat(43);
+ const request=new Request('https://example.test',{headers:{'sec-websocket-protocol':'sb-token.'+token}});
+ assert.equal(parseBearer(request),token);
+});
