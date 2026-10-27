@@ -4,24 +4,28 @@ on:
     branches: [main]
     paths:
       - 'design/**'
+      - 'mt5/**'
       - 'worker/**'
       - 'scripts/**'
       - 'tests/**'
       - 'package.json'
+      - 'wrangler.toml'
       - '.github/workflows/ui-checks.yml'
   pull_request:
     paths:
       - 'design/**'
+      - 'mt5/**'
       - 'worker/**'
       - 'scripts/**'
       - 'tests/**'
       - 'package.json'
+      - 'wrangler.toml'
       - '.github/workflows/ui-checks.yml'
 permissions:
   contents: read
 jobs:
   static-and-unit-tests:
-    name: JavaScript syntax + parser + ingestion contract tests
+    name: JavaScript syntax + parser + ingestion + agent contract tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
