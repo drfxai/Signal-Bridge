@@ -54,7 +54,7 @@ export class AgentHub{
   if(row.account_login!==account.login||row.account_server!==account.server){
    ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false;
   }
-  a.expectedLogin=row.account_login;a.expectedServer=row.account_server;
+  a.expectedLogin=row.account_login;a.expectedServer=row.account_server;a.licenseExpires=row.expires_at;
   return true;
  }
  sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}))}
@@ -79,8 +79,8 @@ export class AgentHub{
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
    const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;ws.serializeAttachment(a);
    this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
-   if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));
-   ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now());return;
+   ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now()+'|'+(a.licenseExpires||''));
+   if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));return;
   }
   if(p[0]==='PING'){ws.send('PONG|'+safe(p[1],32)+'|'+Date.now());return}
   if(p[0]==='RCPT'){
