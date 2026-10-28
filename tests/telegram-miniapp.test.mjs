@@ -119,7 +119,7 @@ test('desktop-mode mobile viewport is recovered only on touch phones',()=>{
 test('Telegram navigation, bilingual mode and license privacy remain functional',()=>{
  for(const token of [
   "document.querySelectorAll('[data-jump]')","document.body.dataset.tab=tab",
-  "tg?.BackButton?.onClick","language(locale==='en'?'fa':'en')",
+  "tg?.BackButton?.onClick","language($('langToggle').value)",
   "document.documentElement.dir=locale==='fa'?'rtl':'ltr'",
   "state.serialVisible","'/api/auth/telegram/webapp'",
   "'/api/me'","tg?.initData"
@@ -173,7 +173,7 @@ test('external mobile browser offers a verified Telegram bot link instead of pre
  assert.match(MINI_JS,/await offerBotLaunch\(\)/);
  assert.match(MINI_JS,/if\(tg\?\.initData&&state\.telegramEnabled\)/);
  assert.ok(!MINI_JS.includes('initDataUnsafe'));
- assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261028-mobile-v6'));
+ assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261029-sixlangs'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });
 
@@ -228,7 +228,7 @@ test('Telegram bot HMAC includes optional Ed25519 signature field in signed data
 test('Mini App provides safe one-time bot /login code UI without exposing EA secret',()=>{
  for(const token of ['id="otpLogin"','id="otpForm"','id="otpInput"','id="otpSubmit"','id="otpStatus"',
   'autocomplete="one-time-code"','inputmode="text"','/login',
-  'id="revealSerial"','id="copySerial"','telegram-mini.js?v=20261028-mobile-v6'])
+  'id="revealSerial"','id="copySerial"','telegram-mini.js?v=20261029-sixlangs'])
    assert.ok(MINI_HTML.includes(token),token);
  for(const token of ["'/api/auth/telegram/code'","await api('/api/auth/telegram/code',{code})",
   "await refresh('session')","$('otpLogin').hidden=false",
