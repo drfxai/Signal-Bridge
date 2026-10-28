@@ -47,8 +47,8 @@ body.admin-visible nav.bottom{grid-template-columns:repeat(5,minmax(0,1fr))}
 .mini-admin-user-actions{display:flex;gap:8px;margin-top:12px}.mini-admin-user-actions select{min-width:0;flex:1;background:#090d13;color:#e2e8f2;border:1px solid #515565;border-radius:8px;padding:9px}
 .mini-admin-user-actions button{flex:0 0 80px;font-size:12px}
 
-body[data-tab=license] .hero,body[data-tab=license] .route-stage,body[data-tab=plans] .hero,body[data-tab=plans] .route-stage,body[data-tab=help] .hero,body[data-tab=help] .route-stage{display:none}
-body[data-tab=license] #statusMessage,body[data-tab=plans] #statusMessage,body[data-tab=help] #statusMessage{margin-top:15px}
+body[data-tab=license] .hero,body[data-tab=license] .route-stage,body[data-tab=plans] .hero,body[data-tab=plans] .route-stage,body[data-tab=help] .hero,body[data-tab=help] .route-stage,body[data-tab=admin] .hero,body[data-tab=admin] .route-stage{display:none}
+body[data-tab=license] #statusMessage,body[data-tab=plans] #statusMessage,body[data-tab=help] #statusMessage,body[data-tab=admin] #statusMessage{margin-top:15px}
 html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .route-steps,html[dir=rtl] nav.bottom,html[dir=rtl] .brand-bar{direction:ltr}html[dir=rtl] .brandname{text-align:left}html[dir=rtl] .list li{padding:13px 34px 13px 0}html[dir=rtl] .list li:before{right:0;left:auto}html[dir=rtl] .action-grid .btn{text-align:right}
 @media(max-width:360px){.container{padding:0 12px}.brandname .name{font-size:14px}.chip{font-size:9px;padding:7px}.hero h1{font-size:29px}.card{padding:15px}.grid{gap:8px}.small{padding:12px 11px}.micro{font-size:10px}.action-grid{grid-template-columns:1fr}.route-head{padding:11px 11px 4px}}
 @media(min-width:681px){nav.bottom{padding-inline:max(16px,calc((100% - 660px)/2))}.container{padding-inline:22px}.hero{padding-top:33px}}
@@ -258,8 +258,8 @@ async function refreshMiniConnection(){
   const [c,w]=await Promise.all([api('/api/connection/check'),api('/api/webhook')]);
   const d=c.diagnostic||{};
   set('miniConnectionLicense',d.license==='active'?'ACTIVE':'INACTIVE');
-  set('miniConnectionLast',d.last_handshake||'Not seen');
-  set('miniConnectionInfo','Last recorded handshake only, not a live WebSocket ping or order.');
+  set('miniConnectionLast',d.last_connection_attempt||'Not seen');
+  set('miniConnectionInfo','Last recorded EA connection attempt only; not a confirmed live socket or order.');
   displayMiniWebhook(w.webhook);
  }catch(e){set('miniConnectionInfo','Connection status unavailable: '+e.message);}
 }
