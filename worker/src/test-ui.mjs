@@ -19,7 +19,7 @@ button:disabled{opacity:.5}.status{display:grid;gap:8px}.row{border:1px solid #2
 </style></head><body><main>
 <div class="head"><div><div class="pill">SIGNALBRIDGE · REAL BACKEND TEST</div><h1>Send a test signal to MT5</h1><div class="sub">Measures edge acceptance, WebSocket delivery and terminal/broker state.</div></div><div id="health" class="pill">checking…</div></div>
 <div class="grid"><section class="card">
-<label>Agent token (kept in memory only)</label><input id="token" type="password" autocomplete="off" placeholder="43-character Agent token">
+<label>SignalBridge Key (kept in memory only)</label><input id="token" type="password" autocomplete="off" placeholder="43-character SignalBridge Key">
 <div class="two"><div><label>Symbol</label><input id="symbol" value="XAUUSD"></div><div><label>Side</label><select id="side"><option>BUY</option><option>SELL</option></select></div></div>
 <div class="two"><div><label>Lot</label><input id="volume" type="number" step="0.01" value="0.01"></div><div><label>Mode</label><select id="mode"><option value="dry_run">Preview only</option><option value="demo_execute">Open on DEMO</option></select></div></div>
 <label>Stop Loss</label><input id="sl" type="number" step="0.01" placeholder="required">
@@ -35,7 +35,7 @@ const $=id=>document.getElementById(id), log=(x)=>{$('log').textContent=new Date
 async function health(){try{const r=await fetch('/health');const j=await r.json();$('health').textContent=j.ok?'● BACKEND LIVE':'BACKEND ERROR';}catch{$('health').textContent='BACKEND ERROR'}}
 health();
 $('send').onclick=async()=>{
- const token=$('token').value.trim(); if(!token){log('Agent token required');return}
+ const token=$('token').value.trim(); if(!token){log('SignalBridge Key required');return}
  const tps=[$('tp1').value,$('tp2').value,$('tp3').value].filter(Boolean).map(Number);
  const body={symbol:$('symbol').value.trim().toUpperCase(),side:$('side').value,volume:Number($('volume').value),stop_loss:Number($('sl').value),take_profits:tps,mode:$('mode').value};
  $('send').disabled=true;$('state').textContent='SENDING'; const t0=performance.now();
