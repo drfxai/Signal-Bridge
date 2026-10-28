@@ -1,139 +1,108 @@
 <div align="center">
 
-# DrFX SignalBridge
+# ⚡ DrFX SignalBridge
 
 ### TradingView + Telegram → MetaTrader 5
 
-**Fast signal routing. Clear execution status. Broker-side safety.**
+**One EA. One webhook. Direct realtime execution.**
 
-[![Demo Beta](https://img.shields.io/badge/status-DEMO%20BETA-20b486?style=for-the-badge)](https://signalbridge.drfx.online/dashboard)
-[![MT5](https://img.shields.io/badge/MetaTrader-5-4b8bf4?style=for-the-badge)](#-install-in-4-steps)
-[![Windows](https://img.shields.io/badge/Windows-Agent-6576ff?style=for-the-badge)](#-install-in-4-steps)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Realtime-F38020?style=for-the-badge)](#how-it-works)
+[![Direct MT5 EA](https://img.shields.io/badge/MT5-Direct%20EA-4b8bf4?style=for-the-badge)](#-install-in-3-steps)
+[![1 Month Free](https://img.shields.io/badge/Trial-1%20Month%20Free-4fd9a8?style=for-the-badge)](#-simple-pricing)
+[![Cloudflare](https://img.shields.io/badge/Edge-Cloudflare-F38020?style=for-the-badge)](#architecture)
+[![DEMO Safe](https://img.shields.io/badge/Execution-DEMO%20Safe-ffcc62?style=for-the-badge)](#safety)
 
-[**Open Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**Open Test Panel**](https://signalbridge.drfx.online/test) · [**Download ZIP**](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)
+[**Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**Test Panel**](https://signalbridge.drfx.online/test) · [**Download ZIP**](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)
 
 </div>
 
 ![SignalBridge realtime command center](assets/readme/signalbridge-hero.svg)
 
-SignalBridge connects **TradingView**, **Telegram** and **MetaTrader 5** through a persistent Cloudflare WebSocket path and a lightweight Windows Agent. The current public testing boundary is intentionally conservative: **real/live MT5 accounts are blocked by the EA; start with a DEMO account.**
+SignalBridge is a premium realtime bridge for traders who want **TradingView and Telegram signals delivered into MetaTrader 5 with minimal setup**. The V3 architecture removes the Windows companion Agent from the standard user flow: the MT5 EA connects directly to SignalBridge Cloud over TLS/WebSocket.
 
-## Why SignalBridge?
+## ✨ Product direction
 
-| ⚡ Fast path | 🛡️ Safer execution | 🔁 Replay-safe | 👁️ Live visibility |
-| --- | --- | --- | --- |
-| Persistent WebSocket transport instead of fast HTTP polling. | Broker-side SL, spread/lot checks and DEMO gate inside MT5. | Durable commands, duplicate protection and receipt reconciliation. | Live dashboard, Agent/MT5 state, Cloud RTT and broker receipts. |
+- **One MT5 EA** — no Node.js, no PowerShell, no local Windows Agent.
+- **One TradingView webhook** — paste it into the Alert and the route is ready.
+- **Telegram Bot Connector** — paired signal sources feed the same risk pipeline.
+- **Telegram Web App** — mobile-first monitoring and route controls.
+- **Telegram Account Connector (MTProto)** — visible as **Coming Soon**, intentionally inactive.
+- **Desktop / Tablet / Mobile UI** — one premium responsive design system.
+- **Realtime execution visibility** — route state, MT5 state, cloud RTT and broker receipts.
+- **Fail-closed safety** — invalid or ambiguous signals do not silently become orders.
 
-<table>
-<tr>
-<td width="50%"><img src="assets/readme/signalbridge-mt5.svg" alt="SignalBridge MT5 on-chart panel"></td>
-<td width="50%"><img src="assets/readme/signalbridge-telegram.svg" alt="SignalBridge Telegram routing"></td>
-</tr>
-</table>
+## 💎 Simple pricing
 
-## 🚀 Install in 4 steps
+| Plan | Price | Access |
+| --- | ---: | --- |
+| **Free Trial** | **$0 for 1 month** | Full product trial |
+| **3 Months** | **$47** | Full SignalBridge access |
+| **1 Year** | **$165** | Best annual value |
 
-![SignalBridge quick installation guide](assets/readme/signalbridge-quickstart.svg)
+No monthly paid plan is currently defined. New users start with **one full month free**.
 
-### 1. Download
+## 🚀 Install in 3 steps
 
-Use **Code → Download ZIP**, or download the current main branch:
+### 1. Install the EA
 
-**[Download SignalBridge ZIP](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)**
-
-Extract it anywhere on your Windows PC.
-
-### 2. Install the Windows Agent
-
-Install **Node.js 22+** first, then open PowerShell inside the extracted repository and run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install\Install-SignalBridge.ps1
-```
-
-The installer:
-
-- creates `%LOCALAPPDATA%\DrFX\SignalBridge`;
-- installs the Windows Agent and durable receipt outbox;
-- creates `config.json`;
-- copies the current MT5 EA to detected MetaTrader 5 data folders;
-- creates `Start-SignalBridge-Agent.cmd`.
-
-Open this local file and paste your **private Agent token**:
+Open MetaTrader 5 → **File → Open Data Folder** and place:
 
 ```text
-%LOCALAPPDATA%\DrFX\SignalBridge\config.json
+DrFX_SignalBridge_EA.ex5
 ```
 
-> Never commit `config.json`, bot tokens, webhook secrets or Agent tokens to GitHub.
-
-### 3. Compile and attach the MT5 EA
-
-In MetaTrader 5:
-
-1. Open **MetaEditor**.
-2. Find **Experts → SignalBridge → DrFX_SignalBridge_EA.mq5**.
-3. Compile it.
-4. Return to MT5 and attach the EA to a chart.
-5. Enable **Algo Trading**.
-6. Use an **MT5 DEMO account**.
-7. Keep `InpEnableDemoExecution = false` for preview-only tests; enable it only when you intentionally want a real **DEMO** order.
-
-Then start:
+inside:
 
 ```text
-%LOCALAPPDATA%\DrFX\SignalBridge\Start-SignalBridge-Agent.cmd
+MQL5\Experts
 ```
 
-When everything is connected, the EA panel should show the local Agent as online.
+For source/beta testing, the canonical source is:
 
-### 4. Connect a signal source and test
+```text
+mt5/DrFX_SignalBridge_EA.mq5
+```
 
-Choose either TradingView or Telegram, then use the built-in test page before sending real DEMO orders.
+Current direct-cloud source: **EA v0.24**.
 
-**[Open SignalBridge Test Panel](https://signalbridge.drfx.online/test)**
+### 2. Enter your SignalBridge Key
 
-Start with **Preview only**. After that passes, switch to **Open on DEMO**.
+Attach the EA to an MT5 chart and paste your private **SignalBridge Key** into the EA inputs.
 
----
+MT5 requires the destination to be allowed once in:
 
-## 📈 TradingView → MT5
+**Tools → Options → Expert Advisors**
 
-Use the private webhook URL issued for your SignalBridge connection:
+Add:
+
+```text
+https://signalbridge.drfx.online
+```
+
+The EA then connects directly to:
+
+```text
+wss://signalbridge.drfx.online/v1/ea/ws
+```
+
+### 3. Paste one TradingView webhook
+
+Create a TradingView Alert and paste your private SignalBridge webhook:
 
 ```text
 https://signalbridge.drfx.online/v1/ingress/tradingview/<YOUR_PRIVATE_CONNECTION_TOKEN>
 ```
 
-For **GOD MODE**, create a TradingView alert with:
+That is the standard installation flow.
 
-- **Condition:** `Any alert() function call`
-- **Webhook URL:** your private SignalBridge webhook URL
+**No Node.js. No PowerShell. No Start-SignalBridge-Agent.cmd.**
 
-SignalBridge receives the `[[DRFX]] ... [[/DRFX]]` lifecycle emitted by the script and correlates ENTRY, TP1, TP2, TP3, SL and CLOSE events.
+## ✈️ Telegram
 
-For custom JSON integrations, see [API Contract](docs/API_CONTRACT.md).
+### Telegram Bot Connector — Available
 
-## ✈️ Telegram → MT5
+Pair an approved bot/chat/channel and route deterministic trade messages into the same command pipeline used by TradingView.
 
-Run the included setup script:
-
-```powershell
-.\telegram\SignalBridge-Telegram-Setup.ps1 `
-  -BotToken "<BOT_TOKEN>" `
-  -ConnectionId "<CONNECTION_ID>" `
-  -WebhookSecret "<WEBHOOK_SECRET>" `
-  -PairCode "<PAIR_CODE>"
-```
-
-Then, from the exact Telegram chat or channel you want to authorize:
-
-```text
-/signalbridge_pair <PAIR_CODE>
-```
-
-After pairing, a strict signal can look like:
+Example:
 
 ```text
 XAUUSD BUY
@@ -144,84 +113,110 @@ TP2 2730
 TP3 2740
 ```
 
-The production parser supports **English, فارسی and العربية** for the supported deterministic format. Missing or conflicting fields are rejected instead of guessed.
+The parser currently supports deterministic formats in **English, فارسی and العربية**.
 
-> **Telegram Account Connector (MTProto) — Coming Soon.** The option is visible in the interface but intentionally inactive. The current release does not request or store Telegram phone numbers, API ID/Hash, session files or personal-account credentials.
+### Telegram Web App — Product UI
 
-## 🖥️ Live Dashboard
-
-Open:
-
-**https://signalbridge.drfx.online/dashboard**
-
-Enter your private Agent token to see:
-
-- Agent online/offline;
-- MT5 terminal online/offline;
-- account identity and mode;
-- balance, equity and open-position count;
-- measured Agent ↔ Cloudflare RTT;
-- recent commands and broker receipts;
-- integrated Preview / DEMO test control.
-
-## How it works
+Prototype:
 
 ```text
-TradingView / Telegram
-        ↓
-Cloudflare Worker + D1
-        ↓
-Durable Object Agent Hub
-        ⇅  persistent WebSocket
-Windows SignalBridge Agent
-        ⇅  localhost TCP
-MetaTrader 5 EA
-        ↓
-Broker DEMO
+design/telegram-webapp.html
 ```
 
-The execution path is designed to **fail closed**. An online Windows Agent does not automatically mean MT5 is ready; replay begins only after the terminal reports a verified account state. Broker receipts are persisted by the Agent before the EA clears unresolved local state.
+Bot UX prototype:
 
-## Current beta status
+```text
+design/telegram-bot-flow.html
+```
 
-✅ TradingView → MT5 DEMO pipeline  
-✅ Telegram → MT5 DEMO pipeline  
-✅ English / Persian / Arabic Telegram parsing  
-✅ Hedging + retail-netting aware MT5 management  
-✅ Persistent receipt outbox and reconnect reconciliation  
-✅ Live backend-backed dashboard  
-✅ Cloudflare custom domain + rate protection  
-🔒 Live-account execution intentionally disabled  
-🧪 Real MetaEditor/broker certification still required before a public live-money release
+### Telegram Account Connector (MTProto) — Coming Soon
 
-<details>
-<summary><strong>راهنمای خیلی سریع فارسی</strong></summary>
+The option is visible in the UI but intentionally inactive. The current release does **not** request or store Telegram phone numbers, API ID/Hash or personal-account sessions.
 
-1. ریپازیتوری را با **Download ZIP** دانلود و Extract کنید.  
-2. **Node.js 22+** را نصب کنید و فایل `install\Install-SignalBridge.ps1` را با PowerShell اجرا کنید.  
-3. توکن خصوصی Agent را داخل `%LOCALAPPDATA%\DrFX\SignalBridge\config.json` قرار دهید.  
-4. فایل `DrFX_SignalBridge_EA.mq5` را در MetaEditor کامپایل و روی یک حساب **DEMO** به چارت اضافه کنید.  
-5. `Start-SignalBridge-Agent.cmd` را اجرا کنید.  
-6. ابتدا از صفحه **/test** حالت Preview را تست کنید و فقط بعد از موفقیت، اجرای DEMO را فعال کنید.  
-7. برای TradingView، Webhook خصوصی را در Alert قرار دهید. برای Telegram، اسکریپت Setup را اجرا و چت موردنظر را با `/signalbridge_pair` Pair کنید.
+## 🖥️ Responsive product UI
 
-</details>
+The V3 product concept is in:
+
+```text
+design/index.html
+design/styles.css
+design/app.js
+```
+
+It includes:
+
+- luxury desktop command center;
+- tablet layout;
+- mobile bottom-navigation experience;
+- animated signal-flow visualization;
+- MT5 EA panel concept;
+- Telegram Bot and Web App experience;
+- pricing and install flow.
+
+Run locally:
+
+```bash
+npm run dev
+```
+
+Then open:
+
+```text
+http://localhost:4173
+```
+
+## Architecture
+
+```text
+TradingView Webhook ─┐
+                     ├─→ Cloudflare Worker + D1
+Telegram Bot ────────┘          ↓
+                         Durable Object Hub
+                              ⇅
+                    direct TLS/WebSocket
+                              ⇅
+                       MetaTrader 5 EA
+                              ↓
+                         Broker DEMO
+```
+
+The legacy Windows Agent remains in the repository only as a rollback/reference path. It is **not part of the standard V3 installation experience**.
+
+## Safety
+
+The current EA remains conservative by default:
+
+- DEMO execution only;
+- live-account execution blocked;
+- broker-side SL;
+- spread / lot / price-deviation checks;
+- persistent pending-command correlation;
+- duplicate/replay protection;
+- broker-history reconciliation before blind retry.
+
+A real Windows MetaEditor compile and DEMO broker E2E certification are still required before treating EA v0.24 as release-certified.
+
+## UI previews
+
+- Main responsive UI: `design/index.html`
+- Telegram Web App: `design/telegram-webapp.html`
+- Telegram Bot UX: `design/telegram-bot-flow.html`
+- MT5 command-center reference: `design/mt5-command-center.html`
 
 ## Documentation
 
+- [Architecture](docs/ARCHITECTURE.md)
 - [MT5 execution & safety](docs/MT5_EXECUTION.md)
 - [Telegram connector](docs/TELEGRAM_CONNECTOR.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Cloudflare deployment](docs/CLOUDFLARE_DEPLOYMENT.md)
-- [Security & risk model](docs/SECURITY_RISK.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Security & risk](docs/SECURITY_RISK.md)
+- [Business model](docs/BUSINESS_MODEL.md)
 
 ---
 
 <div align="center">
 
-**DrFX SignalBridge** · Realtime routing with explicit safety boundaries.
+**DrFX SignalBridge** · Premium realtime routing for TradingView, Telegram and MT5.
 
-Current EA: **v0.23** · Windows Agent: **v0.23.2**
+**1 month free · 3 months $47 · 1 year $165**
 
 </div>
