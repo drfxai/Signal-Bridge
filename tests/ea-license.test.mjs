@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { authenticateEaLicense, EA_LICENSE_PLANS } from '../worker/src/ea-license.mjs';
 import { readFileSync } from 'node:fs';
+import { AgentHub } from '../worker/src/agent-hub.mjs';
 
 const code=randomBytes(32).toString('base64url');
 const hash=createHash('sha256').update(code).digest('hex');
@@ -39,4 +40,17 @@ test('migration and issuer do not persist plaintext code and have revocation/bin
  assert.match(script,/randomBytes\(32\)/);
  assert.match(script,/writeFileSync\(file,sql,\{mode:0o600,flag:'wx'\}\)/);
  assert.doesNotMatch(script,/digest\(activationCode\)\s*\+\s*activationCode/);
+});
+
+test('active EA sockets lose command access after personal code rotation',async()=>{
+ const active='a'.repeat(64),replaced='b'.repeat(64);
+ const row={status:'active',agent_status:'active',token_sha256:replaced,expires_at:'2099-01-01 00:00:00',account_login:'10023',account_server:'Demo-Broker'};
+ const env={DB:{prepare(sql){assert.match(sql,/token_sha256/);return {bind(id,agent){assert.equal(id,'lic_1');assert.equal(agent,'ea_1');return {first:async()=>row}}}}}};
+ const hub=new AgentHub({},env);
+ const attached={role:'ea',licenseId:'lic_1',agentId:'ea_1',licenseHash:active,account:{login:'10023',server:'Demo-Broker'}};
+ assert.equal(await hub.licenseIsValid(attached),false,'rotated code must immediately revoke previous WebSocket');
+ row.token_sha256=active;
+ assert.equal(await hub.licenseIsValid(attached),true,'matching fingerprint is authorized');
+ row.status='revoked';
+ assert.equal(await hub.licenseIsValid(attached),false,'admin revocation blocks existing socket');
 });
