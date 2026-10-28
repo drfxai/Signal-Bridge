@@ -1,4 +1,4 @@
-# SignalBridge Windows Agent v0.23.1
+# SignalBridge Windows Agent v0.23.2
 
 Requires Node.js 22+ only; there are no npm dependencies.
 
@@ -9,4 +9,10 @@ Requires Node.js 22+ only; there are no npm dependencies.
 
 Cloudflare uses a persistent WebSocket. MT5 uses TCP on `127.0.0.1:17777` with TCP_NODELAY; no internet polling is used by the EA.
 
-Agent v0.23.1 measures the real Cloudflare WebSocket round-trip time from existing heartbeat acknowledgements and publishes it to the live dashboard without adding fast polling.
+Agent v0.23.2 measures the real Cloudflare WebSocket round-trip time from existing heartbeat acknowledgements and publishes it to the live dashboard without adding fast polling.
+
+## Durable broker receipts
+
+Agent v0.23.2 stores every MT5 receipt in an fsync-backed local journal before acknowledging it to the EA. The receipt stays in the outbox until AgentHub confirms it was stored (or confirms it is an obsolete invalid transition). Cloud disconnects and Agent restarts therefore do not silently lose final broker state.
+
+The default journal is `receipt-outbox.jsonl` beside `config.json`. Override it with `receipt_outbox` in the config if needed. Do not manually delete the journal while unresolved receipts exist.
