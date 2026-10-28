@@ -3,6 +3,7 @@ import net from 'node:net';
 import path from 'node:path';
 import process from 'node:process';
 import {createHash} from 'node:crypto';
+import {ReceiptOutbox} from './receipt-outbox.mjs';
 
 const configPath=path.resolve(process.argv[2]||'./config.json');
 if(!fs.existsSync(configPath))throw new Error('Missing config.json. Copy config.example.json and add your Agent token.');
@@ -23,38 +24,21 @@ const tagFor=v=>createHash('sha256').update(String(v||'')).digest('hex').slice(0
 const wsSend=v=>{if(ws?.readyState===WebSocket.OPEN){ws.send(JSON.stringify(v));return true}return false};
 const sendTerminalState=online=>wsSend({type:'terminal_state',online:online===true,account:online===true?lastAccount:null});
 
-function appendReceiptJournal(record){
- const fd=fs.openSync(receiptJournalPath,'a');
- try{fs.writeSync(fd,JSON.stringify(record)+'\n');fs.fsyncSync(fd)}finally{fs.closeSync(fd)}
-}
-function receiptKey(commandId,status){return clean(commandId)+'|'+clean(status)}
-function loadReceiptOutbox(){
- const map=new Map();if(!fs.existsSync(receiptJournalPath))return map;
- const lines=fs.readFileSync(receiptJournalPath,'utf8').split(/\r?\n/);
- for(const line of lines){if(!line.trim())continue;try{const x=JSON.parse(line);if(x.op==='add'&&x.key&&x.receipt)map.set(x.key,{receipt:x.receipt,attempts:0,nextRetryAt:0});else if(x.op==='ack'&&x.key)map.delete(x.key)}catch{}}
- return map;
-}
-const receiptOutbox=loadReceiptOutbox();
+const receiptOutbox=new ReceiptOutbox(receiptJournalPath,{baseRetryMs:RECEIPT_RETRY_BASE_MS,maxRetryMs:RECEIPT_RETRY_MAX_MS});
 function sendRack(commandId,status){if(mt5&&!mt5.destroyed&&mt5.writable)mt5.write('RACK|'+clean(commandId)+'|'+clean(status)+'\n')}
-function sendReceiptEntry(key,entry,force=false){
- if(ws?.readyState!==WebSocket.OPEN)return false;
- const now=Date.now();if(!force&&entry.nextRetryAt>now)return false;
- ws.send(JSON.stringify(entry.receipt));entry.attempts+=1;
- const delay=Math.min(RECEIPT_RETRY_MAX_MS,RECEIPT_RETRY_BASE_MS*Math.pow(2,Math.min(entry.attempts-1,6)));entry.nextRetryAt=now+delay;
- return true;
+function flushReceiptOutbox(force=false){
+ if(ws?.readyState!==WebSocket.OPEN)return;
+ const now=Date.now();
+ for(const {key,receipt} of receiptOutbox.pending(now,force)){ws.send(JSON.stringify(receipt));receiptOutbox.markSent(key,now)}
 }
-function flushReceiptOutbox(force=false){for(const [key,entry] of receiptOutbox)sendReceiptEntry(key,entry,force)}
 function queueReceipt(commandId,status,ticket='',retcode='',detail=''){
  const receipt={type:'receipt',command_id:clean(commandId),status:clean(status),broker_ticket:ticket?clean(ticket):null,broker_retcode:retcode===''?null:Number(retcode),detail:clean(detail)};
- const key=receiptKey(receipt.command_id,receipt.status),previous=receiptOutbox.get(key);
- if(!previous||JSON.stringify(previous.receipt)!==JSON.stringify(receipt)){appendReceiptJournal({op:'add',key,receipt});receiptOutbox.set(key,{receipt,attempts:0,nextRetryAt:0})}
- sendRack(receipt.command_id,receipt.status);
- const entry=receiptOutbox.get(key);if(entry)sendReceiptEntry(key,entry,true);
+ receiptOutbox.queue(receipt);sendRack(receipt.command_id,receipt.status);flushReceiptOutbox(true);
 }
 function acknowledgeReceipt(message){
- const key=receiptKey(message.command_id,message.status);
- if(!receiptOutbox.has(key))return;
- if(message.stored===true||message.code==='INVALID_TRANSITION'){appendReceiptJournal({op:'ack',key});receiptOutbox.delete(key);log('receipt acknowledged',message.command_id,message.status,message.stored?'stored':message.code)}
+ if(message.stored===true||message.code==='INVALID_TRANSITION'){
+  if(receiptOutbox.acknowledge(message.command_id,message.status))log('receipt acknowledged',message.command_id,message.status,message.stored?'stored':message.code);
+ }
 }
 function sendHeartbeat(force=false){
  if(!lastAccount||ws?.readyState!==WebSocket.OPEN)return;
