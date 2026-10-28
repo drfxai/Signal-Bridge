@@ -35,3 +35,12 @@ Trial codes use 256-bit secure random values, hashed in \`ea_licenses\` and encr
 
 ## Not automatically included
 Actual NOWPayments merchant credentials, Telegram BotFather token, email-sender verification, actual 52 indicator file licenses, independently signed production EX5, or published privacy/terms documents.
+
+## Telegram admin commands
+After setting `ADMIN_TELEGRAM_ID` to your own verified Telegram numeric user ID and completing webhook registration, use `/admin` for summary, `/users` for recent members, `/detail usr_...` for account status, `/grant usr_... trial|quarterly|annual` for plan assignment, and `/suspend usr_...`, `/resume usr_...`, `/revoke usr_...` for account/license control. Only the admin account can invoke them.
+
+## Transactional email cost
+Cloudflare Email Sending to arbitrary recipients requires Workers Paid as of October 2026. On Workers Free, configure Resend instead (`RESEND_API_KEY` as Cloudflare secret and `MAIL_FROM` as your authenticated sender); it offers a no-cost limited volume, subject to current provider quotas.
+
+## Deployment and account verification
+The Worker `drfx-company-site` has been deployed to Cloudflare with a D1 binding, and the D1 schema migrations are applied. Email delivery, Telegram BotFather credentials, payment merchant secrets, published EX5 and downloadable indicator packages remain external release gates. Do not send test real-money orders; canonical EA is DEMO-only.
