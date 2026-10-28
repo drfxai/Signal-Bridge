@@ -141,7 +141,7 @@ test('pricing handoff and sign out are guarded against stale auth states',()=>{
  assert.ok(SITE_JS.includes("url.hostname==='nowpayments.io'||url.hostname.endsWith('.nowpayments.io')"));
  assert.ok(!SITE_JS.includes("!url.hostname.endsWith('nowpayments.io')"));
  assert.match(SITE_JS,/Logout request could not be confirmed/);
- assert.match(SITE_HTML,/Instrument Serif/);
+ assert.match(SITE_HTML,/Instrument(?:\+| )Serif/);
  assert.ok(!SITE_CSS.includes('fonts.googleapis.com'));
 });
 
