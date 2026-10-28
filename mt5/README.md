@@ -1,31 +1,34 @@
-# SignalBridge MT5
+# SignalBridge MT5 EA
 
-## Install this version
+## Current canonical source
 
-Use **one** of these equivalent sources:
+`DrFX_SignalBridge_EA.mq5` now tracks **v0.24 direct-cloud beta**.
 
-- `DrFX_SignalBridge_EA.mq5` — canonical current source.
-- `DrFX_SignalBridge_EA_v0.23.mq5` — version-pinned current beta source.
+The standard user architecture is:
 
-Files `v0.20`, `v0.21` and `v0.22` are retained only as source history. Do not install multiple SignalBridge EA versions on the same account for testing.
+```text
+SignalBridge Cloud ⇄ MT5 EA ⇄ Broker DEMO
+```
 
-## Current safety boundary
+No Windows companion Agent is required.
 
-- MetaTrader **DEMO account only**.
-- `InpEnableDemoExecution=false` by default.
-- Live accounts are hard-refused.
-- Windows SignalBridge Agent must be running locally on `127.0.0.1:17777`.
-- Compile in MetaEditor and require zero compile errors before attaching to a chart.
+## Setup
 
-## v0.23 highlights
+1. Place the EA in `MQL5/Experts`.
+2. Compile it in MetaEditor during source/beta testing.
+3. Attach it to an MT5 **DEMO** chart.
+4. Add `https://signalbridge.drfx.online` to the terminal's allowed addresses.
+5. Paste the private 43-character SignalBridge Key into `InpSignalBridgeKey`.
+6. Keep `InpEnableDemoExecution=false` until Preview tests pass.
 
-- persistent command→trade reconciliation across terminal restart;
-- broker `DEAL_POSITION_ID` / `POSITION_IDENTIFIER` tracking independent of comments;
-- hedging TP1/TP2 partial close;
-- retail-netting TP1/TP2 reduction via opposite deal to an absolute target volume;
-- fail-closed block if a netting symbol already has any open position;
-- broker-history duplicate detection;
-- local risk, spread, symbol, lot, SL/TP and DEMO checks;
-- live native chart panel.
+## Direct transport
 
-Real broker DEMO validation is still required before this source is treated as release-certified.
+The EA opens a TLS connection to `signalbridge.drfx.online:443` and upgrades it to WebSocket at `/v1/ea/ws`.
+
+## Safety
+
+Live-account execution remains blocked.
+
+The previous v0.20–v0.23 sources are retained for history/rollback only.
+
+> v0.24 has not yet been compile-certified in a real Windows MetaEditor from this repository workflow. That test remains a release gate.
