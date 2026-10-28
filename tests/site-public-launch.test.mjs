@@ -22,7 +22,7 @@ test('Public release has license, security policy and no misleading open-source 
 test('All website and Mini App language keys have complete translations in 6 locales',()=>{
  assert.deepEqual(LOCALES,['en','fa','ar','tr','ru','hi']);
  const en=Object.keys(TRANSLATIONS.en).sort();
- assert.ok(en.length>=90);
+ assert.ok(en.length>=110);
  for(const lang of LOCALES){
   assert.deepEqual(Object.keys(TRANSLATIONS[lang]).sort(),en,lang);
   assert.ok(Object.values(TRANSLATIONS[lang]).every(v=>typeof v==='string'&&v.trim().length>0),lang);
@@ -30,7 +30,7 @@ test('All website and Mini App language keys have complete translations in 6 loc
  const siteKeys=[...SITE_HTML.matchAll(/data-i18n="([^"]+)"/g)].map(x=>x[1]);
  const miniKeys=[...MINI_HTML.matchAll(/data-tr="([^"]+)"/g)].map(x=>x[1]);
  assert.ok(siteKeys.length>=30);
- assert.ok(miniKeys.length>=40);
+ assert.ok(miniKeys.length>=50);
  for(const lang of LOCALES){
   for(const key of [...siteKeys,...miniKeys])assert.ok(TRANSLATIONS[lang][key],lang+'/'+key);
  }
@@ -66,4 +66,15 @@ test('Three premium promotional image assets render without fake PnL, fills or e
  const i18n=await handler.fetch(new Request('https://drfx.company/assets/i18n.js'),{});
  assert.equal(i18n.status,200);
  assert.match(await i18n.text(),/DrFXI18N/);
+});
+
+test('six-language dynamic account errors, admin and webhook labels have no untranslated branches',()=>{
+ const required=['Not signed in','LOCKED','IDENTITY VERIFIED','Verifying your one-time code…','Clipboard unavailable. Reveal your serial to copy it.','Too many sign-in attempts. Try again after a short break.'];
+ const original=Object.entries(TRANSLATIONS.en);
+ for(const text of required){
+  const pair=original.find(([,value])=>value===text);
+  assert.ok(pair,'missing English source: '+text);
+  for(const locale of LOCALES)assert.ok(TRANSLATIONS[locale][pair[0]],locale+':'+text);
+ }
+ for(const key of ['adminTitle','adminSearch','adminRefresh','personalWebhook','testConnection','createWebhook','copyWebhook','rotateWebhook','oneMonth','threeMonth','annualElite'])assert.ok(MINI_HTML.includes('data-tr="'+key+'"'),key);
 });
