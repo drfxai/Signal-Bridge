@@ -1,76 +1,74 @@
 # DrFX SignalBridge
 
-**TradingView ↔ MetaTrader 5 ↔ Telegram**  
-Product blueprint, interactive interface prototype and ingestion-only backend by **DrFXAi**.
+**TradingView ↔ MetaTrader 5 ↔ Telegram**
 
-> **Status: UI prototype + initial TradingView ingress backend (not deployed).** The Worker can accept and store authenticated TradingView signals after user provisioning; no routing, MT5 execution, Telegram bot, brokerage integration or live trading exists.
+SignalBridge is a low-latency, replay-safe signal bridge built around Cloudflare edge ingress, Durable Object WebSockets, a Windows companion Agent and a MetaTrader 5 Expert Advisor.
 
-## Vision
-An auditable, security-first signal automation platform that receives authorized TradingView alerts and Telegram signals and routes validated commands to independently deployed MT5 Execution Agents. It can also publish TradingView alerts and MT5 status notifications to Telegram.
+> **Current status (2026-10-28): deployed DEMO beta.** The Cloudflare Worker is live at `signalbridge.drfx.online`, backed by D1 and an account-scoped Durable Object Agent Hub. TradingView/GOD MODE and paired Telegram ingestion can create durable commands for the Windows Agent and MT5 EA. **Live-account execution is hard-blocked in the EA.**
 
-### Four product routes
+## Implemented
 
-| Route | Purpose | MVP status |
-| --- | --- | --- |
-| TradingView → MT5 | Alert-to-trade with broker-side reconciliation | Planned |
-| TradingView → Telegram | Publish alert notifications to authorized chats | Planned |
-| Telegram → MT5 | Parse permitted channels, validate, then execute | Planned |
-| MT5 → Telegram | Position/event notifications and approved controls | Planned |
+- Authenticated TradingView webhook ingress with durable D1 idempotency.
+- GOD MODE `[[DRFX]]` entry + TP1/TP2/TP3/SL/CLOSE lifecycle parsing.
+- Explicit Telegram one-time chat/channel pairing and deterministic signal parsing.
+- Durable command state with retry-safe PENDING redispatch.
+- Account-scoped Durable Object WebSocket transport.
+- Read-only realtime dashboard observer WebSocket that does not replace the execution Agent.
+- Windows SignalBridge Agent using persistent Cloudflare WebSocket + localhost TCP to MT5.
+- MT5 EA v0.22 with:
+  - DEMO-only execution gate;
+  - broker-side SL/TP/spread/lot checks;
+  - risk-percent sizing from real broker contract values;
+  - command correlation and duplicate checks;
+  - persistent pending-submission ledger;
+  - restart reconciliation against open positions and broker history;
+  - fail-closed handling for unresolved prior submissions.
+- Realtime backend-backed dashboard at `/dashboard`.
+- Manual end-to-end test surface at `/test`.
+- Automated Node/contract tests in GitHub Actions.
 
-## Repository contents
+## Route status
 
-- [Product requirements](docs/PRODUCT_REQUIREMENTS.md)
-- [System architecture](docs/ARCHITECTURE.md)
-- [Signal API contract](docs/API_CONTRACT.md)
-- [MetaTrader 5 agent specification](docs/MT5_EXECUTION.md)
-- [Telegram connector specification](docs/TELEGRAM_CONNECTOR.md)
-- [Security and risk controls](docs/SECURITY_RISK.md)
-- [UI/UX design system](docs/UX_UI_SPEC.md)
-- [Delivery roadmap](docs/ROADMAP.md)
-- [Pricing and operations](docs/BUSINESS_MODEL.md)
-- [References and assumptions](docs/REFERENCES.md)
-- [Interactive UI concept](design/index.html)
-- [TradingView Worker backend setup](docs/BACKEND_IMPLEMENTATION.md)
-- [Worker source](worker/src/index.mjs) and [D1 migration](worker/migrations/0001_ingress.sql)
+| Route | Status |
+| --- | --- |
+| TradingView → MT5 | DEMO beta pipeline implemented |
+| Telegram → MT5 | DEMO beta pipeline implemented |
+| TradingView → Telegram | Planned |
+| MT5 → Telegram | Planned |
 
-## View the UI prototype
-Open `design/index.html` in a browser. It is a dependency-free responsive HTML/CSS/JS **mock UI**, using sample data only. No real credentials or order execution.
+## Architecture
 
-## Proposed architecture
-`TradingView / Telegram → Edge ingress → normalization → policy & risk validation → durable command state → MT5 Execution Agent → broker reconciliation → notifications / analytics`
+`TradingView / Telegram → Cloudflare Worker → D1 → Durable Object Agent Hub → Windows Agent → localhost TCP → MT5 EA → Broker`
 
-A local or VPS-hosted MT5 terminal remains necessary for MQL5 Expert Advisor-based trade execution. Serverless services do not by themselves run a MetaTrader terminal.
+The dashboard uses authenticated API reads plus a separate read-only observer WebSocket. It is **not** a static/synthetic production dashboard and does not poll every few seconds.
 
-## Delivery principles
-1. Begin with TradingView-to-MT5 on **demo accounts**.
-2. Deterministic parsers first; AI extraction remains non-authoritative.
-3. Reject ambiguous commands; fail closed when account state cannot be verified.
-4. Deduplicate signals and reconcile on restart before any retry.
-5. Use explicit user authorization, least-privilege credentials and audit trails.
-6. Never advertise guaranteed profitability, execution latency, or zero slippage.
+## Safety boundary
 
-## خلاصه فارسی
-DrFX SignalBridge یک محصول مستقل برای اتصال TradingView، MT5 و Telegram با چهار مسیر ارتباطی است. نسخه فعلی شامل **طرح محصول، نمونه رابط کاربری و Webhook اولیه برای ثبت امن سیگنال TradingView در D1** است؛ هنوز به MT5 متصل نیست. اجرای واقعی معامله پس از توسعه EA اختصاصی، آزمون امنیتی، تست حساب دمو و تأیید صحت عملکرد انجام خواهد شد.
+- Live MT5 accounts are refused by the current EA.
+- `InpEnableDemoExecution=false` by default.
+- HTTP acceptance is not broker fill evidence.
+- Unknown broker outcomes are never blindly resubmitted.
+- Source/Agent credentials are opaque scoped secrets and are not committed to this repository.
+- Broker credentials are not required by Cloudflare.
 
-## Attribution
-PineConnector and Telegram bot references are for comparative product research only. DrFX SignalBridge is an independent proposed implementation and has no claimed affiliation with those providers.
+## Remaining release gates
 
-## Premium product UI — v2.0
+- Compile/QA EA v0.22 in real MetaEditor/MT5 and confirm zero compile errors.
+- Run real DEMO end-to-end tests for TradingView and Telegram.
+- Complete netting-account TP1/TP2 management behavior.
+- Add/verify Cloudflare zone rate limiting and quota monitoring.
+- Run reconnect/chaos and 100 → 250 → 500 session/load tests.
+- Add production owner/session authentication before multi-user dashboard rollout.
+- Independent security review before any live-money mode is considered.
 
-The fully restyled, responsive interactive demonstration lives in [`design/index.html`](design/index.html). The v2 UI includes a mission-control dashboard, connector guides, a 3-step demo route wizard, a traceable event monitor, a Telegram parser preview and a local risk-rule simulator, with English/Persian RTL, dark/light themes, keyboard search and mobile navigation.
-
-Run using any static HTTP server (ES modules need HTTP rather than `file://`):
+## Development
 
 ```bash
-npm run dev
-# Open http://localhost:4173
 npm run check
 ```
 
-See [UI implementation notes](docs/UI_UPGRADE.md). GitHub Actions runs syntax and 49 UI/parser/Worker ingestion tests.
+The canonical EA is `mt5/DrFX_SignalBridge_EA.mq5`; versioned release source is currently `mt5/DrFX_SignalBridge_EA_v0.22.mq5`.
 
-**Safety boundary:** UI remains synthetic. New Worker code is **not deployed** and only records validated signals when explicitly provisioned with your own Cloudflare D1 environment. No MT5 agent, broker execution or live account connection. Never enter real broker credentials into the preview.
+## Attribution
 
-## TradingView ingress milestone (v2.1)
-
-The new `worker/` Cloudflare Worker contains authenticated, storage-only TradingView ingress, strict schema/expiry validation and D1-backed idempotency. See [backend setup and security limits](docs/BACKEND_IMPLEMENTATION.md). Test all components with `npm run check`. Live trades remain impossible in this milestone.
+DrFX SignalBridge is an independent implementation. Third-party products referenced in research or comparisons are not affiliated with this project.
