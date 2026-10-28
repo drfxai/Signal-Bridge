@@ -86,22 +86,35 @@ test('the existing bot uses Telegram web_app buttons and does not silently merge
 });
 
 
-test('Mini App matches the approved DrFX site cinematic visual language',()=>{
+test('mobile-first design is readable, wide, and retains DrFX brand colors',()=>{
  for(const token of [
-  '--obsidian:#030406','--gold:#d4af37','--gold-light:#f7e7b4','--emerald:#10b981',
-  'PRECISION IN MOTION','Precision.','In Motion.','Command Center',
-  'route-stage','GLOBAL ROUTING ARCHITECTURE','DESIGN VISUALIZATION',
-  'SIGNAL BRIDGE','TradingView + Telegram','MetaTrader 5 EA',
-  'data-tr="navHome"','data-tr="navPlans"','id="langToggle"',
-  'prefers-reduced-motion:reduce','env(safe-area-inset-bottom)',
-  'width:min(100%,600px)','data-panel="home"'
- ]) assert.ok(MINI_HTML.includes(token),token);
- assert.ok(MINI_HTML.includes('aria-live="polite"'));
+   '--obsidian:#030406','--gold:#d4af37','--gold-light:#f7e7b4','--emerald:#10b981',
+   'Trade smarter.','Stay connected.','Your dashboard','route-stage',
+   'CONNECTION FLOW · ILLUSTRATION','SignalBridge','TradingView / TG',
+   'MT5 EA','data-tr="navHome"','data-tr="navPlans"','id="langToggle"',
+   'prefers-reduced-motion:reduce','env(safe-area-inset-bottom)',
+   'width:100%','max-width:680px','data-panel="home"',
+   'min-height:58px','font-size:14px','font-size:13px'
+ ])assert.ok(MINI_HTML.includes(token),token);
+ assert.match(MINI_HTML,/viewport-fit=cover/);
+ assert.match(MINI_HTML,/width=device-width/);
+ assert.match(MINI_HTML,/role="status"/);
+ assert.match(MINI_HTML,/aria-live="polite"/);
+ assert.match(MINI_HTML,/nav\.bottom\{position:fixed;left:0;right:0;bottom:0;width:100%/);
+ assert.ok(!MINI_HTML.includes('width:min(100%,600px)'));
+ assert.ok(!MINI_HTML.includes('AES-GCM / PRIVATE'));
  assert.ok(!MINI_HTML.includes('10.8ms'));
  assert.ok(!MINI_HTML.includes('TLS 1.3 VERIFIED'));
  assert.ok(!MINI_HTML.includes('LIVE EXECUTIONS'));
 });
-
+test('desktop-mode mobile viewport is recovered only on touch phones',()=>{
+ assert.match(MINI_JS,/function normalizeViewport/);
+ assert.match(MINI_JS,/navigator\.maxTouchPoints>0/);
+ assert.match(MINI_JS,/w>sw\*1\.6/);
+ assert.match(MINI_JS,/sw<=600/);
+ assert.match(MINI_JS,/document\.documentElement\.style\.zoom/);
+ assert.match(MINI_JS,/normalizeViewport\(\)/);
+});
 test('Telegram navigation, bilingual mode and license privacy remain functional',()=>{
  for(const token of [
   "document.querySelectorAll('[data-jump]')","document.body.dataset.tab=tab",
