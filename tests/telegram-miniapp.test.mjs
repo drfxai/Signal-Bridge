@@ -94,7 +94,7 @@ test('Mini App matches the approved DrFX site cinematic visual language',()=>{
   'SIGNAL BRIDGE','TradingView + Telegram','MetaTrader 5 EA',
   'data-tr="navHome"','data-tr="navPlans"','id="langToggle"',
   'prefers-reduced-motion:reduce','env(safe-area-inset-bottom)',
-  'width:min(100%,600px)','[data-panel]'
+  'width:min(100%,600px)','data-panel="home"'
  ]) assert.ok(MINI_HTML.includes(token),token);
  assert.ok(MINI_HTML.includes('aria-live="polite"'));
  assert.ok(!MINI_HTML.includes('10.8ms'));
