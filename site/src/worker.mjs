@@ -135,16 +135,21 @@ async function consumeCode(env,purpose,target,code){
  return applied.meta?.changes===1?row:null;
 }
 async function emailStart(req,env){
- if(!env.RESEND_API_KEY||!env.MAIL_FROM)return fail('EMAIL_NOT_CONFIGURED',503);
+ if(!env.MAIL_FROM||(!env.RESEND_API_KEY&&!env.EMAIL))return fail('EMAIL_NOT_CONFIGURED',503);
  if(!await limited(req,env,'email:start',6))return fail('RATE_LIMITED',429);
  const body=await readBody(req),email=String(body.email||'').trim().toLowerCase();
  if(!emailValid(email))return fail('INVALID_EMAIL');
  if(!await limited(req,env,'email:'+email,8))return fail('RATE_LIMITED',429);
  const code=await issueCode(env,'email',email,null);
- const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({
-  from:env.MAIL_FROM,to:[email],subject:'DrFX Company · Your sign-in code',text:'Your DrFX sign-in code is: '+code+'\nValid for 10 minutes. If you did not request this, ignore it.'
- })});
- if(!response.ok)return fail('EMAIL_DELIVERY_FAILED',502);
+ if(env.EMAIL){
+  try{await env.EMAIL.send({from:env.MAIL_FROM,to:email,subject:'DrFX Company · Your sign-in code',text:'Your DrFX sign-in code: '+code+'\nValid for 10 minutes. Ignore if you did not request it.'});}
+  catch{return fail('EMAIL_DELIVERY_FAILED',502);}
+ }else{
+  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({
+   from:env.MAIL_FROM,to:[email],subject:'DrFX Company · Your sign-in code',text:'Your DrFX sign-in code is: '+code+'\nValid for 10 minutes. If you did not request this, ignore it.'
+  })});
+  if(!response.ok)return fail('EMAIL_DELIVERY_FAILED',502);
+ }
  return json({ok:true,message:'CHECK_EMAIL'});
 }
 async function emailVerify(req,env){
@@ -250,14 +255,15 @@ async function ipnHandler(req,env){
  const lic=await env.DB.prepare('SELECT agent_id FROM site_licenses WHERE user_id=?').bind(order.user_id).first();
  if(!lic)return fail('LICENSE_MISSING',503);
  // A single transaction grants once, never on invoice creation, mere redirect, or partially_paid.
+ const claimed=await env.DB.prepare("UPDATE site_orders SET status='paid',payment_id=?,paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(paymentId,orderId).run();
+ if(claimed.meta?.changes!==1)return json({ok:true,duplicate:true});
  const results=await env.DB.batch([
-  env.DB.prepare("UPDATE site_orders SET status='paid',payment_id=?,paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(paymentId,orderId),
   env.DB.prepare("UPDATE ea_licenses SET plan=?,duration_modifier=?,status='active',"+
    "expires_at=CASE WHEN activated_at IS NULL THEN NULL ELSE datetime(CASE WHEN expires_at>CURRENT_TIMESTAMP THEN expires_at ELSE CURRENT_TIMESTAMP END, ?) END,updated_at=CURRENT_TIMESTAMP WHERE agent_id=?").bind(order.plan,DURATION[order.plan],DURATION[order.plan],lic.agent_id),
   env.DB.prepare("UPDATE site_users SET plan=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(order.plan,order.user_id),
   env.DB.prepare('INSERT INTO site_audit (id,actor_id,action,subject_id,detail) VALUES (?,?,?,?,?)').bind(uid('aud'),null,'nowpayments_paid',order.user_id,orderId)
  ]);
- return results[0]?.meta?.changes===1?json({ok:true}):json({ok:true,duplicate:true});
+ return json({ok:true,granted:results[0]?.meta?.changes===1});
 }
 async function botSend(env,chatId,text,keyboard){
  if(!env.TELEGRAM_BOT_TOKEN)return;
@@ -277,14 +283,15 @@ async function telegramWebhook(req,env){
  const text=safeText(msg.text||'',220);
  const command=text.split(' ')[0].split('@')[0];
  if(!['/start','/login','/me','/code','/link','/admin','/grant'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
- let user=await getOrCreateTelegram(env,telegramId,username);
- if(user.status!=='active'){await botSend(env,chatId,'Your account is suspended. Contact support.');return json({ok:true});}
+ let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
+ if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
+ if(user&&user.status!=='active'){await botSend(env,chatId,'Your account is suspended. Contact support.');return json({ok:true});}
  if(command==='/start'){
   try{await licenseRecord(env,user);}
   catch{await botSend(env,chatId,'Account created. Licensing is being configured; try /code later.');return json({ok:true});}
   await botSend(env,chatId,'⚡ <b>Welcome to DrFX Company</b>\nYour unified website account is ready.\nUse /login to get a one-time web sign-in code.\nUse /code for your EA activation serial.',true);
  }else if(command==='/login'){
-  if(!await limited(req,env,'bot:code:'+telegramId,10)){await botSend(env,chatId,'Try again later.');return json({ok:true});}
+  if(!await limited(req,env,'bot:code:'+telegramId,200)){await botSend(env,chatId,'Try again later.');return json({ok:true});}
   const code=await issueCode(env,'telegram',telegramId,user.id,10);
   await botSend(env,chatId,'🔐 Your web login code (valid 10 minutes, one-time):\n<code>'+code+'</code>\nEnter at '+API_ORIGIN);
  }else if(command==='/code'){
@@ -295,7 +302,16 @@ async function telegramWebhook(req,env){
   const rec=await licenseRecord(env,user);
   await botSend(env,chatId,'👤 Your account\nPlan: '+user.plan+'\nEA: '+rec.status+'\nExpires: '+(rec.expires_at||'Starts on first EA activation')+'\nDashboard: '+API_ORIGIN,true);
  }else if(command==='/link'){
-  await botSend(env,chatId,'Account linking requires a verified identity merge. For now, use /login to open your existing Telegram account on the website. Contact support to merge separate email and Telegram accounts.');
+  const code=text.split(/\s+/)[1]||'',digest=await sha(code);
+  const entry=await env.DB.prepare("SELECT user_id FROM site_login_codes WHERE code_hash=? AND purpose='link' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP").bind(digest).first();
+  if(!entry){await botSend(env,chatId,'Invalid or expired linking code.');return json({ok:true});}
+  if(user){await botSend(env,chatId,user.id===entry.user_id?'Already linked.':'Telegram is already registered. Use /login for that account, or contact support to merge accounts securely.');return json({ok:true});}
+  const recipient=await env.DB.prepare('SELECT telegram_id FROM site_users WHERE id=?').bind(entry.user_id).first();
+  if(!recipient||recipient.telegram_id){await botSend(env,chatId,'Account already has Telegram linked.');return json({ok:true});}
+  const used=await env.DB.prepare('UPDATE site_login_codes SET used_at=CURRENT_TIMESTAMP WHERE code_hash=? AND used_at IS NULL').bind(digest).run();
+  if(used.meta?.changes!==1)return json({ok:true});
+  await env.DB.prepare('UPDATE site_users SET telegram_id=?,telegram_name=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND telegram_id IS NULL').bind(telegramId,username,entry.user_id).run();
+  await botSend(env,chatId,'✅ Linked this Telegram to your existing website account.');
  }else if(command==='/admin'&&user.role==='admin'){
   const stats=await env.DB.prepare('SELECT COUNT(*) AS total,SUM(CASE WHEN plan="quarterly" THEN 1 ELSE 0 END) AS quarter,SUM(CASE WHEN plan="annual" THEN 1 ELSE 0 END) AS annual FROM site_users').first();
   await botSend(env,chatId,'DrFX Admin\nUsers: '+stats.total+'\nQuarterly: '+stats.quarter+'\nAnnual: '+stats.annual+'\nFull management: '+API_ORIGIN);
@@ -315,7 +331,7 @@ async function api(req,env){
  const u=new URL(req.url),path=u.pathname;
  if(path==='/api/telegram/webhook'&&req.method==='POST')return telegramWebhook(req,env);
  if(path==='/api/payments/ipn'&&req.method==='POST')return ipnHandler(req,env);
- if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.RESEND_API_KEY&&env.MAIL_FROM),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY});
+ if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY});
  if(req.method==='POST'&&!originSafe(req))return fail('ORIGIN_REJECTED',403);
  if(path==='/api/auth/email/start'&&req.method==='POST')return emailStart(req,env);
  if(path==='/api/auth/email/verify'&&req.method==='POST')return emailVerify(req,env);
