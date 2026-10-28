@@ -1,0 +1,68 @@
+name: Build MT5 EA v0.25 (DEMO)
+on:
+  push:
+    branches: [main, build/ea-v025-compiled-demo]
+    paths:
+      - mt5/DrFX_SignalBridge_EA.mq5
+      - .github/workflows/build-ea-v025.yml
+  pull_request:
+    paths:
+      - mt5/DrFX_SignalBridge_EA.mq5
+      - .github/workflows/build-ea-v025.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile-ex5:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official MetaTrader 5 / MetaEditor
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $installer=Join-Path $env:RUNNER_TEMP 'mt5setup.exe'
+          Invoke-WebRequest -Uri 'https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe' -OutFile $installer
+          $auth=Get-AuthenticodeSignature $installer
+          if($auth.Status -ne 'Valid'){throw "MetaTrader installer signature not valid: $($auth.Status)"}
+          $target=Join-Path $env:RUNNER_TEMP 'meta-trader-5-ci'
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          $p=Start-Process -FilePath $installer -ArgumentList @('/auto',('/path:"'+$target+'"')) -Wait -PassThru
+          Write-Host "Installer exit: $($p.ExitCode)"
+          $meta=$null
+          for($i=0;$i -lt 75;$i++){
+            $meta=Get-ChildItem -Path $target -Recurse -Filter 'metaeditor64.exe' -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if($meta){break}
+            Start-Sleep -Seconds 3
+          }
+          if(-not $meta){throw "Official MetaEditor not installed; EX5 could not be compiled"}
+          "METAEDITOR_PATH=$($meta.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "MetaEditor located"
+      - name: Compile v0.25 EA and validate EX5
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $meta=$env:METAEDITOR_PATH
+          $root=Split-Path $meta -Parent
+          $target=Join-Path $env:RUNNER_TEMP 'DrFX_SignalBridge_EA.mq5'
+          Copy-Item 'mt5/DrFX_SignalBridge_EA.mq5' $target
+          $p=Start-Process -FilePath $meta -ArgumentList @(('/compile:"'+$target+'"'),('/include:"'+(Join-Path $root 'MQL5')+'"'),'/log') -PassThru -Wait
+          $log=[System.IO.Path]::ChangeExtension($target,'.log')
+          if(Test-Path $log){Get-Content $log | Select-Object -Last 80 | Out-Host}
+          $compiled=[System.IO.Path]::ChangeExtension($target,'.ex5')
+          if(-not (Test-Path $compiled)){throw "MetaEditor did not produce EX5 (exit code: $($p.ExitCode))"}
+          $info=Get-Item $compiled
+          if($info.Length -lt 4096){throw "EX5 unexpectedly small"}
+          New-Item -ItemType Directory 'dist' -Force | Out-Null
+          Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.25_DEMO.ex5'
+          $hash=(Get-FileHash $compiled -Algorithm SHA256).Hash
+          @("SignalBridge EA v0.25 — DEMO TEST ONLY","SHA256: $hash","Size: $($info.Length) bytes","Live-money trading is disabled.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
+          Write-Host "Binary built: $($info.Length) bytes; SHA256 $hash"
+      - name: Upload actual EX5 for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: DrFX_SignalBridge_EA_v0.25_DEMO_EX5
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
