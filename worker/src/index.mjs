@@ -1,5 +1,6 @@
 import { validateTradingView, ValidationError, stableStringify } from './validate.mjs';
 import { authenticateAgent } from './agent-auth.mjs';
+import { authenticateEaLicense } from './ea-license.mjs';
 import { createAndDispatch, validateTestSignal } from './command.mjs';
 import { parseTelegramTrade } from './telegram-parser.mjs';
 import { parseGodModeAlert } from './godmode-parser.mjs';
@@ -119,17 +120,21 @@ async function openAgentSocket(request,env){
 
 async function openEaSocket(request,env){
  if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return error('UPGRADE_REQUIRED',426);
- const agent=await authenticateAgent(request,env);
- if(!agent)return error('UNAUTHORIZED',401);
- const stub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(agent.id));
+ // A legacy agent connection key cannot authorize the paid EA endpoint.
+ const license=await authenticateEaLicense(request,env);
+ if(!license)return error('LICENSE_INVALID_OR_EXPIRED',401);
+ const stub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(license.id));
  const h=new Headers(request.headers);
- h.set('x-sb-agent-id',agent.id);h.set('x-sb-tenant-id',agent.tenant_id);h.set('x-sb-client-role','ea');
- if(agent.account_login)h.set('x-sb-account-login',agent.account_login);
- if(agent.account_server)h.set('x-sb-account-server',agent.account_server);
+ h.set('x-sb-agent-id',license.id);
+ h.set('x-sb-tenant-id',license.tenant_id);
+ h.set('x-sb-client-role','ea');
+ h.set('x-sb-license-id',license.license_id);
+ if(license.account_login)h.set('x-sb-account-login',license.account_login);
+ if(license.account_server)h.set('x-sb-account-server',license.account_server);
  h.delete('authorization');
  const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
  if(protocols.includes('signalbridge-ea-v1'))h.set('sec-websocket-protocol','signalbridge-ea-v1');else h.delete('sec-websocket-protocol');
- await env.DB.prepare('UPDATE agent_connections SET last_connected_at=CURRENT_TIMESTAMP WHERE id=?').bind(agent.id).run();
+ await env.DB.prepare('UPDATE agent_connections SET last_connected_at=CURRENT_TIMESTAMP WHERE id=?').bind(license.id).run();
  return stub.fetch(new Request('https://agent-hub/ws',{method:'GET',headers:h}));
 }
 

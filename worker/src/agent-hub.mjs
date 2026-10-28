@@ -21,8 +21,45 @@ export class AgentHub{
  broadcast(event){for(const ws of this.ctx.getWebSockets()){const a=ws.deserializeAttachment()||{};if(a.role==='observer'&&ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(event))}catch{}}}}
  currentExecutionSockets(){return this.ctx.getWebSockets().filter(ws=>{const a=ws.deserializeAttachment()||{};return (a.role==='agent'||a.role==='ea')&&ws.readyState===WebSocket.OPEN})}
  currentAgentSockets(){return this.currentExecutionSockets()}
+ async licenseIsValid(a){
+  if(a.role!=='ea')return true;
+  if(!a.licenseId)return false;
+  const row=await this.env.DB.prepare(
+   "SELECT l.status,l.expires_at,l.account_login,l.account_server,a.status AS agent_status " +
+   "FROM ea_licenses l JOIN agent_connections a ON a.id=l.agent_id " +
+   "WHERE l.id=? AND l.agent_id=? LIMIT 1"
+  ).bind(a.licenseId,a.agentId).first();
+  if(!row||row.status!=='active'||row.agent_status!=='active')return false;
+  if(row.expires_at&&Date.parse(row.expires_at.replace(' ','T')+'Z')<=Date.now())return false;
+  if(a.account&&(!row.account_login||!row.account_server||
+    row.account_login!==a.account.login||row.account_server!==a.account.server))return false;
+  return true;
+ }
+ async bindEaLicense(a,account,ws){
+  // Atomic first-use claim. A stolen or reused code cannot attach another account.
+  const updated=await this.env.DB.prepare(
+   "UPDATE ea_licenses SET account_login=?,account_server=?,activated_at=CURRENT_TIMESTAMP, " +
+   "expires_at=datetime('now',duration_modifier),last_connected_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP " +
+   "WHERE id=? AND agent_id=? AND status='active' AND activated_at IS NULL " +
+   "AND account_login IS NULL AND account_server IS NULL"
+  ).bind(account.login,account.server,a.licenseId,a.agentId).run();
+  if(!updated?.success){ws.send('ERR|LICENSE_STORAGE_UNAVAILABLE');ws.close(1011,'license store unavailable');return false}
+  const row=await this.env.DB.prepare(
+   "SELECT account_login,account_server,status,expires_at FROM ea_licenses WHERE id=? AND agent_id=?"
+  ).bind(a.licenseId,a.agentId).first();
+  if(!row||row.status!=='active'||!row.expires_at||
+   Date.parse(row.expires_at.replace(' ','T')+'Z')<=Date.now()){
+   ws.send('ERR|LICENSE_EXPIRED');ws.close(1008,'license expired');return false;
+  }
+  if(row.account_login!==account.login||row.account_server!==account.server){
+   ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false;
+  }
+  a.expectedLogin=row.account_login;a.expectedServer=row.account_server;a.licenseExpires=row.expires_at;
+  return true;
+ }
  sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}))}
  async bindEaAccount(a,account,ws){
+  if(a.role==='ea')return this.bindEaLicense(a,account,ws);
   if(a.expectedLogin&&a.expectedLogin!==account.login){ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false}
   if(a.expectedServer&&a.expectedServer!==account.server){ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false}
   if(!a.expectedLogin||!a.expectedServer){
@@ -39,10 +76,11 @@ export class AgentHub{
    if(p.length<7){ws.send('ERR|INVALID_TERMINAL_STATE');return}
    const account={login:safe(p[1],64),server:safe(p[2],120),mode:safe(p[3],32),balance:Number.isFinite(Number(p[4]))?Number(p[4]):null,equity:Number.isFinite(Number(p[5]))?Number(p[5]):null,positions:Number.isFinite(Number(p[6]))?Number(p[6]):null,cloud_rtt_ms:Number.isFinite(Number(p[7]))?Math.max(0,Math.min(60000,Number(p[7]))):null};
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
+   if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
    const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;ws.serializeAttachment(a);
    this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
-   if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));
-   ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now());return;
+   ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now()+'|'+(a.licenseExpires||''));
+   if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));return;
   }
   if(p[0]==='PING'){ws.send('PONG|'+safe(p[1],32)+'|'+Date.now());return}
   if(p[0]==='RCPT'){
@@ -57,7 +95,7 @@ export class AgentHub{
   ws.send('ERR|UNSUPPORTED_MESSAGE');
  }
  async replay(agentId,ws){
-  const attachment=ws.deserializeAttachment()||{};if(!terminalReadyAttachment(attachment))return;
+  const attachment=ws.deserializeAttachment()||{};if(!terminalReadyAttachment(attachment)||!await this.licenseIsValid(attachment))return;
   const q=await this.env.DB.prepare("SELECT id,payload_json FROM commands WHERE agent_id=? AND status IN ('PENDING','DELIVERED') ORDER BY CASE WHEN status='PENDING' THEN 0 ELSE 1 END, created_at ASC LIMIT 200").bind(agentId).all();
   for(const row of q?.results||[]){
    let cmd;try{cmd=JSON.parse(row.payload_json)}catch{continue}
@@ -67,6 +105,7 @@ export class AgentHub{
     continue;
    }
    if(ws.readyState===WebSocket.OPEN){
+    if(!await this.licenseIsValid(ws.deserializeAttachment()||{}))return;
     this.sendCommand(ws,cmd,true);
     await this.env.DB.prepare("UPDATE commands SET status='DELIVERED',delivered_at=COALESCE(delivered_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('PENDING','DELIVERED')").bind(row.id).run();
    }
@@ -76,10 +115,10 @@ export class AgentHub{
   const url=new URL(request.url);
   if(url.pathname==='/ws'){
    if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return json({error:'UPGRADE_REQUIRED'},426);
-   const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'',role=request.headers.get('x-sb-client-role')==='ea'?'ea':'agent';if(!agentId||!tenantId)return json({error:'UNAUTHORIZED'},401);
+   const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'',role=request.headers.get('x-sb-client-role')==='ea'?'ea':'agent',licenseId=request.headers.get('x-sb-license-id')||'';if(!agentId||!tenantId||(role==='ea'&&!licenseId))return json({error:'UNAUTHORIZED'},401);
    for(const old of this.currentExecutionSockets()){try{old.close(4001,'superseded by newer execution connection')}catch{}}
    const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
-   server.serializeAttachment({role,agentId,tenantId,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
+   server.serializeAttachment({role,agentId,tenantId,licenseId:role==='ea'?licenseId:null,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
    if(role==='ea')server.send('READY|signalbridge-ea/1|demo_only');else server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
    const wanted=role==='ea'?'signalbridge-ea-v1':'signalbridge-agent-v1',selected=protocols.includes(wanted)?wanted:null;
@@ -101,6 +140,10 @@ export class AgentHub{
    const sockets=this.currentExecutionSockets();if(!sockets.length)return json({ok:true,delivered:0,reason:'EA_OFFLINE'});
    const socket=sockets.find(ws=>terminalReadyAttachment(ws.deserializeAttachment()||{}));
    if(!socket)return json({ok:true,delivered:0,reason:'TERMINAL_OFFLINE'});
+   if(!await this.licenseIsValid(socket.deserializeAttachment()||{})){
+    try{socket.close(1008,'license inactive')}catch{}
+    return json({ok:true,delivered:0,reason:'LICENSE_INACTIVE'});
+   }
    this.sendCommand(socket,body,false);this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
   }
   if(url.pathname==='/snapshot'&&request.method==='GET'){
