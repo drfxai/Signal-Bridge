@@ -174,7 +174,7 @@ export const MINI_JS=String.raw`(() => {
  // Shared six-language catalog, including native RTL layout.
  const dictionary=window.DrFXI18N?.text||{en:{}};
  const locales=['en','fa','ar','tr','ru','hi'];
- const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent));
+ const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
  let locale='en';
  const englishLookup=Object.fromEntries(Object.entries(dictionary.en||{}).map(([key,value])=>[value,key]));
  const ui=(en,fallbackFa)=>{
