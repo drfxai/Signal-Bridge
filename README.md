@@ -146,6 +146,8 @@ TP3 2740
 
 The production parser supports **English, فارسی and العربية** for the supported deterministic format. Missing or conflicting fields are rejected instead of guessed.
 
+> **Telegram Account Connector (MTProto) — Coming Soon.** The option is visible in the interface but intentionally inactive. The current release does not request or store Telegram phone numbers, API ID/Hash, session files or personal-account credentials.
+
 ## 🖥️ Live Dashboard
 
 Open:
