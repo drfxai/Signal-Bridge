@@ -1,6 +1,8 @@
 // Verify Telegram Mini App WebAppData in the Cloudflare Worker.
 // Reference: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
 // A 6h signed-initData window accommodates suspended/reopened Android Telegram WebViews.
+// Bot-token HMAC check includes every signed field except `hash`, including the optional
+// Ed25519 `signature` field (the latter is excluded ONLY for third-party Ed25519 verification).
 // Never extend this to arbitrary unbounded timestamps or trust initDataUnsafe.
 // Sessions remain server-side, cancellable and cookie-protected.
 export const TELEGRAM_INITDATA_MAX_AGE_SECONDS=6*60*60;
@@ -20,7 +22,7 @@ export async function inspectTelegramInitData(initData,botToken,now=Date.now()){
  for(const [key] of params){if(keys.has(key))return reject('MALFORMED');keys.add(key);}
  const hash=params.get('hash')||'';
  if(!/^[0-9a-f]{64}$/i.test(hash))return reject('MALFORMED');
- const check=[...params].filter(([key])=>key!=='hash'&&key!=='signature')
+ const check=[...params].filter(([key])=>key!=='hash')
   .sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0)
   .map(([key,value])=>key+'='+value).join('\n');
  const secret=await sign(await hmacKey(encoder.encode('WebAppData')),botToken);
