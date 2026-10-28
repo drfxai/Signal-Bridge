@@ -44,4 +44,6 @@ test('Windows Agent command frame matches MT5 v0.23 replay-safe 16-field protoco
   assert.match(ea,/automatic replay blocked/);
   assert.match(ea,/ACCOUNT_MARGIN_MODE_RETAIL_NETTING/);
   assert.match(ea,/DEAL_POSITION_ID/);
+  assert.match(ea,/RACK/);
+  assert.match(agent,/receipt-outbox\.mjs/);
 });
