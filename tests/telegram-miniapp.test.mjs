@@ -48,7 +48,7 @@ test('Telegram mini app renders premium UI and does not expose dummy metrics or 
  assert.match(MINI_HTML,/Telegram Mini App/);
  assert.match(MINI_HTML,/\/assets\/telegram-mini\.js/);
  assert.match(MINI_HTML,/telegram\.org\/js\/telegram-web-app\.js/);
- for(const text of ['$0','$47','$165','1 Month Free','3 Months Premium','Annual Elite'])assert.ok(MINI_HTML.includes(text),text);
+ for(const text of ['$0','$47','$165','One Month Free','3 Months Premium','Annual Elite'])assert.ok(MINI_HTML.includes(text),text);
  for(const id of ['statusMessage','serialValue','memberPlan','revealSerial','copySerial','panel-license','panel-plans','paymentStatus'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
  assert.doesNotThrow(()=>new Function(MINI_JS));
  assert.match(MINI_JS,/tg\.initData/);
