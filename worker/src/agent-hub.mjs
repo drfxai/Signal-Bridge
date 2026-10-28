@@ -70,7 +70,7 @@ export class AgentHub{
   if(body.type==='terminal_state'){
    if(body.online===false){a.terminalOnline=false;a.account=null;ws.serializeAttachment(a);this.broadcast({type:'terminal_state',agent_online:true,terminal_online:false,account:null,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'terminal_state_ack',online:false}));return}
    if(body.online!==true||!body.account||typeof body.account!=='object'){ws.send(JSON.stringify({type:'error',code:'INVALID_TERMINAL_STATE'}));return}
-   const account={login:safe(body.account.login,64),server:safe(body.account.server,120),mode:safe(body.account.mode,32),balance:Number.isFinite(Number(body.account.balance))?Number(body.account.balance):null,equity:Number.isFinite(Number(body.account.equity))?Number(body.account.equity):null,positions:Number.isFinite(Number(body.account.positions))?Number(body.account.positions):null};
+   const account={login:safe(body.account.login,64),server:safe(body.account.server,120),mode:safe(body.account.mode,32),balance:Number.isFinite(Number(body.account.balance))?Number(body.account.balance):null,equity:Number.isFinite(Number(body.account.equity))?Number(body.account.equity):null,positions:Number.isFinite(Number(body.account.positions))?Number(body.account.positions):null,cloud_rtt_ms:Number.isFinite(Number(body.account.cloud_rtt_ms))?Math.max(0,Math.min(60000,Number(body.account.cloud_rtt_ms))):null};
    if(!account.login||!account.server){ws.send(JSON.stringify({type:'error',code:'INVALID_TERMINAL_ACCOUNT'}));return}
    if(a.expectedLogin&&a.expectedLogin!==account.login){ws.send(JSON.stringify({type:'error',code:'ACCOUNT_MISMATCH'}));ws.close(1008,'account mismatch');return}
    if(a.expectedServer&&a.expectedServer!==account.server){ws.send(JSON.stringify({type:'error',code:'ACCOUNT_MISMATCH'}));ws.close(1008,'server mismatch');return}
@@ -81,8 +81,13 @@ export class AgentHub{
    }
    a.account=account;a.terminalOnline=true;a.lastSeenAt=new Date().toISOString();ws.serializeAttachment(a);this.broadcast({type:'terminal_state',agent_online:true,terminal_online:true,account,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'terminal_state_ack',online:true}));return;
   }
+  if(body.type==='latency_report'){
+   const rtt=Number(body.cloud_rtt_ms);if(!Number.isFinite(rtt)||rtt<0||rtt>60000){ws.send(JSON.stringify({type:'error',code:'INVALID_LATENCY_REPORT'}));return}
+   if(a.account)a.account={...a.account,cloud_rtt_ms:Math.round(rtt)};a.lastSeenAt=new Date().toISOString();ws.serializeAttachment(a);
+   this.broadcast({type:'latency',cloud_rtt_ms:Math.round(rtt),server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'latency_ack',cloud_rtt_ms:Math.round(rtt)}));return;
+  }
   if(body.type==='heartbeat'){
-   const account=body.account&&typeof body.account==='object'?{login:safe(body.account.login,64),server:safe(body.account.server,120),mode:safe(body.account.mode,32),balance:Number.isFinite(Number(body.account.balance))?Number(body.account.balance):null,equity:Number.isFinite(Number(body.account.equity))?Number(body.account.equity):null,positions:Number.isFinite(Number(body.account.positions))?Number(body.account.positions):null}:null;
+   const account=body.account&&typeof body.account==='object'?{login:safe(body.account.login,64),server:safe(body.account.server,120),mode:safe(body.account.mode,32),balance:Number.isFinite(Number(body.account.balance))?Number(body.account.balance):null,equity:Number.isFinite(Number(body.account.equity))?Number(body.account.equity):null,positions:Number.isFinite(Number(body.account.positions))?Number(body.account.positions):null,cloud_rtt_ms:Number.isFinite(Number(body.account.cloud_rtt_ms))?Math.max(0,Math.min(60000,Number(body.account.cloud_rtt_ms))):null}:null;
    if(account){
     if(a.expectedLogin&&a.expectedLogin!==account.login){ws.send(JSON.stringify({type:'error',code:'ACCOUNT_MISMATCH'}));ws.close(1008,'account mismatch');return}
     if(a.expectedServer&&a.expectedServer!==account.server){ws.send(JSON.stringify({type:'error',code:'ACCOUNT_MISMATCH'}));ws.close(1008,'server mismatch');return}

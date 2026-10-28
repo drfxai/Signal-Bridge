@@ -26,7 +26,8 @@ export function modelCapacity(opts={}){
  const heartbeats=agents*Math.ceil(1440/heartbeatMinutes);
  const terminalStateMessages=agents*2;
  const receiptMessages=signals*receiptsPerSignal;
- const incomingWsMessages=heartbeats+terminalStateMessages+receiptMessages;
+ const latencyReports=heartbeats;
+ const incomingWsMessages=heartbeats+latencyReports+terminalStateMessages+receiptMessages;
  const doMessageBillingUnits=incomingWsMessages/20;
  const doFetchRequests=signals;
  const doRequests=agentWsConnections+dashboardSessions+doFetchRequests+doMessageBillingUnits;
@@ -50,7 +51,7 @@ export function modelCapacity(opts={}){
   item.percent=ratio*100;
  }
  return {inputs:{agents,signalsPerAgent,reconnectsPerAgent,heartbeatMinutes,receiptsPerSignal,d1WritesPerSignal,d1ReadsPerSignal,dashboardSessions,dashboardReadsPerSession,handlerMs},
-  derived:{signals,agentWsConnections,heartbeats,terminalStateMessages,receiptMessages,incomingWsMessages,doMessageBillingUnits},
+  derived:{signals,agentWsConnections,heartbeats,latencyReports,terminalStateMessages,receiptMessages,incomingWsMessages,doMessageBillingUnits},
   usage,status,
   notes:[
    'Planning model only; validate against Cloudflare analytics before increasing beta size.',
