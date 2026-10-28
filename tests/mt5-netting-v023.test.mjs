@@ -36,3 +36,9 @@ test('v0.23 remains hard DEMO-only',()=>{
  assert.match(ea,/ACCOUNT_TRADE_MODE_DEMO/);
  assert.match(ea,/DEMO execution refused on non-demo account/);
 });
+
+
+test('v0.23 uses valid MQL5 array reference syntax and avoids pre-1.0 Market version warning',()=>{
+ assert.match(ea,/void HandleCommand\(string &parts\[\]\)/);
+ assert.doesNotMatch(ea,/#property version\s+"0\.23"/);
+});
