@@ -17,7 +17,7 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .route-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 13px 4px}.route-head strong{font-size:12px;letter-spacing:.04em}.route-head small{font-size:9px;font-weight:700;color:#b9a47c}
 .route-steps{display:grid;grid-template-columns:1fr 30px 1fr 30px 1fr;align-items:center;gap:2px;padding:12px 9px 14px;text-align:center}.route-node{display:grid;place-items:center;gap:4px;min-width:0}.route-node svg{height:22px;width:22px;stroke:#f1d48f;stroke-width:1.7;fill:none}.route-node:nth-of-type(3) svg{stroke:#6cedb2}.route-node b{font-size:11px;line-height:1.1}.route-node small{font-size:9px;color:#a9a8ac}.route-line{height:1px;position:relative;background:linear-gradient(90deg,#8e815c,#d4af37,#4fc897)}.route-line:after{content:"";height:5px;width:5px;position:absolute;top:-2px;left:0;background:#f4d281;box-shadow:0 0 9px #f4d281;border-radius:50%;animation:routePulse 3s linear infinite}.route-line:nth-of-type(4):after{animation-delay:-1.4s}
 @keyframes routePulse{to{left:100%}}
-.message{display:flex;align-items:flex-start;gap:10px;margin:12px 0 17px;padding:12px;border:1px solid #785c354d;border-radius:11px;background:#272014b3;color:#f3d6a2;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.message:before{content:"i";display:grid;place-items:center;flex:none;width:18px;height:18px;background:#ae863c44;border-radius:50%;color:#f7d490;font-size:12px;font-weight:900}.message.error{border-color:#a34b547a;background:#2a141b;color:#ffc0c4}.message.error:before{content:"!";background:#9b414f55;color:#f5b7bd}.message.success{border-color:#3a986c55;background:#0f2922;color:#c2f8d9}.message.success:before{content:"✓";background:#1a785a;color:#baf7d4}
+.message{display:flex;align-items:flex-start;gap:10px;margin:12px 0 17px;padding:12px;border:1px solid #785c354d;border-radius:11px;background:#272014b3;color:#f3d6a2;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.message:before{content:"i";display:grid;place-items:center;flex:none;width:18px;height:18px;background:#ae863c44;border-radius:50%;color:#f7d490;font-size:12px;font-weight:900}.message.error{border-color:#a34b547a;background:#2a141b;color:#ffc0c4}.message.error:before{content:"!";background:#9b414f55;color:#f5b7bd}.message.success{border-color:#3a986c55;background:#0f2922;color:#c2f8d9}.message.success:before{content:"✓";background:#1a785a;color:#baf7d4}.auth-state{margin-bottom:14px}.auth-state .message{margin-bottom:7px}.retry-auth{width:100%;min-height:43px;text-align:center}
 .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 12px}.section-head h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.04em}.section-head small{font-size:11px;color:#b7a983;font-weight:700}.card{position:relative;overflow:hidden;padding:18px;border:1px solid #35343c;border-radius:15px;background:linear-gradient(155deg,#191a20,#111218 80%);box-shadow:inset 0 1px #ffffff08,0 7px 20px #0004;margin:12px 0}.card.gold{border-color:#c9a45675;background:radial-gradient(ellipse at 88% 10%,#78602d49,transparent 51%),linear-gradient(145deg,#231f19,#121316 70%);box-shadow:0 7px 25px #0005,inset 0 1px #e1c7851a}.card h2{font-size:16px;font-weight:800;letter-spacing:-.018em;margin:0 0 8px}.card p{margin:9px 0 0}.micro{color:#b7ae99;font-size:11px;font-weight:750;letter-spacing:.045em;text-transform:uppercase}.value{font-size:25px;line-height:1.1;font-weight:850;letter-spacing:-.04em;margin:9px 0 0;color:#fff}.split{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}.split>div{min-width:0}.indicator{width:48px;height:48px;flex:none;border:1px solid #c4a04a80;background:#d4af371c;display:grid;place-items:center;border-radius:14px;color:#fce4a5;font-size:26px}.status{display:flex;align-items:center;gap:5px;background:#3a302025;border:1px solid #977a4b;border-radius:6px;color:#efd19b;font-size:10px;font-weight:850;padding:6px 8px;white-space:nowrap}.status[data-active=true]{background:#0e3325;border-color:#228859;color:#7aefaf}.meta{color:#adb2bf;font-size:13px;line-height:1.55;overflow-wrap:anywhere}.goldline{height:1px;background:linear-gradient(90deg,#ad854500,#d4af3788,#ad854500);margin:16px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.small{min-width:0;min-height:116px;padding:15px 13px;background:#121920;border:1px solid #293947;border-radius:13px}.small>span:first-child{color:#b7c2ce;font-size:10px;line-height:1.2;font-weight:800;letter-spacing:.03em}.small strong{display:block;margin:15px 0 3px;font-size:15px;font-weight:800;line-height:1.25}.small span:not(:first-child){display:block;font-size:11px;color:#a5b0bc;line-height:1.35;overflow-wrap:anywhere}
 .code{font:650 14px/1.55 ui-monospace,"SFMono-Regular",Consolas,monospace;overflow-wrap:anywhere;word-break:break-all;padding:13px;margin:12px 0 0;background:#08090d;border:1px dashed #bd95529c;color:#f9e6b6;border-radius:10px;letter-spacing:.03em;min-height:50px}
 .btn{border:1px solid #686373;background:#23242b;color:#f0f0f4;min-height:45px;border-radius:10px;padding:11px 12px;font-size:13px;font-weight:750;line-height:1.3;transition:transform .15s,background .15s}.btn.primary{background:linear-gradient(115deg,#e0b663,#f5dd9e,#c99a40);border-color:#f6daa0;color:#21180c;box-shadow:0 3px 12px #d9a44818}.btn.subtle{background:#15171d;border-color:#353944;color:#d7d6db}.btn:active{transform:scale(.97)}.btn:disabled{cursor:not-allowed;opacity:.42;box-shadow:none}.buttons{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0 0}.buttons .btn{flex:1 1 135px}.action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.action-grid .btn{min-height:55px;text-align:left}
@@ -32,7 +32,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 @media(min-width:681px){nav.bottom{padding-inline:max(16px,calc((100% - 660px)/2))}.container{padding-inline:22px}.hero{padding-top:33px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
-<script src="/assets/telegram-mini.js?v=20261028-mobile-v2" defer></script></head>
+<script src="/assets/telegram-mini.js?v=20261028-mobile-v3" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
@@ -54,47 +54,47 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
   <div class="route-node"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><b>MT5 EA</b><small>Execution</small></div>
  </div>
 </div>
-<p class="message" id="statusMessage" role="status" aria-live="polite">Checking your Telegram identity…</p>
+<div class="auth-state" role="group" aria-label="Account sign-in status"><p class="message" id="statusMessage" role="status" aria-live="polite">Checking your Telegram identity…</p><button id="retrySignIn" class="btn subtle retry-auth" type="button" hidden>Retry connection ↻</button></div>
 <section class="tab-panel" data-panel="home" id="panel-home">
- <div class="section-head"><h2 data-tr="command">Your dashboard</h2><small>PRIVATE ACCOUNT</small></div>
+ <div class="section-head"><h2 data-tr="command">Your dashboard</h2><small data-tr="privateCaption">PRIVATE ACCOUNT</small></div>
  <article class="card gold">
-  <div class="split"><div><div class="micro">CURRENT MEMBERSHIP</div><div id="memberPlan" class="value">Not signed in</div></div><span class="indicator" aria-hidden="true">♛</span></div>
-  <div class="goldline"></div><div class="split"><span id="memberIdentity" class="meta">Sign in from the official Telegram bot</span><span id="licenseBadge" class="status" data-active="false">LOCKED</span></div>
+  <div class="split"><div><div class="micro" data-tr="memberCaption">CURRENT MEMBERSHIP</div><div id="memberPlan" class="value">Not signed in</div></div><span class="indicator" aria-hidden="true">♛</span></div>
+  <div class="goldline"></div><div class="split"><span id="memberIdentity" class="meta" data-tr="memberHint">Sign in from the official Telegram bot</span><span id="licenseBadge" class="status" data-active="false">LOCKED</span></div>
  </article>
  <div class="grid">
-  <article class="small"><span>MT5 CONNECTION</span><strong id="mt5Status">Not connected</strong><span id="mt5Server">Account not yet verified</span></article>
-  <article class="small"><span>EA ACTIVATION</span><strong id="activationDate">Not started</strong><span id="expiryStatus">Valid after activation</span></article>
+  <article class="small"><span data-tr="mt5Caption">MT5 CONNECTION</span><strong id="mt5Status">Not connected</strong><span id="mt5Server" data-tr="mt5Hint">Account not yet verified</span></article>
+  <article class="small"><span data-tr="eaCaption">EA ACTIVATION</span><strong id="activationDate">Not started</strong><span id="expiryStatus" data-tr="expiryHint">Valid after activation</span></article>
  </div>
  <article class="card">
   <div class="split"><h2 data-tr="privateKey">Your activation key</h2><span class="micro">SECURE</span></div>
-  <p class="meta">Your unique EA code is hidden until you choose to reveal or copy it. Never share it in screenshots.</p>
+  <p class="meta" data-tr="licenseNote">Your unique EA code is hidden until you choose to reveal or copy it. Never share it in screenshots.</p>
   <div class="code" id="serialValue" aria-live="polite">•••• •••• •••• ••••</div>
   <div class="buttons"><button type="button" id="revealSerial" class="btn primary" data-tr="reveal" disabled>Reveal code</button><button type="button" id="copySerial" class="btn" data-tr="copy" disabled>Copy code</button></div>
  </article>
  <div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
- <p class="tab-kicker">EXPERT ADVISOR</p><h2 class="section-title" data-tr="connect">Connect your <span>MT5 account</span></h2>
- <div class="card gold"><div class="micro">ONE EA · ONE PRIVATE CODE</div><h2 style="font-size:22px;margin-top:10px">Set up SignalBridge</h2>
-  <ol class="list"><li>Install the official compiled DrFX EX5 Expert Advisor in MetaTrader 5.</li><li>Allow https://signalbridge.drfx.online in MT5 Expert Advisors.</li><li>Enter your activation code as the first EA setting.</li><li>Check the MT5 Experts tab for the verified license state.</li></ol>
-  <span class="inline-tag">DEMO ACCOUNT ONLY · LIVE TRADING DISABLED</span>
+ <p class="tab-kicker" data-tr="eaKicker">EXPERT ADVISOR</p><h2 class="section-title" data-tr="connect">Connect your <span>MT5 account</span></h2>
+ <div class="card gold"><div class="micro">ONE EA · ONE PRIVATE CODE</div><h2 style="font-size:22px;margin-top:10px" data-tr="setupTitle">Set up SignalBridge</h2>
+  <ol class="list"><li data-tr="step1">Install the official compiled DrFX EX5 Expert Advisor in MetaTrader 5.</li><li data-tr="step2">Allow https://signalbridge.drfx.online in MT5 Expert Advisors.</li><li data-tr="step3">Enter your activation code as the first EA setting.</li><li data-tr="step4">Check the MT5 Experts tab for the verified license state.</li></ol>
+  <span class="inline-tag" data-tr="demoOnly">DEMO ACCOUNT ONLY · LIVE TRADING DISABLED</span>
  </div><button class="btn primary" type="button" data-jump="home" data-tr="back">View activation code ↗</button>
 </section>
 <section class="tab-panel" data-panel="plans" id="panel-plans" hidden>
- <p class="tab-kicker">DRFX MEMBERSHIP</p><h2 class="section-title" data-tr="advantage">Choose your plan</h2>
+ <p class="tab-kicker" data-tr="plansKicker">DRFX MEMBERSHIP</p><h2 class="section-title" data-tr="advantage">Choose your plan</h2>
  <div class="card">
   <div class="plan"><div><b>One Month Free</b><small>Free trial and private EA activation</small></div><div class="plan-price">$0</div></div>
   <div class="plan featured"><div><b>3 Months Premium</b><small>SignalBridge and 52 premium indicators*</small></div><div class="plan-price">$47</div></div>
   <div class="plan"><div><b>Annual Elite</b><small>All features and personalized options*</small></div><div class="plan-price">$165</div></div>
   <p id="paymentStatus" class="meta" role="status">Paid checkout is not configured yet.</p>
   <button id="openPricing" type="button" class="btn primary" style="width:100%;margin-top:15px" data-tr="pricing">View website plans ↗</button>
-  <p class="meta">* Premium content requires separate authorized release. This Mini App does not collect payments.</p>
+  <p class="meta" data-tr="premiumNote">* Premium content requires separate authorized release. This Mini App does not collect payments.</p>
  </div>
 </section>
 <section class="tab-panel" data-panel="help" id="panel-help" hidden>
- <p class="tab-kicker">SUPPORT &amp; ACCOUNT SAFETY</p><h2 class="section-title" data-tr="support">Help &amp; security</h2>
- <div class="card"><h2>Keep your account protected</h2>
-  <ol class="list"><li>Open the Mini App from the official Telegram bot to verify your identity.</li><li>Email and Telegram accounts can only be linked after explicit verification.</li><li>EA activation keys never belong in screenshots or chat messages.</li><li>Use your main website dashboard for account management.</li></ol>
+ <p class="tab-kicker" data-tr="helpKicker">SUPPORT &amp; ACCOUNT SAFETY</p><h2 class="section-title" data-tr="support">Help &amp; security</h2>
+ <div class="card"><h2 data-tr="securityTitle">Keep your account protected</h2>
+  <ol class="list"><li data-tr="help1">Open the Mini App from the official Telegram bot to verify your identity.</li><li data-tr="help2">Email and Telegram accounts can only be linked after explicit verification.</li><li data-tr="help3">EA activation keys never belong in screenshots or chat messages.</li><li data-tr="help4">Use your main website dashboard for account management.</li></ol>
   <div class="buttons"><button id="openWebsite" class="btn primary" type="button" data-tr="website">Open DrFX website ↗</button><button id="refreshAccount" class="btn subtle" type="button" data-tr="refresh">Refresh ↻</button></div>
  </div>
 </section>
@@ -125,7 +125,7 @@ export const MINI_JS=String.raw`(() => {
  normalizeViewport();
 
 
- const fa={eyebrow:'محیط اختصاصی معامله‌گری',hero1:'دقت بالا.',hero2:'در هر حرکت.',desc:'مرکز فرمان شخصی شما؛ هویت امن تلگرام، اشتراک سیگنال‌بریج و فعال‌سازی متاتریدر ۵ در یک محیط.',command:'مرکز فرمان',privateKey:'کد فعال‌سازی اختصاصی',connect:'اتصال به متاتریدر ۵',advantage:'اشتراک‌های شما',support:'امنیت و پشتیبانی',reveal:'نمایش کد',hide:'مخفی‌کردن کد',copy:'کپی کد فعال‌سازی',guide:'راهنمای MT5 ←',explore:'اشتراک‌ها ←',back:'بازگشت به کد فعال‌سازی ←',pricing:'مشاهده طرح‌ها در سایت ←',website:'باز کردن سایت DrFX ←',refresh:'به‌روزرسانی حساب ↻',navHome:'خانه',navEA:'اکسپرت',navPlans:'اشتراک',navHelp:'راهنما'};
+ const fa={eyebrow:'محیط اختصاصی معامله‌گری',hero1:'دقت بالا.',hero2:'در هر حرکت.',desc:'مرکز فرمان شخصی شما؛ هویت امن تلگرام، اشتراک سیگنال‌بریج و فعال‌سازی متاتریدر ۵ در یک محیط.',command:'مرکز فرمان',privateKey:'کد فعال‌سازی اختصاصی',connect:'اتصال به متاتریدر ۵',advantage:'اشتراک‌های شما',support:'امنیت و پشتیبانی',reveal:'نمایش کد',hide:'مخفی‌کردن کد',copy:'کپی کد فعال‌سازی',guide:'راهنمای MT5 ←',explore:'اشتراک‌ها ←',back:'بازگشت به کد فعال‌سازی ←',pricing:'مشاهده طرح‌ها در سایت ←',website:'باز کردن سایت DrFX ←',refresh:'به‌روزرسانی حساب ↻',navHome:'خانه',navEA:'اکسپرت',navPlans:'اشتراک',navHelp:'راهنما',licenseNote:'کد شخصی EA تا زمان درخواست شما مخفی است. آن را در تصاویر یا پیام‌ها منتشر نکنید.',eaKicker:'اکسپرت متاتریدر',plansKicker:'اشتراک دکتر اف‌ایکس',helpKicker:'پشتیبانی و امنیت حساب',memberCaption:'اشتراک فعلی',privateCaption:'حساب اختصاصی',mt5Caption:'اتصال متاتریدر ۵',eaCaption:'فعال‌سازی EA',memberHint:'از داخل بات رسمی تلگرام وارد شوید',mt5Hint:'حساب معاملاتی هنوز تأیید نشده است',expiryHint:'اعتبار پس از فعال‌سازی آغاز می‌شود',setupTitle:'راه‌اندازی سیگنال‌بریج',step1:'نسخه رسمی و کامپایل‌شده EX5 را در متاتریدر ۵ نصب کنید.',step2:'آدرس https://signalbridge.drfx.online را در تنظیمات Expert Advisors مجاز کنید.',step3:'کد فعال‌سازی شخصی را در اولین ورودی اکسپرت وارد کنید.',step4:'در تب Experts وضعیت تأیید لایسنس را بررسی کنید.',demoOnly:'فقط حساب دمو · معاملات واقعی غیرفعال',help1:'مینی‌اپ را از داخل بات رسمی تلگرام برای تأیید هویت باز کنید.',help2:'اتصال حساب ایمیل و تلگرام فقط پس از تأیید مالکیت انجام می‌شود.',help3:'کد فعال‌سازی EA را در تصویر یا پیام عمومی قرار ندهید.',help4:'برای مدیریت کامل حساب از داشبورد سایت استفاده کنید.',premiumNote:'* محصولات پریمیوم به انتشار و مجوز مستقل نیاز دارند. این مینی‌اپ پرداخت دریافت نمی‌کند.',securityTitle:'امنیت حساب شما'};
  const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
  let locale='en';
  const ui=(en,faText)=>locale==='fa'?faText:en;
@@ -136,7 +136,7 @@ export const MINI_JS=String.raw`(() => {
   document.querySelectorAll('[data-tr]').forEach(el=>{const key=el.dataset.tr;el.textContent=locale==='fa'?(fa[key]||english[key]):english[key]});
   $('langToggle').setAttribute('aria-pressed',String(locale==='fa'));
   $('langToggle').textContent=locale==='fa'?'EN / FA':'FA / EN';
-  if(state.user){set('memberPlan',planLabel(state.user.plan));set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected',state.user.mt5_account?'متصل':'متصل نیست'));}
+  if(state.user){set('memberPlan',planLabel(state.user.plan));set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected',state.user.mt5_account?'متصل':'متصل نیست'));set('licenseBadge',ui(state.user.license_status==='active'?'ACTIVE':'INACTIVE',state.user.license_status==='active'?'فعال':'غیرفعال'));set('activationDate',ui(state.user.activated_at?'Activated':'Not started',state.user.activated_at?'فعال شده':'شروع نشده'));}
   else {set('memberPlan',ui('Not signed in','وارد نشده'));set('mt5Status',ui('Not connected','متصل نیست'));}
   $('revealSerial').textContent=state.serialVisible?ui('Hide serial','مخفی‌کردن کد'):ui('Reveal serial','نمایش کد');
  }
@@ -147,6 +147,21 @@ export const MINI_JS=String.raw`(() => {
 
  const set = (id,text) => {const el=$(id);if(el)el.textContent=String(text??'');};
  function message(text,kind='') {const e=$('statusMessage');e.textContent=text;e.className='message '+kind;}
+ function clearPrivateAccount(){
+  state.user=null;state.serialVisible=false;
+  set('memberPlan',ui('Not signed in','وارد نشده'));
+  set('memberIdentity',ui('Sign in from the official Telegram bot','از داخل بات رسمی تلگرام وارد شوید'));
+  set('licenseBadge',ui('LOCKED','قفل'));$('licenseBadge').dataset.active='false';
+  set('mt5Status',ui('Not connected','متصل نیست'));
+  set('mt5Server',ui('Account not yet verified','حساب معاملاتی هنوز تأیید نشده است'));
+  set('activationDate',ui('Not started','شروع نشده'));
+  set('expiryStatus',ui('Valid after activation','اعتبار پس از فعال‌سازی آغاز می‌شود'));
+  set('serialValue','•••• •••• •••• ••••');
+  $('revealSerial').disabled=true;$('copySerial').disabled=true;
+  $('revealSerial').textContent=ui('Reveal code','نمایش کد');
+  $('connection').classList.remove('verified');
+  set('connection',ui('Sign-in needed','ورود لازم است'));
+ }
  function show(tab){
   if(!['home','license','plans','help'].includes(tab))return;
   document.body.dataset.tab=tab;
@@ -186,16 +201,25 @@ export const MINI_JS=String.raw`(() => {
   $('copySerial').disabled=!user.activation_code;
   $('revealSerial').textContent=ui('Reveal serial','نمایش کد');
  }
- async function refresh(){
+ async function refresh(mode='session'){
   try{
-   const {user}=await api('/api/me');
-   applyUser(user);
+   const result=await api('/api/me');
+   if(!result.user)throw Error('INVALID_ACCOUNT_RESPONSE');
+   applyUser(result.user);
    set('connection',ui('IDENTITY VERIFIED','هویت تأیید شد'));
    $('connection').classList.add('verified');
-   message(ui('Your Telegram account is verified and the membership status is loaded.','هویت تلگرام تأیید و اطلاعات عضویت بارگذاری شد.'),'success');
-  }catch(error){message(error.message==='UNAUTHENTICATED'?'Sign in from your DrFX bot to access the private dashboard.':'Account service unavailable: '+error.message,'error');}
+   $('retrySignIn').hidden=true;
+   message(mode==='telegram'?ui('Your Telegram identity and membership are verified.','هویت تلگرام و وضعیت اشتراک شما تأیید شد.'):ui('Your existing DrFX session is verified.','نشست معتبر حساب DrFX شما تأیید شد.'),'success');
+   return true;
+  }catch(error){
+   clearPrivateAccount();
+   const unauth=error.message==='UNAUTHENTICATED';
+   message(unauth?ui('Open this Mini App from the official bot to sign in.','برای ورود، مینی‌اپ را از داخل بات رسمی باز کنید.'):ui('Account could not be refreshed. Please retry.','دریافت اطلاعات حساب ممکن نیست. دوباره تلاش کنید.'),'error');
+   $('retrySignIn').hidden=false;
+   return false;
+  }
  }
- $('refreshAccount').addEventListener('click',refresh);
+ $('refreshAccount').addEventListener('click',()=>refresh());
  $('revealSerial').addEventListener('click',()=>{
   if(!state.user?.activation_code)return;
   state.serialVisible=!state.serialVisible;
@@ -208,20 +232,38 @@ export const MINI_JS=String.raw`(() => {
   try{await navigator.clipboard.writeText(state.user.activation_code);message(ui('Private EA code copied. Keep it confidential.','کد فعال‌سازی کپی شد. آن را محرمانه نگه دارید.'),'success');}
   catch{message(ui('Clipboard unavailable. Reveal your serial to copy it.','دسترسی به کلیپ‌بورد ممکن نیست. کد را نمایش داده و دستی کپی کنید.'),'error');}
  });
+ let signInRunning=false;
  async function start(){
-  try{tg?.ready?.();tg?.expand?.();tg?.setHeaderColor?.('#030406');tg?.setBackgroundColor?.('#030406');}catch{}
-  let config;try{config=await api('/api/config');}
-  catch{message('Cannot contact DrFX services. Check network access and retry.','error');return;}
-  state.telegramEnabled=!!config.telegram;
-  set('paymentStatus',config.payments?'Payment provider is configured on the website. Open the pricing page to check availability.':'Paid memberships are not accepting payments yet.');
-  if(!config.telegram){message('Telegram bot connection is not configured yet. The interface is available for preview, but login is disabled.','error');return;}
-  if(!tg?.initData){message(ui('Open this Mini App from the official DrFX Telegram bot. Web browser preview cannot authenticate.','مینی‌اپ را از داخل بات رسمی DrFX باز کنید. نسخه مرورگر نمی‌تواند هویت شما را تأیید کند.'),'error');return;}
+  if(signInRunning)return;
+  signInRunning=true;$('retrySignIn').disabled=true;$('retrySignIn').hidden=true;
   try{
-   await api('/api/auth/telegram/webapp',{init_data:tg.initData});
-   await refresh();
-  }catch(error){message(error.message==='INVALID_TELEGRAM_INIT_DATA'?'Telegram identity could not be verified. Reopen this Mini App from the bot.':'Telegram sign-in unavailable: '+error.message,'error');}
+   try{tg?.ready?.();tg?.expand?.();tg?.setHeaderColor?.('#030406');tg?.setBackgroundColor?.('#030406');}catch{}
+   const config=await api('/api/config');
+   state.telegramEnabled=!!config.telegram;
+   set('paymentStatus',config.payments?ui('The payment provider is configured on the website.','درگاه پرداخت در سایت پیکربندی شده است.'):ui('Paid memberships are not accepting payments yet.','پرداخت اشتراک هنوز فعال نیست.'));
+   if(tg?.initData&&state.telegramEnabled){
+    // Verify the signed Telegram principal before reading a user session.
+    await api('/api/auth/telegram/webapp',{init_data:tg.initData});
+    await refresh('telegram');
+   }else{
+    // Ordinary browsers may reuse an already-authenticated drfx.company cookie.
+    // Never manufacture Telegram identity when initData is absent.
+    const signedIn=await refresh('session');
+    if(!signedIn){
+     if(!state.telegramEnabled)message(ui('Telegram sign-in is currently unavailable.','ورود با تلگرام فعلاً در دسترس نیست.'),'error');
+     else if(!tg?.initData)message(ui('To sign in, open this Mini App directly inside the official Signal Bridge Telegram bot.','برای ورود، این مینی‌اپ را مستقیماً از داخل بات رسمی Signal Bridge باز کنید.'),'error');
+    }
+   }
+  }catch(error){
+   clearPrivateAccount();
+   const reason=error.message==='INVALID_TELEGRAM_INIT_DATA'?
+     ui('Telegram verification expired. Close this page and reopen it from the bot.','اعتبار تأیید تلگرام تمام شده است. صفحه را ببندید و از بات دوباره باز کنید.'):
+     ui('Connection unavailable. Retry or reopen the Mini App from the bot.','ارتباط برقرار نشد. دوباره تلاش کنید یا مینی‌اپ را از بات باز کنید.');
+   message(reason,'error');$('retrySignIn').hidden=false;
+  }finally{signInRunning=false;$('retrySignIn').disabled=false;}
  }
- language('en');
+ $('retrySignIn').addEventListener('click',start);
+ language(navigator.language?.toLowerCase().startsWith('fa')?'fa':'en');
  show('home');
  start();
 })();`;
