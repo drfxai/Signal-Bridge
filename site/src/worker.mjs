@@ -295,21 +295,7 @@ async function telegramWebhook(req,env){
   const rec=await licenseRecord(env,user);
   await botSend(env,chatId,'👤 Your account\nPlan: '+user.plan+'\nEA: '+rec.status+'\nExpires: '+(rec.expires_at||'Starts on first EA activation')+'\nDashboard: '+API_ORIGIN,true);
  }else if(command==='/link'){
-  const code=text.split(/\s+/)[1]||'';
-  const digest=await sha(code);
-  const entry=await env.DB.prepare("SELECT user_id FROM site_login_codes WHERE code_hash=? AND purpose='link' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP").bind(digest).first();
-  if(!entry){await botSend(env,chatId,'Invalid or expired linking code.');return json({ok:true})}
-  if(user.email||user.id===entry.user_id){
-   if(user.id===entry.user_id)await botSend(env,chatId,'This Telegram is already linked.');
-   else await botSend(env,chatId,'This Telegram is associated with another account. Contact support for safe merging.');
-   return json({ok:true});
-  }
-  const existing=await env.DB.prepare('SELECT telegram_id FROM site_users WHERE id=?').bind(entry.user_id).first();
-  if(!existing||existing.telegram_id){await botSend(env,chatId,'Linking conflict.');return json({ok:true});}
-  const consumed=await env.DB.prepare("UPDATE site_login_codes SET used_at=CURRENT_TIMESTAMP WHERE code_hash=? AND used_at IS NULL").bind(digest).run();
-  if(consumed.meta?.changes!==1){await botSend(env,chatId,'Code already used.');return json({ok:true});}
-  await env.DB.prepare('UPDATE site_users SET telegram_id=?,telegram_name=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND telegram_id IS NULL').bind(telegramId,safeText(username,80),entry.user_id).run();
-  await botSend(env,chatId,'✅ Telegram linked to your verified website account.');
+  await botSend(env,chatId,'Account linking requires a verified identity merge. For now, use /login to open your existing Telegram account on the website. Contact support to merge separate email and Telegram accounts.');
  }else if(command==='/admin'&&user.role==='admin'){
   const stats=await env.DB.prepare('SELECT COUNT(*) AS total,SUM(CASE WHEN plan="quarterly" THEN 1 ELSE 0 END) AS quarter,SUM(CASE WHEN plan="annual" THEN 1 ELSE 0 END) AS annual FROM site_users').first();
   await botSend(env,chatId,'DrFX Admin\nUsers: '+stats.total+'\nQuarterly: '+stats.quarter+'\nAnnual: '+stats.annual+'\nFull management: '+API_ORIGIN);
