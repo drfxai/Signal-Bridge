@@ -229,7 +229,9 @@ test('Telegram website login refuses a 43-character EA serial before querying lo
 });
 test('Telegram /login reuses a separate encrypted 32-character credential and /resetlogin rotates it',()=>{
  assert.ok(worker.includes('const code=b64u(rand(12))'));
- assert.ok(worker.includes('permanent 32-character website login code'));
+ assert.ok(worker.includes("tx('loginText')"));
+ assert.ok(worker.includes('const code=b64u(rand(24))'));
+ assert.ok(worker.includes("command==='/resetlogin'"));
  assert.ok(worker.includes('EA_CODE_NOT_LOGIN_CODE'));
  assert.ok(worker.includes('INVALID_LOGIN_CODE_FORMAT'));
  assert.ok(worker.includes("purpose='telegram'"));
