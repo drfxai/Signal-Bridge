@@ -235,11 +235,11 @@ test('Mini App provides safe one-time bot /login code UI without exposing EA sec
   "code=$('otpInput').value.trim()","invalid, expired or already used",
   "event.preventDefault()"])
    assert.ok(MINI_JS.includes(token),token);
- assert.match(MINI_JS,/\\^\\[A-Za-z0-9_\\-\\]\\{8,64\\}\\$/);
+ assert.ok(MINI_JS.includes("if(!/^[A-Za-z0-9_-]{8,64}$/.test(code))"));
  assert.ok(!MINI_JS.includes('initDataUnsafe'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
  const source=readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
- assert.match(source,/if\(path==='\\/api\\/auth\\/telegram\\/code'&&req\.method==='POST'\)return loginFromTelegram\(req,env\)/);
- assert.match(source,/const consumed=await consumeCode\(env,'telegram',row\.target,code\)/);
- assert.match(source,/return json\(\{ok:true\},200,\{'set-cookie':await login\(env,user\.id\)\}\)/);
+ assert.ok(source.includes("if(path==='/api/auth/telegram/code'&&req.method==='POST')return loginFromTelegram(req,env)"));
+ assert.ok(source.includes("const consumed=await consumeCode(env,'telegram',row.target,code)"));
+ assert.ok(source.includes("return json({ok:true},200,{'set-cookie':await login(env,user.id)})"));
 });
