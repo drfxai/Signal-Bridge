@@ -1,0 +1,41 @@
+name: Compile static DrFX website design CSS
+on:
+  push:
+    branches: [feat/site-approved-html-production-build]
+    paths:
+      - site/reference-input.html
+      - site/tailwind.config.cjs
+      - site/tailwind.input.css
+      - site/scripts/embed-tailwind.mjs
+      - .github/workflows/site-cinematic-css.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned Tailwind compiler
+        run: npm install --no-save --no-package-lock --ignore-scripts tailwindcss@3.4.17
+      - name: Compile offline production stylesheet
+        run: |
+          npx tailwindcss -c site/tailwind.config.cjs -i site/tailwind.input.css -o site/tailwind.generated.css --minify
+          node site/scripts/embed-tailwind.mjs
+      - name: Commit generated Worker CSS module to feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/src/tailwind.mjs
+          if git diff --cached --quiet; then
+            echo "Static CSS unchanged"
+          else
+            git commit -m "build(site): generated offline static Tailwind CSS for approved HTML"
+            git push origin HEAD:feat/site-approved-html-production-build
+          fi
