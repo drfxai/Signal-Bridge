@@ -222,6 +222,67 @@ async function applyPlan(env,userId,plan,actorId){
  ]);
  return true;
 }
+// TradingView webhook credentials belong to the authenticated DrFX account.
+// Reuse the same D1 tenant/agent as its EA license; default to DRY RUN.
+const TV_ORIGIN='https://signalbridge.drfx.online/v1/ingress/tradingview/';
+async function userWebhook(env,user,includeToken=true){
+ const row=await env.DB.prepare(
+  "SELECT w.connection_id,w.encrypted_token,w.nonce,w.created_at,c.delivery_mode,c.status FROM site_tradingview_webhooks w " +
+  "JOIN ingress_connections c ON c.id=w.connection_id AND c.tenant_id=w.user_id " +
+  "WHERE w.user_id=? LIMIT 1"
+ ).bind(user.id).first();
+ if(!row)return {exists:false,mode:'dry_run'};
+ const token=includeToken?await decryptCode(env,row.encrypted_token,row.nonce):null;
+ const usage=await env.DB.prepare(
+  "SELECT COUNT(*) AS received,MAX(received_at) AS last_received FROM received_signals WHERE connection_id=?"
+ ).bind(row.connection_id).first();
+ return {exists:true,mode:row.delivery_mode,status:row.status,webhook_url:token?TV_ORIGIN+token:null,
+  received:Number(usage?.received||0),last_received:usage?.last_received||null,created_at:row.created_at};
+}
+async function provisionUserWebhook(req,env,user){
+ if(!await limited(req,env,'tv:create:'+user.id,3))return fail('RATE_LIMITED',429);
+ const existing=await env.DB.prepare("SELECT connection_id FROM site_tradingview_webhooks WHERE user_id=?").bind(user.id).first();
+ if(existing)return json({ok:true,webhook:await userWebhook(env,user)});
+ const license=await licenseRecord(env,user);
+ const token=b64u(rand(32)),encrypted=await encryptCode(env,token),connectionId=uid('tv');
+ // Creating a credential and linking it to this exact EA agent must be atomic.
+ await env.DB.batch([
+  env.DB.prepare("INSERT INTO ingress_connections (id,tenant_id,provider,token_sha256,status,agent_id,delivery_mode) VALUES (?,?,'tradingview',?,'active',?,'dry_run')")
+   .bind(connectionId,user.id,await sha(token),license.agent_id),
+  env.DB.prepare("INSERT INTO site_tradingview_webhooks (user_id,connection_id,encrypted_token,nonce) VALUES (?,?,?,?)")
+   .bind(user.id,connectionId,encrypted.cipher,encrypted.iv)
+ ]);
+ await audit(env,user.id,'tv_webhook_created',user.id,'dry_run');
+ return json({ok:true,webhook:await userWebhook(env,user)},201);
+}
+async function rotateUserWebhook(req,env,user){
+ if(!await limited(req,env,'tv:rotate:'+user.id,2))return fail('RATE_LIMITED',429);
+ const existing=await env.DB.prepare("SELECT connection_id FROM site_tradingview_webhooks WHERE user_id=?").bind(user.id).first();
+ if(!existing)return fail('WEBHOOK_NOT_CREATED',404);
+ const token=b64u(rand(32)),encrypted=await encryptCode(env,token);
+ await env.DB.batch([
+  env.DB.prepare("UPDATE ingress_connections SET token_sha256=? WHERE id=? AND tenant_id=?").bind(await sha(token),existing.connection_id,user.id),
+  env.DB.prepare("UPDATE site_tradingview_webhooks SET encrypted_token=?,nonce=?,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND connection_id=?")
+   .bind(encrypted.cipher,encrypted.iv,user.id,existing.connection_id)
+ ]);
+ await audit(env,user.id,'tv_webhook_rotated',user.id,'previous webhook URL revoked');
+ return json({ok:true,webhook:await userWebhook(env,user)});
+}
+async function connectionDiagnostic(env,user){
+ const row=await env.DB.prepare(
+  "SELECT el.status,el.plan,el.activated_at,el.expires_at,el.account_login,el.account_server," +
+  "a.status AS agent_status,a.last_connected_at FROM site_licenses sl " +
+  "JOIN ea_licenses el ON el.id=sl.license_id JOIN agent_connections a ON a.id=sl.agent_id " +
+  "WHERE sl.user_id=? LIMIT 1"
+ ).bind(user.id).first();
+ if(!row)return {license:'missing',mt5_bound:false,last_handshake:null,live_socket_verified:false,trade_executed:false};
+ return {license:row.status,agent_status:row.agent_status,plan:row.plan,
+  mt5_bound:!!(row.account_login&&row.account_server),
+  mt5_account:row.account_login?{login:row.account_login,server:row.account_server}:null,
+  last_handshake:row.last_connected_at||null,activated_at:row.activated_at||null,
+  live_socket_verified:false,trade_executed:false,
+  note:'Database connectivity snapshot only; not a current EA WebSocket ping.'};
+}
 async function adminUpdate(req,env,admin){
  const b=await readBody(req);if(!ADMIN_ACTIONS.has(b.action)||!/^usr_[0-9a-f]{32}$/.test(b.user_id||''))return fail('INVALID_ACTION');
  const user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(b.user_id).first();
@@ -435,6 +496,11 @@ async function api(req,env){
   if(!await limited(req,env,'rotate',4))return fail('RATE_LIMITED',429);
   const code=await rotateLicense(env,user);return json({ok:true,activation_code:code});
  }
+ if(path==='/api/webhook'&&req.method==='GET')return json({ok:true,webhook:await userWebhook(env,user)});
+ if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
+ if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);
+ if(path==='/api/connection/check'&&req.method==='GET')return json({ok:true,diagnostic:await connectionDiagnostic(env,user)});
+ if(path==='/api/connection/test-demo'&&req.method==='POST')return fail('DEMO_TRADE_TEST_REQUIRES_UPDATED_EA',409);
  if(path==='/api/checkout'&&req.method==='POST')return createCheckout(req,env,user);
  if(path==='/api/orders'&&req.method==='GET'){
   const rows=await env.DB.prepare('SELECT id,plan,amount_usd,status,invoice_url,created_at,paid_at FROM site_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 30').bind(user.id).all();
