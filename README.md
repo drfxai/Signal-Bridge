@@ -11,7 +11,7 @@
 [![Cloudflare](https://img.shields.io/badge/Edge-Cloudflare-F38020?style=for-the-badge)](#architecture)
 [![DEMO Safe](https://img.shields.io/badge/Execution-DEMO%20Safe-ffcc62?style=for-the-badge)](#safety)
 
-[**Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**Test Panel**](https://signalbridge.drfx.online/test) · [**Download ZIP**](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)
+[**Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**V3 Design Preview**](https://signalbridge.drfx.online/experience/) · [**Test Panel**](https://signalbridge.drfx.online/test) · [**Download ZIP**](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)
 
 </div>
 
@@ -134,6 +134,9 @@ design/telegram-bot-flow.html
 The option is visible in the UI but intentionally inactive. The current release does **not** request or store Telegram phone numbers, API ID/Hash or personal-account sessions.
 
 ## 🖥️ Responsive product UI
+
+> The [V3 Design Preview](https://signalbridge.drfx.online/experience/) and Telegram prototypes use **illustrative sample telemetry**; they are not live account dashboards. Real broker state is shown on the authenticated [Live Dashboard](https://signalbridge.drfx.online/dashboard). Subscription checkout and automatic trial activation are not implemented yet.
+
 
 The V3 product concept is in:
 
