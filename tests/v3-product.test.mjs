@@ -71,7 +71,8 @@ test('direct EA persists broker receipts locally until cloud acknowledgement',()
  assert.match(ea,/FlushReceipts\(\)/);
  assert.match(ea,/ClearReceipt\(/);
  assert.match(ea,/SignalBridge_receipts_/);
- assert.match(ea,/INVALID_TRANSITION/);
+ assert.doesNotMatch(ea,/INVALID_TRANSITION/);
+ assert.match(ea,/if\(p\[0\]=="RACK"&&n>=4\)\{if\(p\[3\]=="1"\)/);
 });
 
 test('direct EA migration derives correlation tag when an older pending command lacks it',()=>{
