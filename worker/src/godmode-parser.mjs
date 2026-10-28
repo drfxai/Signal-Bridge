@@ -1,4 +1,5 @@
 const TAG=/\[\[DRFX\]\]([\s\S]*?)\[\[\/DRFX\]\]/;
+const MANAGEMENT_EXPIRES='9999-12-31T23:59:59.999Z';
 const num=v=>{if(v==null||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null};
 const dir=v=>{const s=String(v||'').toLowerCase();return s==='long'||s==='buy'?'BUY':s==='short'||s==='sell'?'SELL':null};
 function sanitize(s){return String(s).replace(/:\s*NaN\s*([,}])/g,': null$1').replace(/:\s*-?Infinity\s*([,}])/g,': null$1')}
@@ -17,7 +18,7 @@ export function parseGodModeAlert(text,nowMs=Date.now()){
  if(ev!=='ENTRY'){
   return {ok:true,signal:{external_signal_id:'gm-'+fnv(correlation+':'+ev),correlation_id:correlation,action:'MANAGE',management_event:ev,
    symbol:/^[A-Z0-9][A-Z0-9._-]{0,31}$/.test(symbol)?symbol:null,
-   occurred_at:new Date(nowMs).toISOString(),expires_at:new Date(nowMs+6*60*60_000).toISOString(),
+   occurred_at:new Date(nowMs).toISOString(),expires_at:MANAGEMENT_EXPIRES,
    metadata:{strategy:'GOD MODE'}}};
  }
  const side=dir(p.direction||p.dir||p.side),sl=num(p.sl),tp1=num(p.tp1),tp2=num(p.tp2),tp3=num(p.tp3);

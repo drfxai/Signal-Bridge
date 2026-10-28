@@ -1,309 +1,134 @@
 //+------------------------------------------------------------------+
-//|                                      DrFX_SignalBridge_EA.mq5    |
-//|          SignalBridge MT5 live panel / telemetry foundation      |
+//|                            DrFX_SignalBridge_EA_v0.22.mq5        |
+//| Low-latency localhost bridge, replay-safe, DEMO-only execution   |
 //+------------------------------------------------------------------+
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
-#property version   "0.10"
+#property version   "0.22"
 #property strict
-#property description "SignalBridge MT5 live chart panel and telemetry foundation."
-#property description "Trade transport/execution is intentionally disabled in this milestone."
+#property description "SignalBridge MT5 test EA. Persistent localhost TCP Agent transport."
+#property description "DEMO execution only. Live accounts are always refused."
+#property description "Add 127.0.0.1 to Tools > Options > Expert Advisors allowed addresses."
 
-input group "=== SignalBridge UI ==="
-input bool             InpShowPanel    = true;
-input bool             InpCompactPanel = false;
-input ENUM_BASE_CORNER InpPanelCorner  = CORNER_LEFT_UPPER;
-input int              InpPanelX       = 16;
-input int              InpPanelY       = 22;
-input int              InpPanelWidth   = 356;
-input int              InpRefreshMs    = 500;
+#include <Trade\Trade.mqh>
 
-input group "=== Future transport (not active yet) ==="
-input string InpEndpoint      = "";
-input string InpAgentKey      = "";
-input bool   InpEnableTrading = false;
-input long   InpMagic         = 770425;
+input group "=== SignalBridge Agent ==="
+input string InpAgentHost="127.0.0.1";
+input int InpAgentPort=17777;
+input int InpTimerMs=50;
 
-#define SB_PREFIX "SBP_"
-#define SB_EVENT_ROWS 4
+input group "=== DEMO Execution Safety ==="
+input bool InpEnableDemoExecution=false;
+input long InpMagic=770425;
+input double InpMaxLot=0.10;
+input double InpMaxRiskPercent=1.00;
+input double InpMaxPriceDeviationPct=0.75;
+input int InpMaxOpenTrades=4;
+input int InpMaxSpreadPoints=80;
+input int InpSlippagePoints=20;
+input string InpSymbolPrefix="";
+input string InpSymbolSuffix="";
 
-struct SBTheme
-{
-   color bg;
-   color bg2;
-   color border;
-   color text;
-   color muted;
-   color cyan;
-   color green;
-   color amber;
-   color red;
-};
+input group "=== Live Panel ==="
+input bool InpShowPanel=true;
+input bool InpCompact=false;
+input ENUM_BASE_CORNER InpCorner=CORNER_LEFT_UPPER;
+input int InpPanelX=16;
+input int InpPanelY=22;
+input int InpPanelWidth=390;
 
-SBTheme g_theme;
+#define SBP "SB22_"
+#define MAX_PENDING 32
+CTrade trade;
+int g_socket=INVALID_HANDLE;
+string g_rx="",g_lastSignal="WAITING",g_lastExecution="NO COMMAND",g_lastTicket="-";
+ulong g_lastConnectTry=0,g_lastHb=0,g_lastReconcile=0;
 bool g_compact=false;
-string g_lastSignal="WAITING FOR SIGNALBRIDGE";
-string g_lastExecution="TRANSPORT NOT CONNECTED";
-string g_lastPosition="NO SIGNALBRIDGE POSITION";
-string g_lastRisk="LOCAL UI READY";
-string g_events[SB_EVENT_ROWS];
-datetime g_eventTimes[SB_EVENT_ROWS];
+string g_pendingTag[MAX_PENDING],g_pendingId[MAX_PENDING];
+color C_BG=C'9,15,25',C_BG2=C'15,25,42',C_BORDER=C'43,65,93',C_TEXT=C'234,245,255',C_MUTED=C'139,160,184',C_CYAN=C'82,215,255',C_GREEN=C'69,213,161',C_AMBER=C'243,189,98',C_RED=C'255,111,125';
 
-string Num(const long v){ return IntegerToString(v); }
+string N64(long v){return IntegerToString(v);}
+string F2(double v){return DoubleToString(v,2);}
+string Safe(string s){StringReplace(s,"|","/");StringReplace(s,"\r"," ");StringReplace(s,"\n"," ");return s;}
+string GVVol(string tag){return "SBV_"+tag;}
 
-string Money(const double v)
-{
-   string sign=(v>0.0?"+":"");
-   return sign+AccountInfoString(ACCOUNT_CURRENCY)+" "+DoubleToString(v,2);
+int CountMyPositions(){int n=0;for(int i=0;i<PositionsTotal();i++){ulong t=PositionGetTicket(i);if(t>0&&PositionSelectByTicket(t)&&PositionGetInteger(POSITION_MAGIC)==InpMagic)n++;}return n;}
+string MarginMode(){long m=AccountInfoInteger(ACCOUNT_MARGIN_MODE);if(m==ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)return "HEDGING";if(m==ACCOUNT_MARGIN_MODE_RETAIL_NETTING)return "NETTING";if(m==ACCOUNT_MARGIN_MODE_EXCHANGE)return "EXCHANGE";return "UNKNOWN";}
+string AccountMode(){long m=AccountInfoInteger(ACCOUNT_TRADE_MODE);if(m==ACCOUNT_TRADE_MODE_DEMO)return "DEMO";if(m==ACCOUNT_TRADE_MODE_REAL)return "LIVE";if(m==ACCOUNT_TRADE_MODE_CONTEST)return "CONTEST";return "UNKNOWN";}
+
+void DeletePanel(){for(int i=ObjectsTotal(0,0,-1)-1;i>=0;i--){string n=ObjectName(0,i,0,-1);if(StringFind(n,SBP)==0)ObjectDelete(0,n);}}
+void Rect(string id,int x,int y,int w,int h,color bg,color border){string n=SBP+id;if(ObjectFind(0,n)<0)ObjectCreate(0,n,OBJ_RECTANGLE_LABEL,0,0,0);ObjectSetInteger(0,n,OBJPROP_CORNER,InpCorner);ObjectSetInteger(0,n,OBJPROP_XDISTANCE,x);ObjectSetInteger(0,n,OBJPROP_YDISTANCE,y);ObjectSetInteger(0,n,OBJPROP_XSIZE,w);ObjectSetInteger(0,n,OBJPROP_YSIZE,h);ObjectSetInteger(0,n,OBJPROP_BGCOLOR,bg);ObjectSetInteger(0,n,OBJPROP_COLOR,border);ObjectSetInteger(0,n,OBJPROP_BORDER_TYPE,BORDER_FLAT);ObjectSetInteger(0,n,OBJPROP_SELECTABLE,false);ObjectSetInteger(0,n,OBJPROP_HIDDEN,true);}
+void Label(string id,int x,int y,string text,int size,color col,string font="Segoe UI"){string n=SBP+id;if(ObjectFind(0,n)<0)ObjectCreate(0,n,OBJ_LABEL,0,0,0);ObjectSetInteger(0,n,OBJPROP_CORNER,InpCorner);ObjectSetInteger(0,n,OBJPROP_XDISTANCE,x);ObjectSetInteger(0,n,OBJPROP_YDISTANCE,y);ObjectSetInteger(0,n,OBJPROP_FONTSIZE,size);ObjectSetInteger(0,n,OBJPROP_COLOR,col);ObjectSetInteger(0,n,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);ObjectSetInteger(0,n,OBJPROP_SELECTABLE,false);ObjectSetInteger(0,n,OBJPROP_HIDDEN,true);ObjectSetString(0,n,OBJPROP_FONT,font);ObjectSetString(0,n,OBJPROP_TEXT,text);}
+void Button(string id,int x,int y,int w,int h,string text){string n=SBP+id;if(ObjectFind(0,n)<0)ObjectCreate(0,n,OBJ_BUTTON,0,0,0);ObjectSetInteger(0,n,OBJPROP_CORNER,InpCorner);ObjectSetInteger(0,n,OBJPROP_XDISTANCE,x);ObjectSetInteger(0,n,OBJPROP_YDISTANCE,y);ObjectSetInteger(0,n,OBJPROP_XSIZE,w);ObjectSetInteger(0,n,OBJPROP_YSIZE,h);ObjectSetInteger(0,n,OBJPROP_BGCOLOR,C_BG);ObjectSetInteger(0,n,OBJPROP_COLOR,C_MUTED);ObjectSetInteger(0,n,OBJPROP_BORDER_COLOR,C_BORDER);ObjectSetInteger(0,n,OBJPROP_FONTSIZE,8);ObjectSetString(0,n,OBJPROP_TEXT,text);ObjectSetString(0,n,OBJPROP_FONT,"Segoe UI");}
+
+bool AgentConnected(){return g_socket!=INVALID_HANDLE&&SocketIsConnected(g_socket);}
+bool SendLine(string line){if(!AgentConnected())return false;uchar data[];int n=StringToCharArray(line+"\n",data,0,WHOLE_ARRAY,CP_UTF8);if(n<=1)return false;return SocketSend(g_socket,data,(uint)(n-1))==n-1;}
+void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions()));g_lastHb=GetTickCount64();}
+void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())))g_lastHb=GetTickCount64();}
+bool Receipt(string id,string status,string ticket,long retcode,string detail){bool sent=SendLine("RCPT|"+Safe(id)+"|"+Safe(status)+"|"+Safe(ticket)+"|"+N64(retcode)+"|"+Safe(detail));g_lastExecution=status+" · "+detail;if(ticket!="")g_lastTicket=ticket;return sent;}
+void DisconnectAgent(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_socket=INVALID_HANDLE;}g_rx="";}
+void EnsureAgent(){if(AgentConnected())return;ulong now=GetTickCount64();if(now-g_lastConnectTry<1000)return;g_lastConnectTry=now;DisconnectAgent();g_socket=SocketCreate(SOCKET_DEFAULT);if(g_socket==INVALID_HANDLE)return;SocketTimeouts(g_socket,100,100);if(!SocketConnect(g_socket,InpAgentHost,(uint)InpAgentPort,200)){DisconnectAgent();return;}SendHello();}
+
+string PendingFile(){return "SignalBridge_pending_"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+".txt";}
+void PendingSave(){int h=FileOpen(PendingFile(),FILE_COMMON|FILE_WRITE|FILE_TXT|FILE_ANSI);if(h==INVALID_HANDLE)return;for(int i=0;i<MAX_PENDING;i++)if(g_pendingId[i]!=""&&g_pendingTag[i]!="")FileWriteString(h,Safe(g_pendingTag[i])+"|"+Safe(g_pendingId[i])+"\r\n");FileFlush(h);FileClose(h);}
+void PendingLoad(){for(int i=0;i<MAX_PENDING;i++){g_pendingTag[i]="";g_pendingId[i]="";}int h=FileOpen(PendingFile(),FILE_COMMON|FILE_READ|FILE_TXT|FILE_ANSI);if(h==INVALID_HANDLE)return;int slot=0;while(!FileIsEnding(h)&&slot<MAX_PENDING){string line=FileReadString(h);StringTrimLeft(line);StringTrimRight(line);if(line=="")continue;int p=StringFind(line,"|");if(p<=0)continue;string tag=StringSubstr(line,0,p),id=StringSubstr(line,p+1);if(StringLen(tag)!=12||id=="")continue;g_pendingTag[slot]=tag;g_pendingId[slot]=id;slot++;}FileClose(h);}
+bool RegisterPending(string tag,string id){for(int i=0;i<MAX_PENDING;i++){if(g_pendingTag[i]==tag){g_pendingId[i]=id;PendingSave();return true;}}for(int i=0;i<MAX_PENDING;i++){if(g_pendingId[i]==""){g_pendingTag[i]=tag;g_pendingId[i]=id;PendingSave();return true;}}return false;}
+string ResolvePending(string tag){for(int i=0;i<MAX_PENDING;i++)if(g_pendingTag[i]==tag)return g_pendingId[i];return "";}
+void ClearPending(string tag){bool changed=false;for(int i=0;i<MAX_PENDING;i++)if(g_pendingTag[i]==tag){g_pendingTag[i]="";g_pendingId[i]="";changed=true;}if(changed)PendingSave();}
+bool HasPending(){for(int i=0;i<MAX_PENDING;i++)if(g_pendingId[i]!="")return true;return false;}
+
+string ResolveSymbol(string requested){string s=InpSymbolPrefix+requested+InpSymbolSuffix;if(SymbolSelect(s,true))return s;if(SymbolSelect(requested,true))return requested;return "";}
+double NormalizeVolume(string sym,double v){double step=SymbolInfoDouble(sym,SYMBOL_VOLUME_STEP),mn=SymbolInfoDouble(sym,SYMBOL_VOLUME_MIN),mx=SymbolInfoDouble(sym,SYMBOL_VOLUME_MAX);if(step<=0||mn<=0||mx<=0)return 0;double cap=(InpMaxLot>0?MathMin(mx,InpMaxLot):mx),lots=MathFloor(v/step+1e-9)*step;if(lots<mn-1e-9||lots>cap+1e-9)return 0;int digits=(int)MathMax(0,MathCeil(-MathLog10(step)));return NormalizeDouble(lots,digits);}
+double RoundVolume(string sym,double v){double step=SymbolInfoDouble(sym,SYMBOL_VOLUME_STEP);if(step<=0)return 0;int digits=(int)MathMax(0,MathCeil(-MathLog10(step)));return NormalizeDouble(MathFloor(v/step+0.5+1e-9)*step,digits);}
+double LotsForRisk(string sym,bool buy,double sl,double riskPct){if(riskPct<=0)return 0;if(riskPct>InpMaxRiskPercent)riskPct=InpMaxRiskPercent;MqlTick tick;if(!SymbolInfoTick(sym,tick))return 0;double entry=buy?tick.ask:tick.bid,dist=MathAbs(entry-sl),tickSize=SymbolInfoDouble(sym,SYMBOL_TRADE_TICK_SIZE),tickValue=SymbolInfoDouble(sym,SYMBOL_TRADE_TICK_VALUE_LOSS);if(tickValue<=0)tickValue=SymbolInfoDouble(sym,SYMBOL_TRADE_TICK_VALUE);if(dist<=0||tickSize<=0||tickValue<=0)return 0;double riskMoney=AccountInfoDouble(ACCOUNT_BALANCE)*riskPct/100.0,lossPerLot=(dist/tickSize)*tickValue;if(riskMoney<=0||lossPerLot<=0)return 0;return NormalizeVolume(sym,riskMoney/lossPerLot);}
+bool StopsValid(string sym,bool buy,double sl,double tp){MqlTick tick;if(!SymbolInfoTick(sym,tick))return false;double price=buy?tick.ask:tick.bid,point=SymbolInfoDouble(sym,SYMBOL_POINT);int stops=(int)SymbolInfoInteger(sym,SYMBOL_TRADE_STOPS_LEVEL);double minDist=stops*point;if(buy){if(sl>=price||tp<=price)return false;if(price-sl<minDist||tp-price<minDist)return false;}else{if(sl<=price||tp>=price)return false;if(sl-price<minDist||price-tp<minDist)return false;}if(point>0&&InpMaxSpreadPoints>0&&(tick.ask-tick.bid)/point>InpMaxSpreadPoints)return false;return true;}
+
+bool FindPosition(string tag,ulong &ticket,string &sym,double &volume,double &open,double &sl,double &tp){string want="SB:"+tag;for(int i=0;i<PositionsTotal();i++){ulong t=PositionGetTicket(i);if(t==0||!PositionSelectByTicket(t))continue;if((long)PositionGetInteger(POSITION_MAGIC)!=InpMagic)continue;if(StringFind(PositionGetString(POSITION_COMMENT),want)!=0)continue;ticket=t;sym=PositionGetString(POSITION_SYMBOL);volume=PositionGetDouble(POSITION_VOLUME);open=PositionGetDouble(POSITION_PRICE_OPEN);sl=PositionGetDouble(POSITION_SL);tp=PositionGetDouble(POSITION_TP);return true;}return false;}
+bool HistoryHasTag(string tag,ulong &dealOut){string want="SB:"+tag;if(!HistorySelect(TimeCurrent()-7*86400,TimeCurrent()+60))return false;for(int i=HistoryDealsTotal()-1;i>=0;i--){ulong d=HistoryDealGetTicket(i);if(d==0)continue;if((long)HistoryDealGetInteger(d,DEAL_MAGIC)!=InpMagic)continue;if(StringFind(HistoryDealGetString(d,DEAL_COMMENT),want)==0){dealOut=d;return true;}}return false;}
+void ReconcilePending(){if(!AgentConnected()||!HasPending())return;for(int i=0;i<MAX_PENDING;i++){string tag=g_pendingTag[i],id=g_pendingId[i];if(tag==""||id=="")continue;ulong ticket=0;string sym="";double volume=0,open=0,sl=0,tp=0;if(FindPosition(tag,ticket,sym,volume,open,sl,tp)){if(Receipt(id,"FILLED",N64((long)ticket),0,"reconciled open position after terminal restart"))ClearPending(tag);continue;}ulong deal=0;if(HistoryHasTag(tag,deal)){if(Receipt(id,"FILLED",N64((long)deal),0,"reconciled broker history after terminal restart"))ClearPending(tag);}}}
+bool DemoGate(string id){if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO){Receipt(id,"ACCOUNT_MISMATCH","",0,"DEMO execution refused on non-demo account");return false;}if(!InpEnableDemoExecution){Receipt(id,"REJECTED","",0,"enable InpEnableDemoExecution first");return false;}if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)||!MQLInfoInteger(MQL_TRADE_ALLOWED)){Receipt(id,"REJECTED","",0,"Algo Trading disabled");return false;}return true;}
+
+void HandleOpen(string id,string mode,string side,string requested,string tag,string volumeMode,double volumeValue,double referencePrice,double sl,double tp1,double tp2,double tp3,long expiresMs){
+ if(expiresMs>0&&(long)TimeGMT()*1000>expiresMs){Receipt(id,"EXPIRED","",0,"command expired");return;}
+ if(side!="BUY"&&side!="SELL"){Receipt(id,"REJECTED","",0,"invalid side");return;}
+ ulong existing=0;string ps="";double pv=0,po=0,psl=0,ptp=0;if(FindPosition(tag,existing,ps,pv,po,psl,ptp)){Receipt(id,"DUPLICATE",N64((long)existing),0,"position already exists");ClearPending(tag);return;}ulong oldDeal=0;if(HistoryHasTag(tag,oldDeal)){Receipt(id,"DUPLICATE",N64((long)oldDeal),0,"broker history already contains this signal");ClearPending(tag);return;}string unresolved=ResolvePending(tag);if(unresolved!=""){Receipt(id,"ERROR","",0,"unresolved prior broker submission; automatic replay blocked");return;}
+ string sym=ResolveSymbol(requested);if(sym==""){Receipt(id,"REJECTED","",0,"symbol not found");return;}bool buy=(side=="BUY");MqlTick tick;if(!SymbolInfoTick(sym,tick)){Receipt(id,"REJECTED","",0,"no broker quote");return;}double current=buy?tick.ask:tick.bid;if(referencePrice>0&&MathAbs(current-referencePrice)/referencePrice*100.0>InpMaxPriceDeviationPct){Receipt(id,"REJECTED","",0,"price deviation too large");return;}
+ double lots=(volumeMode=="RISK_PERCENT")?LotsForRisk(sym,buy,sl,volumeValue):NormalizeVolume(sym,volumeValue);if(lots<=0){Receipt(id,"REJECTED","",0,"position size invalid or below broker minimum");return;}double finalTp=(tp3>0?tp3:(tp2>0?tp2:tp1));if(finalTp<=0||!StopsValid(sym,buy,sl,finalTp)){Receipt(id,"REJECTED","",0,"SL/TP/spread validation failed");return;}
+ if(mode=="dry_run"){Receipt(id,"PREVIEWED","",0,"preview accepted by MT5");return;}if(mode!="demo_execute"){Receipt(id,"REJECTED","",0,"unknown execution mode");return;}if(!DemoGate(id))return;if(CountMyPositions()>=InpMaxOpenTrades){Receipt(id,"REJECTED","",0,"max open trades reached");return;}
+ if(!RegisterPending(tag,id)){Receipt(id,"ERROR","",0,"persistent pending-command ledger is full");return;}trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.SetTypeFillingBySymbol(sym);bool ok=buy?trade.Buy(lots,sym,0.0,sl,finalTp,"SB:"+tag):trade.Sell(lots,sym,0.0,sl,finalTp,"SB:"+tag);long rc=(long)trade.ResultRetcode();if(!ok){if(Receipt(id,"BROKER_REJECTED","",rc,trade.ResultRetcodeDescription()))ClearPending(tag);return;}GlobalVariableSet(GVVol(tag),lots);Receipt(id,"SUBMITTED",N64((long)trade.ResultOrder()),rc,trade.ResultRetcodeDescription());
 }
 
-string MarginMode()
-{
-   long mode=AccountInfoInteger(ACCOUNT_MARGIN_MODE);
-   if(mode==ACCOUNT_MARGIN_MODE_RETAIL_HEDGING) return "HEDGING";
-   if(mode==ACCOUNT_MARGIN_MODE_RETAIL_NETTING) return "NETTING";
-   if(mode==ACCOUNT_MARGIN_MODE_EXCHANGE) return "EXCHANGE";
-   return "UNKNOWN";
+void HandleManage(string id,string mode,string event,string tag){
+ ulong ticket=0;string sym="";double current=0,open=0,sl=0,tp=0;if(!FindPosition(tag,ticket,sym,current,open,sl,tp)){ulong d=0;if(HistoryHasTag(tag,d)){Receipt(id,"DUPLICATE",N64((long)d),0,"position already closed or action already completed");return;}Receipt(id,"REJECTED","",0,"matching SignalBridge position not found");return;}
+ if(mode=="dry_run"){Receipt(id,"PREVIEWED",N64((long)ticket),0,"management preview "+event);return;}if(mode!="demo_execute"){Receipt(id,"REJECTED","",0,"unknown execution mode");return;}if(!DemoGate(id))return;
+ trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.SetTypeFillingBySymbol(sym);
+ if(event=="TP3"||event=="SL"||event=="CLOSE"){
+  bool ok=trade.PositionClose(ticket);long rc=(long)trade.ResultRetcode();if(!ok){Receipt(id,"BROKER_REJECTED",N64((long)ticket),rc,trade.ResultRetcodeDescription());return;}Receipt(id,(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)?"FILLED":"SUBMITTED",N64((long)trade.ResultDeal()),rc,event+" close "+trade.ResultRetcodeDescription());return;
+ }
+ if(event!="TP1"&&event!="TP2"){Receipt(id,"REJECTED",N64((long)ticket),0,"unsupported management event");return;}
+ if(AccountInfoInteger(ACCOUNT_MARGIN_MODE)!=ACCOUNT_MARGIN_MODE_RETAIL_HEDGING){Receipt(id,"REJECTED",N64((long)ticket),0,"TP1/TP2 partial management requires a hedging account");return;}
+ double original=GlobalVariableCheck(GVVol(tag))?GlobalVariableGet(GVVol(tag)):current;double fraction=(event=="TP1"?0.66:0.33);double target=RoundVolume(sym,original*fraction);double minLot=SymbolInfoDouble(sym,SYMBOL_VOLUME_MIN),step=SymbolInfoDouble(sym,SYMBOL_VOLUME_STEP);
+ if(target<minLot-1e-9){Receipt(id,"REJECTED",N64((long)ticket),0,"position too small for safe partial close");return;}
+ if(current<=target+step*0.25){Receipt(id,"DUPLICATE",N64((long)ticket),0,event+" already applied");return;}
+ double toClose=RoundVolume(sym,current-target);if(toClose<minLot-1e-9){Receipt(id,"DUPLICATE",N64((long)ticket),0,"remaining partial below broker minimum");return;}
+ bool ok=trade.PositionClosePartial(ticket,toClose);long rc=(long)trade.ResultRetcode();if(!ok){Receipt(id,"BROKER_REJECTED",N64((long)ticket),rc,trade.ResultRetcodeDescription());return;}string detail=event+" partial "+trade.ResultRetcodeDescription();
+ if(event=="TP2"&&PositionSelectByTicket(ticket)){double curTp=PositionGetDouble(POSITION_TP);if(!trade.PositionModify(ticket,open,curTp))detail+="; break-even move failed";}
+ Receipt(id,(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)?"FILLED":"SUBMITTED",N64((long)trade.ResultDeal()),rc,detail);
 }
 
-string AccountType()
-{
-   long mode=AccountInfoInteger(ACCOUNT_TRADE_MODE);
-   if(mode==ACCOUNT_TRADE_MODE_REAL) return "LIVE";
-   if(mode==ACCOUNT_TRADE_MODE_DEMO) return "DEMO";
-   if(mode==ACCOUNT_TRADE_MODE_CONTEST) return "CONTEST";
-   return "UNKNOWN";
+void HandleCommand(string parts[]){
+ if(ArraySize(parts)<16)return;string id=parts[1],mode=parts[2],action=parts[3],event=parts[4],side=parts[5],requested=parts[6],tag=parts[7],volumeMode=parts[8];double volumeValue=StringToDouble(parts[9]),referencePrice=StringToDouble(parts[10]),sl=StringToDouble(parts[11]),tp1=StringToDouble(parts[12]),tp2=StringToDouble(parts[13]),tp3=StringToDouble(parts[14]);long expiresMs=(long)StringToInteger(parts[15]);if(StringLen(tag)!=12){Receipt(id,"REJECTED","",0,"invalid correlation tag");return;}g_lastSignal=action+" "+event+" "+side+" "+requested;
+ if(action=="OPEN"){HandleOpen(id,mode,side,requested,tag,volumeMode,volumeValue,referencePrice,sl,tp1,tp2,tp3,expiresMs);return;}if(action=="MANAGE"){HandleManage(id,mode,event,tag);return;}Receipt(id,"REJECTED","",0,"unsupported command action");
 }
+void ProcessLine(string line){string p[];ushort sep=StringGetCharacter("|",0);int n=StringSplit(line,sep,p);if(n>0&&p[0]=="CMD")HandleCommand(p);}
+void PumpAgent(){if(!AgentConnected())return;uint readable=SocketIsReadable(g_socket);if(readable==0)return;if(readable>32768)readable=32768;uchar buf[];int n=SocketRead(g_socket,buf,readable,2);if(n<=0){DisconnectAgent();return;}g_rx+=CharArrayToString(buf,0,n,CP_UTF8);for(;;){int pos=StringFind(g_rx,"\n");if(pos<0)break;string line=StringSubstr(g_rx,0,pos);g_rx=StringSubstr(g_rx,pos+1);StringTrimLeft(line);StringTrimRight(line);if(line!="")ProcessLine(line);}}
 
-int CountPositionsByMagic()
-{
-   int count=0;
-   for(int i=0;i<PositionsTotal();i++)
-   {
-      ulong ticket=PositionGetTicket(i);
-      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if((long)PositionGetInteger(POSITION_MAGIC)==InpMagic) count++;
-   }
-   return count;
-}
+void RenderPanel(){if(!InpShowPanel){DeletePanel();return;}int x=InpPanelX,y=InpPanelY,w=MathMax(370,InpPanelWidth),h=g_compact?132:300;Rect("root",x,y,w,h,C_BG,C_BORDER);Rect("head",x+1,y+1,w-2,44,C_BG2,C_BORDER);Label("title",x+12,y+8,"SignalBridge EA v0.22 · "+_Symbol,10,C_TEXT);Label("acct",x+12,y+25,AccountInfoString(ACCOUNT_SERVER)+" · #"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+" · "+MarginMode(),7,C_MUTED,"Consolas");Label("conn",x+w-124,y+9,AgentConnected()?"● AGENT LIVE":"● AGENT OFFLINE",8,AgentConnected()?C_GREEN:C_RED,"Consolas");Button("compact",x+w-102,y+24,88,17,g_compact?"EXPAND":"COMPACT");if(g_compact){Label("c1",x+12,y+58,"Equity  "+F2(AccountInfoDouble(ACCOUNT_EQUITY)),9,C_TEXT,"Consolas");Label("c2",x+12,y+80,"Last  "+g_lastSignal,8,C_CYAN,"Consolas");Label("c3",x+12,y+102,"Exec  "+g_lastExecution,8,C_MUTED,"Consolas");ChartRedraw(0);return;}int yy=y+58;Label("k1",x+12,yy,"BALANCE",7,C_MUTED,"Consolas");Label("v1",x+12,yy+16,F2(AccountInfoDouble(ACCOUNT_BALANCE)),11,C_TEXT,"Consolas");Label("k2",x+110,yy,"EQUITY",7,C_MUTED,"Consolas");Label("v2",x+110,yy+16,F2(AccountInfoDouble(ACCOUNT_EQUITY)),11,C_TEXT,"Consolas");Label("k3",x+205,yy,"FLOAT",7,C_MUTED,"Consolas");Label("v3",x+205,yy+16,F2(AccountInfoDouble(ACCOUNT_PROFIT)),11,AccountInfoDouble(ACCOUNT_PROFIT)>=0?C_GREEN:C_RED,"Consolas");Label("k4",x+298,yy,"OPEN",7,C_MUTED,"Consolas");Label("v4",x+298,yy+16,IntegerToString(CountMyPositions()),11,C_CYAN,"Consolas");yy+=68;Label("l1",x+14,yy,"Latest signal",8,C_MUTED);Label("r1",x+130,yy,g_lastSignal,8,C_CYAN,"Consolas");Label("l2",x+14,yy+23,"Execution",8,C_MUTED);Label("r2",x+130,yy+23,g_lastExecution,8,C_TEXT,"Consolas");Label("l3",x+14,yy+46,"Ticket",8,C_MUTED);Label("r3",x+130,yy+46,g_lastTicket,8,C_TEXT,"Consolas");Label("l4",x+14,yy+69,"Account",8,C_MUTED);Label("r4",x+130,yy+69,AccountMode()+" · "+MarginMode(),8,AccountMode()=="DEMO"?C_GREEN:C_AMBER,"Consolas");Label("l5",x+14,yy+92,"Demo execution",8,C_MUTED);Label("r5",x+130,yy+92,InpEnableDemoExecution?"ENABLED":"LOCKED",8,InpEnableDemoExecution?C_AMBER:C_GREEN,"Consolas");Rect("foot",x+12,y+h-42,w-24,28,C_BG2,C_BORDER);Label("foot_t",x+22,y+h-34,AgentConnected()?"50ms local loop · replay-safe cloud path":"Start Windows Agent on 127.0.0.1",7,AgentConnected()?C_GREEN:C_AMBER,"Consolas");ChartRedraw(0);}
 
-void AddEvent(const string text)
-{
-   for(int i=SB_EVENT_ROWS-1;i>0;i--)
-   {
-      g_events[i]=g_events[i-1];
-      g_eventTimes[i]=g_eventTimes[i-1];
-   }
-   g_events[0]=text;
-   g_eventTimes[0]=TimeCurrent();
-}
-
-string EventLine(const int i)
-{
-   if(i<0 || i>=SB_EVENT_ROWS || g_events[i]=="") return "-";
-   return TimeToString(g_eventTimes[i],TIME_SECONDS)+"  "+g_events[i];
-}
-
-void InitTheme()
-{
-   g_theme.bg=C'9,15,25';
-   g_theme.bg2=C'15,25,42';
-   g_theme.border=C'43,65,93';
-   g_theme.text=C'234,245,255';
-   g_theme.muted=C'139,160,184';
-   g_theme.cyan=C'82,215,255';
-   g_theme.green=C'69,213,161';
-   g_theme.amber=C'243,189,98';
-   g_theme.red=C'255,111,125';
-}
-
-void DeletePanel()
-{
-   int total=ObjectsTotal(0,0,-1);
-   for(int i=total-1;i>=0;i--)
-   {
-      string name=ObjectName(0,i,0,-1);
-      if(StringFind(name,SB_PREFIX)==0) ObjectDelete(0,name);
-   }
-}
-
-void Rect(const string id,const int x,const int y,const int w,const int h,const color bg,const color border)
-{
-   string name=SB_PREFIX+id;
-   if(ObjectFind(0,name)<0) ObjectCreate(0,name,OBJ_RECTANGLE_LABEL,0,0,0);
-   ObjectSetInteger(0,name,OBJPROP_CORNER,InpPanelCorner);
-   ObjectSetInteger(0,name,OBJPROP_XDISTANCE,x);
-   ObjectSetInteger(0,name,OBJPROP_YDISTANCE,y);
-   ObjectSetInteger(0,name,OBJPROP_XSIZE,w);
-   ObjectSetInteger(0,name,OBJPROP_YSIZE,h);
-   ObjectSetInteger(0,name,OBJPROP_BGCOLOR,bg);
-   ObjectSetInteger(0,name,OBJPROP_COLOR,border);
-   ObjectSetInteger(0,name,OBJPROP_BORDER_TYPE,BORDER_FLAT);
-   ObjectSetInteger(0,name,OBJPROP_BACK,false);
-   ObjectSetInteger(0,name,OBJPROP_SELECTABLE,false);
-   ObjectSetInteger(0,name,OBJPROP_HIDDEN,true);
-   ObjectSetInteger(0,name,OBJPROP_ZORDER,20);
-}
-
-void Label(const string id,const int x,const int y,const string text,const int size,const color col,const string font="Segoe UI")
-{
-   string name=SB_PREFIX+id;
-   if(ObjectFind(0,name)<0) ObjectCreate(0,name,OBJ_LABEL,0,0,0);
-   ObjectSetInteger(0,name,OBJPROP_CORNER,InpPanelCorner);
-   ObjectSetInteger(0,name,OBJPROP_XDISTANCE,x);
-   ObjectSetInteger(0,name,OBJPROP_YDISTANCE,y);
-   ObjectSetInteger(0,name,OBJPROP_FONTSIZE,size);
-   ObjectSetInteger(0,name,OBJPROP_COLOR,col);
-   ObjectSetInteger(0,name,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
-   ObjectSetInteger(0,name,OBJPROP_SELECTABLE,false);
-   ObjectSetInteger(0,name,OBJPROP_HIDDEN,true);
-   ObjectSetInteger(0,name,OBJPROP_ZORDER,30);
-   ObjectSetString(0,name,OBJPROP_FONT,font);
-   ObjectSetString(0,name,OBJPROP_TEXT,text);
-}
-
-void Button(const string id,const int x,const int y,const int w,const int h,const string text)
-{
-   string name=SB_PREFIX+id;
-   if(ObjectFind(0,name)<0) ObjectCreate(0,name,OBJ_BUTTON,0,0,0);
-   ObjectSetInteger(0,name,OBJPROP_CORNER,InpPanelCorner);
-   ObjectSetInteger(0,name,OBJPROP_XDISTANCE,x);
-   ObjectSetInteger(0,name,OBJPROP_YDISTANCE,y);
-   ObjectSetInteger(0,name,OBJPROP_XSIZE,w);
-   ObjectSetInteger(0,name,OBJPROP_YSIZE,h);
-   ObjectSetInteger(0,name,OBJPROP_BGCOLOR,g_theme.bg);
-   ObjectSetInteger(0,name,OBJPROP_COLOR,g_theme.muted);
-   ObjectSetInteger(0,name,OBJPROP_BORDER_COLOR,g_theme.border);
-   ObjectSetInteger(0,name,OBJPROP_FONTSIZE,8);
-   ObjectSetInteger(0,name,OBJPROP_HIDDEN,true);
-   ObjectSetInteger(0,name,OBJPROP_ZORDER,40);
-   ObjectSetString(0,name,OBJPROP_FONT,"Segoe UI");
-   ObjectSetString(0,name,OBJPROP_TEXT,text);
-}
-
-void Metric(const string key,const int x,const int y,const string title,const string value,const color col)
-{
-   Rect("metric_"+key,x,y,78,54,g_theme.bg2,g_theme.border);
-   Label("metric_k_"+key,x+8,y+7,title,7,g_theme.muted,"Consolas");
-   Label("metric_v_"+key,x+8,y+24,value,10,col,"Consolas");
-}
-
-void KV(const string key,const int x,const int y,const string left,const string right,const color col)
-{
-   Label("kv_l_"+key,x,y,left,8,g_theme.muted);
-   Label("kv_r_"+key,x+118,y,right,8,col,"Consolas");
-}
-
-void RenderPanel()
-{
-   if(!InpShowPanel){ DeletePanel(); return; }
-
-   int x=InpPanelX,y=InpPanelY;
-   int w=(InpPanelWidth<356?356:InpPanelWidth);
-   int h=(g_compact?132:326);
-
-   Rect("root",x,y,w,h,g_theme.bg,g_theme.border);
-   Rect("head",x+1,y+1,w-2,44,g_theme.bg2,g_theme.border);
-
-   string broker=AccountInfoString(ACCOUNT_COMPANY);
-   string server=AccountInfoString(ACCOUNT_SERVER);
-   long login=AccountInfoInteger(ACCOUNT_LOGIN);
-   bool termAllowed=(bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
-   bool mqlAllowed=(bool)MQLInfoInteger(MQL_TRADE_ALLOWED);
-   bool connected=(bool)TerminalInfoInteger(TERMINAL_CONNECTED);
-
-   Label("title",x+12,y+8,"SignalBridge EA · "+_Symbol,10,g_theme.text);
-   Label("account",x+12,y+25,broker+" · #"+Num(login)+" · "+MarginMode(),7,g_theme.muted,"Consolas");
-   Label("status",x+w-120,y+10,(connected?"● CONNECTED":"● OFFLINE"),8,(connected?g_theme.green:g_theme.red),"Consolas");
-   Button("compact",x+w-98,y+24,82,17,(g_compact?"EXPAND":"COMPACT"));
-
-   if(g_compact)
-   {
-      Label("compact_eq",x+12,y+59,"Equity  "+Money(AccountInfoDouble(ACCOUNT_EQUITY)),9,g_theme.text,"Consolas");
-      double pnl=AccountInfoDouble(ACCOUNT_PROFIT);
-      Label("compact_pnl",x+12,y+80,"Floating  "+Money(pnl),9,(pnl>=0?g_theme.green:g_theme.red),"Consolas");
-      Label("compact_last",x+12,y+101,"Last  "+g_lastSignal,8,g_theme.cyan,"Consolas");
-      ChartRedraw(0);
-      return;
-   }
-
-   int my=y+56;
-   double equity=AccountInfoDouble(ACCOUNT_EQUITY);
-   double balance=AccountInfoDouble(ACCOUNT_BALANCE);
-   double pnl=AccountInfoDouble(ACCOUNT_PROFIT);
-
-   Metric("equity",x+12,my,"EQUITY",Money(equity),g_theme.text);
-   Metric("balance",x+96,my,"BALANCE",Money(balance),g_theme.text);
-   Metric("open",x+180,my,"OPEN",Num(CountPositionsByMagic()),g_theme.cyan);
-   Metric("pnl",x+264,my,"FLOAT",Money(pnl),(pnl>=0?g_theme.green:g_theme.red));
-
-   int by=my+69;
-   KV("signal",x+14,by,"Latest signal",g_lastSignal,g_theme.cyan);
-   KV("exec",x+14,by+22,"Execution",g_lastExecution,g_theme.text);
-   KV("position",x+14,by+44,"Position",g_lastPosition,g_theme.text);
-   KV("risk",x+14,by+66,"Risk gate",g_lastRisk,(InpEnableTrading?g_theme.amber:g_theme.green));
-   KV("algo",x+14,by+88,"Algo trading",(termAllowed&&mqlAllowed?"ENABLED":"DISABLED"),(termAllowed&&mqlAllowed?g_theme.green:g_theme.red));
-   KV("type",x+14,by+110,"Account",AccountType()+" · "+server,g_theme.muted);
-
-   Rect("events",x+12,by+136,w-24,93,g_theme.bg2,g_theme.border);
-   Label("events_title",x+22,by+144,"LIVE TERMINAL EVENTS",7,g_theme.muted,"Consolas");
-   for(int i=0;i<SB_EVENT_ROWS;i++)
-      Label("event_"+IntegerToString(i),x+22,by+160+i*17,EventLine(i),7,(i==0?g_theme.text:g_theme.muted),"Consolas");
-
-   Label("mode",x+12,y+h-19,
-      InpEnableTrading?"TRADING INPUT ON · EXECUTION TRANSPORT NOT IMPLEMENTED":"SAFE UI MILESTONE · ORDER EXECUTION DISABLED",
-      7,InpEnableTrading?g_theme.amber:g_theme.green,"Consolas");
-
-   ChartRedraw(0);
-}
-
-int OnInit()
-{
-   InitTheme();
-   g_compact=InpCompactPanel;
-   AddEvent("Transport milestone pending");
-   AddEvent("Account "+Num(AccountInfoInteger(ACCOUNT_LOGIN))+" detected");
-   AddEvent("EA UI initialized");
-   if(InpEnableTrading) AddEvent("WARNING: execution path is disabled in v0.10");
-
-   int ms=InpRefreshMs;
-   if(ms<250) ms=250;
-   if(ms>5000) ms=5000;
-   EventSetMillisecondTimer(ms);
-   RenderPanel();
-   return INIT_SUCCEEDED;
-}
-
-void OnDeinit(const int reason)
-{
-   EventKillTimer();
-   DeletePanel();
-   ChartRedraw(0);
-}
-
-void OnTimer(){ RenderPanel(); }
+int OnInit(){g_compact=InpCompact;PendingLoad();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;EventSetMillisecondTimer(ms);EnsureAgent();RenderPanel();return INIT_SUCCEEDED;}
+void OnDeinit(const int reason){EventKillTimer();DisconnectAgent();DeletePanel();ChartRedraw(0);}
 void OnTick(){}
-
-void OnTradeTransaction(const MqlTradeTransaction &trans,
-                        const MqlTradeRequest &request,
-                        const MqlTradeResult &result)
-{
-   string info="Trade event type="+Num((long)trans.type);
-   if(result.retcode>0) info+=" retcode="+Num((long)result.retcode);
-   AddEvent(info);
-   g_lastExecution=info;
-   RenderPanel();
-}
-
-void OnChartEvent(const int id,const long &lparam,const double &dparam,const string &sparam)
-{
-   if(id!=CHARTEVENT_OBJECT_CLICK) return;
-   if(sparam==SB_PREFIX+"compact")
-   {
-      g_compact=!g_compact;
-      DeletePanel();
-      AddEvent(g_compact?"Panel switched to compact mode":"Panel expanded");
-      RenderPanel();
-   }
-}
+void OnTimer(){EnsureAgent();PumpAgent();ulong now=GetTickCount64();if(AgentConnected()&&now-g_lastHb>2000)SendHeartbeat();if(AgentConnected()&&HasPending()&&now-g_lastReconcile>2000){g_lastReconcile=now;ReconcilePending();}RenderPanel();}
+void OnTradeTransaction(const MqlTradeTransaction &trans,const MqlTradeRequest &request,const MqlTradeResult &result){if(trans.type!=TRADE_TRANSACTION_DEAL_ADD||trans.deal==0)return;if(!HistoryDealSelect(trans.deal))return;if((long)HistoryDealGetInteger(trans.deal,DEAL_MAGIC)!=InpMagic)return;if((ENUM_DEAL_ENTRY)HistoryDealGetInteger(trans.deal,DEAL_ENTRY)!=DEAL_ENTRY_IN)return;string comment=HistoryDealGetString(trans.deal,DEAL_COMMENT);if(StringFind(comment,"SB:")!=0)return;string tag=StringSubstr(comment,3),id=ResolvePending(tag);if(id=="")return;if(Receipt(id,"FILLED",N64((long)trans.deal),0,"broker deal confirmed"))ClearPending(tag);}
+void OnChartEvent(const int id,const long &lparam,const double &dparam,const string &sparam){if(id==CHARTEVENT_OBJECT_CLICK&&sparam==SBP+"compact"){g_compact=!g_compact;DeletePanel();RenderPanel();}}
 //+------------------------------------------------------------------+

@@ -1,87 +1,84 @@
 # SignalBridge — Delivery Roadmap
-Updated 2026-10-28 · Free-first deployment strategy
-
-## Infrastructure policy
-
-Launch on Cloudflare Free. Begin Paid migration after ~500 DAU or earlier if usage reaches the operating thresholds in [CLOUDFLARE_FREE_FIRST.md](CLOUDFLARE_FREE_FIRST.md). Complete the migration before routine operation around 1,000 DAU.
+Updated 2026-10-28
 
 ## Milestone 0 — Product and architecture
-- [x] Product blueprint and information architecture
-- [x] Security/risk and API design
-- [x] Premium responsive UI prototype
-- [x] Free-first Cloudflare capacity and migration plan
-- [ ] Canonical JSON Schema/golden fixtures for every trade action
+- [x] Product blueprint and security model
+- [x] Premium UI references
+- [x] Free-first Cloudflare capacity plan
+- [x] Realtime Windows Agent architecture
 
-## Milestone 1 — Free ingress foundation
-- [x] TradingView Worker ingress code
-- [x] D1 schema and connection-token helper
-- [x] Persist-before-accept idempotency path
-- [x] 49 automated parser/risk/ingress tests
-- [ ] Provision dedicated Free `signalbridge-ingress` D1 database
-- [ ] Deploy dedicated Free `drfx-signalbridge-ingress` Worker
-- [ ] Apply production/staging migrations
-- [ ] Measure Worker CPU and D1 row amplification
-- [ ] Add quota/abuse monitoring and credential rotation
-
-**Exit:** real TradingView demo webhook is durably stored on Cloudflare Free with measured resource cost and no trading side effects.
+## Milestone 1 — Cloudflare ingress
+- [x] Dedicated D1 database
+- [x] Deployed Worker on `signalbridge.drfx.online`
+- [x] TradingView token authentication and durable idempotency
+- [x] GOD MODE tagged alert parser
+- [x] Telegram webhook + one-time pairing
+- [x] D1 command state
+- [x] Durable Object Agent Hub
+- [x] PENDING redispatch and Telegram partial-failure recovery
+- [ ] Production quota/abuse dashboards and alerting
+- [ ] Final zone rate-limit policy verification
 
 ## Milestone 2 — Realtime Agent transport
-- [ ] Implement account-scoped Durable Object Agent Hub
-- [ ] Use Hibernatable WebSockets
-- [ ] Build lightweight Windows SignalBridge Agent
-- [ ] Agent enrollment, heartbeat and reconnect reconciliation
-- [ ] Low-frequency HTTP recovery fallback
-- [ ] Prove no per-terminal high-frequency polling is required
-- [ ] Load test 100 → 250 → 500 simultaneous Agent sessions
+- [x] Hibernatable Durable Object WebSocket
+- [x] Windows Agent
+- [x] localhost TCP MT5 bridge
+- [x] separate Agent-online vs MT5-online state
+- [x] read-only dashboard observer WebSocket
+- [x] no high-frequency terminal HTTP polling
+- [ ] 100 → 250 → 500 simulated Agent load suite
 
-**Exit:** 500 simulated agent sessions can remain connected within Free operating budgets under representative sparse signal traffic.
+## Milestone 3 — MT5 DEMO execution
+- [x] DEMO-only BUY/SELL
+- [x] broker-side SL/TP/spread/volume validation
+- [x] risk-percent sizing from broker contract values
+- [x] broker retcode and `OnTradeTransaction`
+- [x] persistent pending-submission ledger in EA v0.22
+- [x] restart reconciliation / unresolved-replay block
+- [x] GOD MODE TP/SL/CLOSE correlation
+- [x] hedging TP1/TP2 partial management
+- [ ] MetaEditor compile certification
+- [ ] real DEMO E2E execution test
+- [ ] netting TP1/TP2 implementation and test
+- [ ] broker matrix / symbol suffix validation
 
-## Milestone 3 — MT5 demo execution
-- [ ] Implement `DrFX_SignalBridge_EA.mq5`
-- [ ] Bind Agent to exact account/server identity
-- [ ] Demo-only market BUY/SELL and correlated CLOSE
-- [ ] Symbol mapping and contract-spec validation
-- [ ] Broker retcode / OnTradeTransaction reconciliation
-- [ ] Restart/unknown-state/duplicate tests
-- [ ] Hedging and netting demo accounts
+## Milestone 4 — Live Dashboard
+- [x] backend-backed `/dashboard`
+- [x] authenticated D1 summary
+- [x] realtime terminal/account observer socket
+- [x] realtime broker receipt events
+- [x] integrated test-signal control
+- [ ] production owner/session authentication
+- [ ] multi-Agent/account selector
+- [ ] richer charts/latency/quota telemetry
 
-**Exit:** one command creates at most one intended demo broker action and every outcome is reconciled.
-
-## Milestone 4 — Telegram
-- [ ] Real Telegram Bot webhook
-- [ ] Per-channel authorization/allowlist
-- [ ] Deterministic parser in production path
-- [ ] Edited-message revisions
+## Milestone 5 — Telegram expansion
+- [x] Telegram → MT5 deterministic DEMO route
+- [x] chat/channel pairing
+- [x] retry-safe update idempotency
+- [ ] richer multilingual production parser
+- [ ] edited-message revision workflow
 - [ ] TradingView → Telegram notifications
-- [ ] MT5 → Telegram verified status notifications
-- [ ] Mini App secure initData validation
+- [ ] MT5 → Telegram execution/status notifications
+- [ ] Telegram Mini App
 
-## Milestone 5 — Free beta
+## Milestone 6 — Free beta and scale
 - [ ] 50-user internal beta
 - [ ] 100-user closed beta
-- [ ] 250 DAU load/cost review
-- [ ] 350 DAU capacity-watch mode
-- [ ] 500 DAU scale-readiness review
-- [ ] Keep normal usage <= 50–60% of critical quotas
-- [ ] Preserve quota reserve for ingress and agent traffic
+- [ ] 250 DAU cost/reliability review
+- [ ] 350 DAU capacity watch
+- [ ] 500 DAU paid-migration decision gate
 
-## Milestone 6 — Paid migration
-Trigger: >500 DAU **or** sustained quota pressure, whichever comes first.
+## Paid migration
+Begin after >500 DAU or earlier sustained quota pressure. Complete before routine ~1,000 DAU operation.
 
-- [ ] Enable Workers Paid
-- [ ] Introduce Queues + dead-letter dispatch
-- [ ] Shard D1 by measured tenant/account pressure
-- [ ] Increase observability/retention
-- [ ] Run 1,000 DAU / burst load suite
-- [ ] Complete migration before routine ~1,000 DAU operation
-
-## Later
-- Managed Windows MT5 hosting
-- Advanced multi-account portfolio risk
-- Enterprise roles/API
-- AI-assisted extraction with deterministic safety gate
-- Image signal parsing with human review
+Planned additions:
+- Workers Paid
+- Queues + dead-letter dispatch where measured usage justifies it
+- D1 sharding by tenant/account pressure
+- longer observability retention
+- 1,000 DAU burst/load suite
 
 ## Definition of Done
 
-Each milestone requires code review, tests, operational documentation, resource measurements, explicit error states and auditable trade lifecycle evidence. No synthetic UI state is represented as a deployed capability.
+A feature is complete only when code, tests, operational documentation, measured resource usage and failure behavior agree. Synthetic UI state must never be represented as live production telemetry.

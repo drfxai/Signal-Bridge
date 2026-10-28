@@ -11,10 +11,16 @@
 - Optional user-account MTProto connector is **not** MVP; would require separate consent, session encryption/revocation, operational/legal review and careful handling of Telegram terms. Never request raw session strings through the UI.
 - Explicit per-channel allowlist and user-visible access status.
 
+## Current pairing and ingestion
+
+The deployed DEMO beta requires a one-time `/signalbridge_pair <code>` command before a chat/channel becomes the allowed source. The code hash is stored server-side and is invalidated after a successful atomic claim. An arbitrary first message cannot claim the route.
+
+Telegram `update_id` is durably deduplicated. If persistence succeeds but command creation/dispatch fails, a Telegram retry can reconstruct the normalized signal and retry the same update-scoped command rather than silently losing it.
+
 ## Parsing pipeline
 Telegram update → verify origin → deduplicate update_id/message_id/edit revision → classify signal/non-signal → deterministic parse → normalized candidate → symbol resolver → ambiguity gate → risk policy → command route.
 
-Recognize actions OPEN, MODIFY_SL, MODIFY_TP, PARTIAL_CLOSE, CLOSE, CANCEL with evidence from source and correlation to prior trade. Edited Telegram messages become revisions, never brand-new OPEN by default.
+The current production parser automatically routes a strict OPEN BUY/SELL format with explicit symbol, lot, SL and one to three TPs. Rich MODIFY/PARTIAL_CLOSE/CLOSE parsing and edited-message revisions remain planned and must not be inferred from ambiguous text.
 
 **Examples for tests only**
 - 'BUY GOLD 2500 SL 2490 TP1 2510 TP2 2520 TP3 2530'
