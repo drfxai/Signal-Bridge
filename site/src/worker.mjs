@@ -285,7 +285,7 @@ async function telegramWebhook(req,env){
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=text.split(' ')[0].split('@')[0];
- if(!['/start','/login','/me','/code','/link','/admin','/grant'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/login','/me','/code','/link','/admin','/users','/detail','/grant','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  if(user&&user.status!=='active'){await botSend(env,chatId,'Your account is suspended. Contact support.');return json({ok:true});}
@@ -338,6 +338,31 @@ async function telegramWebhook(req,env){
  }else if(command==='/admin'&&user.role==='admin'){
   const stats=await env.DB.prepare('SELECT COUNT(*) AS total,SUM(CASE WHEN plan="quarterly" THEN 1 ELSE 0 END) AS quarter,SUM(CASE WHEN plan="annual" THEN 1 ELSE 0 END) AS annual FROM site_users').first();
   await botSend(env,chatId,'DrFX Admin\nUsers: '+stats.total+'\nQuarterly: '+stats.quarter+'\nAnnual: '+stats.annual+'\nFull management: '+API_ORIGIN);
+ }else if(command==='/users'&&user.role==='admin'){
+  const r=await env.DB.prepare("SELECT id,email,telegram_name,telegram_id,plan,status FROM site_users ORDER BY created_at DESC LIMIT 15").all();
+  const message=(r.results||[]).map(x=>'<code>'+x.id+'</code> | '+safeText(x.email||x.telegram_name||x.telegram_id||'member',60)+' | '+x.plan+' | '+x.status).join('\n');
+  await botSend(env,chatId,'👥 <b>Recent DrFX members</b>\n'+(message||'No users')+'\nFull management: '+API_ORIGIN);
+ }else if(['/detail','/suspend','/resume','/revoke'].includes(command)&&user.role==='admin'){
+  const target=text.split(/\s+/)[1]||'';
+  if(!/^usr_[0-9a-f]{32}$/.test(target)){await botSend(env,chatId,'Usage: '+command+' usr_...');return json({ok:true});}
+  const recipient=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(target).first();
+  if(!recipient){await botSend(env,chatId,'User not found.');return json({ok:true});}
+  if(command==='/detail'){
+   const lic=await env.DB.prepare("SELECT l.status,l.expires_at,l.account_login,l.account_server FROM site_licenses sl JOIN ea_licenses l ON sl.license_id=l.id WHERE sl.user_id=?").bind(target).first();
+   await botSend(env,chatId,'<b>Member</b>\n<code>'+recipient.id+'</code>\nEmail: '+safeText(recipient.email||'Not linked')+'\nTelegram: '+safeText(recipient.telegram_id||'Not linked')+'\nPlan: '+recipient.plan+'\nStatus: '+recipient.status+'\nLicense: '+(lic?.status||'None')+'\nExpires: '+(lic?.expires_at||'Not activated')+'\nMT5: '+safeText(lic?.account_login||'Not bound'));
+  }else{
+   if(target===user.id){await botSend(env,chatId,'Cannot suspend or revoke your own admin account.');return json({ok:true});}
+   if(command==='/revoke'){
+    await env.DB.prepare("UPDATE ea_licenses SET status='revoked',updated_at=CURRENT_TIMESTAMP WHERE agent_id=(SELECT agent_id FROM site_licenses WHERE user_id=?)").bind(target).run();
+   }else{
+    await env.DB.batch([
+     env.DB.prepare('UPDATE site_users SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(command==='/suspend'?'suspended':'active',target),
+     env.DB.prepare("UPDATE ea_licenses SET status=?,updated_at=CURRENT_TIMESTAMP WHERE agent_id=(SELECT agent_id FROM site_licenses WHERE user_id=?)").bind(command==='/suspend'?'revoked':'active',target)
+    ]);
+   }
+   await audit(env,user.id,'bot_'+command.slice(1),target);
+   await botSend(env,chatId,'✅ '+command.slice(1)+' applied to <code>'+target+'</code>');
+  }
  }else if(command==='/grant'&&user.role==='admin'){
   const args=text.split(/\s+/),target=args[1],plan=args[2];
   if(!/^usr_[0-9a-f]{32}$/.test(target||'')||!['trial','quarterly','annual'].includes(plan)){
