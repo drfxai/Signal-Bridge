@@ -1,5 +1,5 @@
 // Offline-only SignalBridge Cloudflare Free capacity model.
-// No fetch(), WebSocket, DNS, or external network access is used by this file.
+// This model performs no network I/O, DNS, sockets, or external service calls.
 export const FREE_LIMITS=Object.freeze({
  workerRequestsPerDay:100_000,
  d1RowsReadPerDay:5_000_000,
