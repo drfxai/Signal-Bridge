@@ -174,11 +174,20 @@ async function handleTelegram(request,env,connectionId){
   'INSERT INTO telegram_updates (id,tenant_id,connection_id,update_id,chat_id,text_sha256,normalized_json) VALUES (?,?,?,?,?,?,?) ON CONFLICT(connection_id,update_id) DO NOTHING'
  ).bind(crypto.randomUUID(),conn.tenant_id,conn.id,updateId,chatId,textHash,normalized).run();
  if(!ins?.success)return error('SERVICE_UNAVAILABLE',503);
- if(ins.meta?.changes!==1)return json({ok:true,duplicate:true});
- if(!parsed.ok)return json({ok:true,ignored:parsed.reason});
 
- const dispatch=await createAndDispatch(env,{tenantId:conn.tenant_id,agentId:conn.agent_id,sourceType:'telegram',sourceRef:conn.id,signal:parsed.signal,mode:conn.delivery_mode});
- return json({ok:true,command_id:dispatch.command_id,dispatch_status:dispatch.status});
+ let signal=parsed.ok?parsed.signal:null,duplicate=ins.meta?.changes!==1;
+ if(duplicate){
+  const prior=await env.DB.prepare('SELECT text_sha256,normalized_json FROM telegram_updates WHERE connection_id=? AND update_id=? LIMIT 1').bind(conn.id,updateId).first();
+  if(!prior)return error('SERVICE_UNAVAILABLE',503);
+  if(prior.text_sha256!==textHash)return json({ok:true,ignored:'UPDATE_ID_CONFLICT'});
+  if(!prior.normalized_json)return json({ok:true,duplicate:true,ignored:parsed.ok?'PREVIOUSLY_IGNORED':parsed.reason});
+  try{signal=JSON.parse(prior.normalized_json)}catch{return error('SERVICE_UNAVAILABLE',503)}
+ }
+ if(!signal)return json({ok:true,ignored:parsed.reason});
+
+ const sourceRef='tg:'+conn.id+':'+updateId;
+ const dispatch=await createAndDispatch(env,{tenantId:conn.tenant_id,agentId:conn.agent_id,sourceType:'telegram',sourceRef,signal,mode:conn.delivery_mode});
+ return json({ok:true,duplicate,command_id:dispatch.command_id,dispatch_status:dispatch.status,delivered:dispatch.delivered,reason:dispatch.reason||null});
 }
 
 export async function handleRequest(request,env){
@@ -202,7 +211,8 @@ export async function handleRequest(request,env){
  const tg=url.pathname.match(/^\/v1\/ingress\/telegram\/([A-Za-z0-9_-]{8,80})$/);
  if(tg){
   if(request.method!=='POST')return new Response(null,{status:405,headers:{...headers,allow:'POST'}});
-  return handleTelegram(request,env,tg[1]);
+  try{return await handleTelegram(request,env,tg[1])}
+  catch(e){console.error('telegram ingress',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}
  }
 
  if(/^\/v1\/ingress\/tradingview\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)){
