@@ -1,4 +1,5 @@
 import { SITE_HTML, SITE_CSS, SITE_JS, DESIGN_JS } from './ui.mjs';
+import { TAILWIND_CSS } from './tailwind.mjs';
 
 const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
@@ -427,8 +428,9 @@ async function api(req,env){
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
-  if(request.method==='GET'&&url.pathname==='/')return new Response(SITE_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests"}});
+  if(request.method==='GET'&&url.pathname==='/')return new Response(SITE_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests"}});
   if(request.method==='GET'&&url.pathname==='/assets/app.css')return asset(SITE_CSS,'text/css; charset=utf-8');
+  if(request.method==='GET'&&url.pathname==='/assets/tailwind.css')return asset(TAILWIND_CSS,'text/css; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/app.js')return asset(SITE_JS,'text/javascript; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/design.js')return asset(DESIGN_JS+"\nfunction showToast(message){const t=document.getElementById('toast');if(!t)return;t.textContent=message;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),3400)}\nfunction copyToClipboard(value,message){navigator.clipboard.writeText(value).then(()=>showToast(message)).catch(()=>showToast('Clipboard unavailable'))}\n",'text/javascript; charset=utf-8');
   if(url.pathname.startsWith('/api/')){

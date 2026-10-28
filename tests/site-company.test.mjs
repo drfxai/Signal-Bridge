@@ -141,7 +141,30 @@ test('pricing handoff and sign out are guarded against stale auth states',()=>{
  assert.ok(SITE_JS.includes("url.hostname==='nowpayments.io'||url.hostname.endsWith('.nowpayments.io')"));
  assert.ok(!SITE_JS.includes("!url.hostname.endsWith('nowpayments.io')"));
  assert.match(SITE_JS,/Logout request could not be confirmed/);
- assert.match(SITE_HTML,/Instrument Serif/);
+ assert.match(SITE_HTML,/Instrument(?:\+| )Serif/);
  assert.ok(!SITE_CSS.includes('fonts.googleapis.com'));
 });
 
+
+test('approved HTML is production-ready with self-hosted Tailwind and real membership controls',async()=>{
+ const { TAILWIND_CSS } = await import('../site/src/tailwind.mjs');
+ assert.ok(TAILWIND_CSS.length>18000);
+ assert.match(TAILWIND_CSS,/\.bg-obsidian/);
+ assert.match(TAILWIND_CSS,/\.text-gold/);
+ assert.ok(SITE_HTML.includes('/assets/tailwind.css?v=20261028-cinematic'));
+ assert.ok(!SITE_HTML.includes('cdn.tailwindcss.com'));
+ assert.ok(!SITE_HTML.includes('tailwind.config'));
+ assert.ok(!SITE_JS.includes('simulateAuthCodeSend'));
+ assert.ok(!DESIGN_JS.includes('completeDemoLogin'));
+ assert.ok(!DESIGN_JS.includes('regenerateSerialKey'));
+ assert.ok(SITE_HTML.includes('data-plan="quarterly"'));
+ assert.ok(SITE_HTML.includes('data-plan="annual"'));
+ assert.ok(SITE_HTML.includes('SIMULATED'));
+ assert.ok(SITE_HTML.includes('DEMO CHART'));
+ assert.ok(DESIGN_JS.includes('DEMO · XAUUSD BUY'));
+ const response=await handler.fetch(new Request('https://drfx.company/assets/tailwind.css'),{});
+ assert.equal(response.status,200);
+ assert.match(response.headers.get('content-type'),/text\/css/);
+ assert.ok((await response.text()).length>18000);
+ assert.ok(!worker.includes('cdn.tailwindcss.com'));
+});
