@@ -22,7 +22,7 @@ function oneField(text,labelSource,{required=false,code='INVALID_FIELD'}={}){
  const values=valuesAfter(text,labelSource);
  if(values.length>1)return {error:'DUPLICATE_'+code};
  if(!values.length)return required?{error:code+'_REQUIRED'}:{value:null};
- if(!POSITIVE(values[0]))return {error:code};
+ if(!POSITIVE(values[0]))return {error:'INVALID_'+code};
  return {value:values[0]};
 }
 function canonicalSymbols(text){
