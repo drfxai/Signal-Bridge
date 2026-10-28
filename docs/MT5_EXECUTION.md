@@ -45,7 +45,7 @@ ENTRY uses risk-based or fixed-lot sizing depending on the normalized command.
 
 TP3, SL and CLOSE close the correlated position.
 
-TP1/TP2 partial management supports both hedging and netting/exchange account modes. Hedging uses `PositionClosePartial`. Netting reduces the existing position with an opposite market deal to an absolute remaining-volume target, preserving replay idempotency. To prevent ownership ambiguity, a new SignalBridge OPEN on a netting symbol is rejected whenever **any** position already exists on that symbol.
+TP1/TP2 partial management supports both hedging and retail-netting account modes. Hedging uses `PositionClosePartial`. Retail netting reduces the existing position with an opposite market deal to an absolute remaining-volume target, preserving replay idempotency. To prevent ownership ambiguity, a new SignalBridge OPEN on a netting symbol is rejected whenever **any** position already exists on that symbol.
 
 ## Native panel
 
