@@ -32,7 +32,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 @media(min-width:681px){nav.bottom{padding-inline:max(16px,calc((100% - 660px)/2))}.container{padding-inline:22px}.hero{padding-top:33px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
-<script src="/assets/telegram-mini.js?v=20261028-mobile-v4" defer></script></head>
+<script src="/assets/telegram-mini.js?v=20261028-mobile-v5" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
@@ -148,8 +148,8 @@ export const MINI_JS=String.raw`(() => {
  async function offerBotLaunch(){
   $('launchHint').hidden=false;
   $('launchHint').textContent=ui(
-   'Return to the official Signal Bridge bot, send /start, then tap Open DrFX Mini App — not Open website.',
-   'به بات رسمی Signal Bridge برگردید، /start را ارسال کنید و روی Open DrFX Mini App بزنید؛ نه Open website.'
+   'Return to the official Signal Bridge bot. Send /code to receive your private EA serial, or tap Open DrFX Mini App for the dashboard — not Open website.',
+   'به بات رسمی Signal Bridge برگردید. برای دریافت کد EA دستور /code را بفرستید یا دکمه Open DrFX Mini App را بزنید؛ نه Open website.'
   );
   try{
    const health=await api('/api/telegram/health');
@@ -274,11 +274,20 @@ export const MINI_JS=String.raw`(() => {
    }
   }catch(error){
    clearPrivateAccount();
-   const reason=error.message==='INVALID_TELEGRAM_INIT_DATA'?
-     ui('Telegram verification expired. Close this page and reopen it from the bot.','اعتبار تأیید تلگرام تمام شده است. صفحه را ببندید و از بات دوباره باز کنید.'):
-     ui('Connection unavailable. Retry or reopen the Mini App from the bot.','ارتباط برقرار نشد. دوباره تلاش کنید یا مینی‌اپ را از بات باز کنید.');
+   let reason;
+   if(error.message==='TELEGRAM_INIT_DATA_EXPIRED'){
+     reason=ui('This Telegram session is too old. Fully close the Mini App and launch it from the bot again.','اطلاعات ورود تلگرام قدیمی است. مینی‌اپ را کاملاً ببندید و دوباره از داخل بات باز کنید.');
+   }else if(error.message==='INVALID_TELEGRAM_INIT_DATA'){
+     reason=ui('Telegram identity could not be verified. Reopen through the official bot, not a browser link.','امضای هویت تلگرام تأیید نشد. مینی‌اپ را از دکمه بات رسمی باز کنید، نه لینک مرورگر.');
+   }else if(error.message==='RATE_LIMITED'){
+     reason=ui('Too many sign-in attempts. Try again after a short break.','تلاش‌های ورود بیش از حد است؛ کمی بعد دوباره امتحان کنید.');
+   }else if(error.message==='LICENSING_NOT_READY'){
+     reason=ui('Telegram sign-in reached the server, but EA licensing is temporarily unavailable. You can request your code using /code in the bot.','ورود تلگرام به سرور رسید اما سرویس لایسنس در دسترس نیست. دستور /code را در بات امتحان کنید.');
+   }else{
+     reason=ui('Connection unavailable. Retry or reopen the Mini App from the bot.','ارتباط برقرار نشد. دوباره تلاش کنید یا مینی‌اپ را از بات باز کنید.');
+   }
    message(reason,'error');$('retrySignIn').hidden=false;
-   if(!tg?.initData||error.message==='INVALID_TELEGRAM_INIT_DATA')await offerBotLaunch();
+   if(!tg?.initData||['INVALID_TELEGRAM_INIT_DATA','TELEGRAM_INIT_DATA_EXPIRED','LICENSING_NOT_READY'].includes(error.message))await offerBotLaunch();
   }finally{signInRunning=false;$('retrySignIn').disabled=false;}
  }
  $('retrySignIn').addEventListener('click',start);

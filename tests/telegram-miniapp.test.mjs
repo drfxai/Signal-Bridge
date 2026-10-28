@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { verifyTelegramInitData } from '../site/src/telegram-auth.mjs';
+import { verifyTelegramInitData, inspectTelegramInitData, TELEGRAM_INITDATA_MAX_AGE_SECONDS } from '../site/src/telegram-auth.mjs';
 import { MINI_HTML, MINI_JS } from '../site/src/telegram-mini.mjs';
 import worker from '../site/src/worker.mjs';
 import { readFileSync } from 'node:fs';
@@ -24,7 +24,8 @@ test('server validates authentic Telegram Mini App HMAC, identity and expiry',as
  const data=await signed([['user',JSON.stringify({id:912345670,first_name:'Ada',username:'secure_trader'})],['query_id','AA_demo'],['auth_date',at]]);
  const identity=await verifyTelegramInitData(data,token,now);
  assert.deepEqual(identity,{id:'912345670',name:'secure_trader'});
- assert.equal(await verifyTelegramInitData(data,token,now+16*60*1000),null);
+ assert.deepEqual(await verifyTelegramInitData(data,token,now+2*60*60*1000),identity); // Telegram Android may resume an older Mini App WebView.
+ assert.equal(await verifyTelegramInitData(data,token,now+7*60*60*1000),null);
  const tampered=data.replace('secure_trader','impostor');
  assert.equal(await verifyTelegramInitData(tampered,token,now),null);
  assert.equal(await verifyTelegramInitData(data,token+'a',now),null);
@@ -80,7 +81,7 @@ test('the existing bot uses Telegram web_app buttons and does not silently merge
  assert.match(source,/web_app:\{url:API_ORIGIN\+'\/telegram'\}/);
  assert.match(source,/command==='\/app'/);
  assert.match(source,/getOrCreateTelegram\(env,principal\.id,principal\.name\)/);
- assert.match(source,/verifyTelegramInitData\(body\.init_data,env\.TELEGRAM_BOT_TOKEN\)/);
+ assert.match(source,/inspectTelegramInitData\(body\.init_data,env\.TELEGRAM_BOT_TOKEN\)/);
  assert.match(source,/if\(user\.plan!=='trial'\|\|secondary\?\.activated_at\|\|activity\)/);
  assert.match(source,/\/api\/auth\/telegram\/code/);
 });
@@ -148,7 +149,7 @@ test('Mini App clears private EA activation material on failed session refresh',
  assert.match(MINI_JS,/catch\(error\)\{\s*clearPrivateAccount\(\)/);
  assert.match(MINI_HTML,/id="retrySignIn"[^>]*hidden/);
  assert.match(MINI_JS,/\$\('retrySignIn'\)\.addEventListener\('click',start\)/);
- assert.match(MINI_HTML,/telegram-mini\.js\?v=20261028-mobile-v4/);
+ assert.match(MINI_HTML,/telegram-mini\.js\?v=20261028-mobile-v5/);
 });
 test('Persian translation covers account safety, MT5 onboarding, and error states',()=>{
  for(const label of [
@@ -172,6 +173,35 @@ test('external mobile browser offers a verified Telegram bot link instead of pre
  assert.match(MINI_JS,/await offerBotLaunch\(\)/);
  assert.match(MINI_JS,/if\(tg\?\.initData&&state\.telegramEnabled\)/);
  assert.ok(!MINI_JS.includes('initDataUnsafe'));
- assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261028-mobile-v4'));
+ assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261028-mobile-v5'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
+});
+
+
+test('official Telegram signed initData reference verifies cryptographically',async()=>{
+ // Public reference vector from Telegram Mini Apps documentation, not a real user secret.
+ const sampleToken='5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8';
+ const raw='query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2';
+ const result=await inspectTelegramInitData(raw,sampleToken,1662771700*1000);
+ assert.equal(result.reason,null);
+ assert.deepEqual(result.principal,{id:'279058397',name:'vdkfrost'});
+});
+test('separate signed expiration from bad signature without exposing sensitive data',async()=>{
+ assert.equal(TELEGRAM_INITDATA_MAX_AGE_SECONDS,21600);
+ const now=Date.now(),at=String(Math.floor(now/1000)-2*60*60);
+ const valid=await signed([['auth_date',at],['user',JSON.stringify({id:912345670,first_name:'Ada'})]]);
+ const good=await inspectTelegramInitData(valid,token,now);
+ assert.equal(good.reason,null);
+ const expired=await inspectTelegramInitData(valid,token,now+7*60*60*1000);
+ assert.equal(expired.principal,null);
+ assert.equal(expired.reason,'EXPIRED');
+ const bad=await inspectTelegramInitData(valid.replace('Ada','Mallory'),token,now);
+ assert.equal(bad.principal,null);
+ assert.equal(bad.reason,'BAD_SIGNATURE');
+ const backend=readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
+ assert.match(backend,/if\(validation\.reason==='EXPIRED'\)return fail\('TELEGRAM_INIT_DATA_EXPIRED',401\)/);
+ assert.match(MINI_JS,/error\.message==='TELEGRAM_INIT_DATA_EXPIRED'/);
+ assert.match(MINI_JS,/error\.message==='INVALID_TELEGRAM_INIT_DATA'/);
+ assert.match(MINI_JS,/\/code/);
+ assert.ok(!JSON.stringify(expired).includes('Ada'));
 });
