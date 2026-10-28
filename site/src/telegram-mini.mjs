@@ -9,7 +9,7 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .container{position:relative;margin:0 auto;max-width:680px;width:100%;padding:0 16px}
 .brand-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 0 16px;border-bottom:1px solid #ffffff12}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}.mark{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:11px;border:1px solid #bc9c5f;background:linear-gradient(140deg,#423522,#141316 70%);box-shadow:inset 0 1px #fff2,0 0 15px #cb9c4423;color:#f5d592;font-size:15px;font-weight:900;letter-spacing:-.1em}.brandname{min-width:0}.brandname .name{display:block;font-weight:800;letter-spacing:.01em;font-size:16px;line-height:1.1;white-space:nowrap}.brandname .name em{color:var(--gold-light);font-style:normal}.brandname small{display:block;color:#b0a88f;font-size:10px;font-weight:700;letter-spacing:.1em;margin-top:5px}
-.header-actions{display:flex;align-items:center;gap:8px}.lang-toggle{height:36px;min-width:46px;border:1px solid #716044;border-radius:9px;background:#15130f;color:#f6dea4;font-size:11px;font-weight:800}.chip{display:flex;align-items:center;gap:6px;max-width:122px;border-radius:9px;background:#1b1913;border:1px solid #8b744550;color:#d8c18b;padding:8px 9px;font-size:10px;font-weight:800;line-height:1.1;letter-spacing:.01em;text-align:center}.chip::before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:#dbac50;box-shadow:0 0 8px #dbac50}.chip.verified{background:#10251e;border-color:#296c4f;color:#97edc4}.chip.verified::before{background:#4bebac;box-shadow:0 0 7px #4bebac}
+.header-actions{display:flex;align-items:center;gap:8px}.lang-toggle{height:36px;min-width:54px;max-width:65px;border:1px solid #716044;border-radius:9px;background:#15130f;color:#f6dea4;font-size:11px;font-weight:800}.chip{display:flex;align-items:center;gap:6px;max-width:122px;border-radius:9px;background:#1b1913;border:1px solid #8b744550;color:#d8c18b;padding:8px 9px;font-size:10px;font-weight:800;line-height:1.1;letter-spacing:.01em;text-align:center}.chip::before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:#dbac50;box-shadow:0 0 8px #dbac50}.chip.verified{background:#10251e;border-color:#296c4f;color:#97edc4}.chip.verified::before{background:#4bebac;box-shadow:0 0 7px #4bebac}
 .hero{padding:23px 1px 16px}.eyebrow{display:flex;align-items:center;gap:8px;color:#e5bd6c;font-size:11px;font-weight:800;letter-spacing:.09em}.eyebrow::before{content:"";height:7px;width:7px;border-radius:2px;transform:rotate(45deg);background:#edc96e;box-shadow:0 0 8px #edc96e90}
 .hero h1{font:800 clamp(29px,8.5vw,42px)/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:-.045em;margin:11px 0 10px}.hero h1 em{font-style:normal;color:#ebc77d}.desc{margin:0;color:#c2c1c8;font-size:14px;line-height:1.6;max-width:560px}
 .hero-kicker{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px}.hero-kicker span{border:1px solid #ffffff1a;background:#ffffff09;border-radius:6px;padding:5px 8px;font-size:10px;color:#bab6ad;font-weight:700}.hero-kicker i{display:inline-block;margin-right:5px;background:#43daa1;width:6px;height:6px;border-radius:50%}
@@ -54,11 +54,11 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 @media(min-width:681px){nav.bottom{padding-inline:max(16px,calc((100% - 660px)/2))}.container{padding-inline:22px}.hero{padding-top:33px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
-<script src="/assets/telegram-mini.js?v=20261028-mobile-v6" defer></script></head>
+<script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
- <div class="header-actions"><button id="langToggle" class="lang-toggle" type="button" aria-label="Change language" aria-pressed="false">FA</button><span id="connection" class="chip">Checking</span></div>
+ <div class="header-actions"><select id="langToggle" class="lang-toggle" aria-label="Choose language"><option value="en">EN</option><option value="fa">FA</option><option value="ar">AR</option><option value="tr">TR</option><option value="ru">RU</option><option value="hi">HI</option></select><span id="connection" class="chip">Checking</span></div>
 </header>
 <section class="hero">
  <span class="eyebrow" data-tr="eyebrow">YOUR TRADING WORKSPACE</span>
@@ -171,25 +171,43 @@ export const MINI_JS=String.raw`(() => {
  normalizeViewport();
 
 
- const fa={eyebrow:'محیط اختصاصی معامله‌گری',hero1:'دقت بالا.',hero2:'در هر حرکت.',desc:'مرکز فرمان شخصی شما؛ هویت امن تلگرام، اشتراک سیگنال‌بریج و فعال‌سازی متاتریدر ۵ در یک محیط.',command:'مرکز فرمان',privateKey:'کد فعال‌سازی اختصاصی',connect:'اتصال به متاتریدر ۵',advantage:'اشتراک‌های شما',support:'امنیت و پشتیبانی',reveal:'نمایش کد',hide:'مخفی‌کردن کد',copy:'کپی کد فعال‌سازی',guide:'راهنمای MT5 ←',explore:'اشتراک‌ها ←',back:'بازگشت به کد فعال‌سازی ←',pricing:'مشاهده طرح‌ها در سایت ←',website:'باز کردن سایت DrFX ←',refresh:'به‌روزرسانی حساب ↻',navHome:'خانه',navEA:'اکسپرت',navPlans:'اشتراک',navHelp:'راهنما',licenseNote:'کد شخصی EA تا زمان درخواست شما مخفی است. آن را در تصاویر یا پیام‌ها منتشر نکنید.',eaKicker:'اکسپرت متاتریدر',plansKicker:'اشتراک دکتر اف‌ایکس',helpKicker:'پشتیبانی و امنیت حساب',memberCaption:'اشتراک فعلی',privateCaption:'حساب اختصاصی',mt5Caption:'اتصال متاتریدر ۵',eaCaption:'فعال‌سازی EA',memberHint:'از داخل بات رسمی تلگرام وارد شوید',mt5Hint:'حساب معاملاتی هنوز تأیید نشده است',expiryHint:'اعتبار پس از فعال‌سازی آغاز می‌شود',setupTitle:'راه‌اندازی سیگنال‌بریج',step1:'نسخه رسمی و کامپایل‌شده EX5 را در متاتریدر ۵ نصب کنید.',step2:'آدرس https://signalbridge.drfx.online را در تنظیمات Expert Advisors مجاز کنید.',step3:'کد فعال‌سازی شخصی را در اولین ورودی اکسپرت وارد کنید.',step4:'در تب Experts وضعیت تأیید لایسنس را بررسی کنید.',demoOnly:'فقط حساب دمو · معاملات واقعی غیرفعال',help1:'مینی‌اپ را از داخل بات رسمی تلگرام برای تأیید هویت باز کنید.',help2:'اتصال حساب ایمیل و تلگرام فقط پس از تأیید مالکیت انجام می‌شود.',help3:'کد فعال‌سازی EA را در تصویر یا پیام عمومی قرار ندهید.',help4:'برای مدیریت کامل حساب از داشبورد سایت استفاده کنید.',premiumNote:'* محصولات پریمیوم به انتشار و مجوز مستقل نیاز دارند. این مینی‌اپ پرداخت دریافت نمی‌کند.',securityTitle:'امنیت حساب شما'};
- const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
+ // Shared six-language catalog, including native RTL layout.
+ const dictionary=window.DrFXI18N?.text||{en:{}};
+ const locales=['en','fa','ar','tr','ru','hi'];
+ const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent));
  let locale='en';
- const ui=(en,faText)=>locale==='fa'?faText:en;
+ const englishLookup=Object.fromEntries(Object.entries(dictionary.en||{}).map(([key,value])=>[value,key]));
+ const ui=(en,fallbackFa)=>{
+  if(locale==='en')return en;
+  const key=englishLookup[en];
+  return (key&&dictionary[locale]?.[key])||(locale==='fa'?fallbackFa:en);
+ };
  function language(lang){
-  locale=lang==='fa'?'fa':'en';
+  locale=locales.includes(lang)?lang:'en';
   document.documentElement.lang=locale;
-  document.documentElement.dir=locale==='fa'?'rtl':'ltr';
-  document.querySelectorAll('[data-tr]').forEach(el=>{const key=el.dataset.tr;el.textContent=locale==='fa'?(fa[key]||english[key]):english[key]});
-  $('langToggle').setAttribute('aria-pressed',String(locale==='fa'));
-  $('langToggle').textContent=locale==='fa'?'EN / FA':'FA / EN';
-  if(state.user){set('memberPlan',planLabel(state.user.plan));set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected',state.user.mt5_account?'متصل':'متصل نیست'));set('licenseBadge',ui(state.user.license_status==='active'?'ACTIVE':'INACTIVE',state.user.license_status==='active'?'فعال':'غیرفعال'));set('activationDate',ui(state.user.activated_at?'Activated':'Not started',state.user.activated_at?'فعال شده':'شروع نشده'));}
-  else {set('memberPlan',ui('Not signed in','وارد نشده'));set('mt5Status',ui('Not connected','متصل نیست'));}
-  $('revealSerial').textContent=state.serialVisible?ui('Hide serial','مخفی‌کردن کد'):ui('Reveal serial','نمایش کد');
+  document.documentElement.dir=['fa','ar'].includes(locale)?'rtl':'ltr';
+  document.querySelectorAll('[data-tr]').forEach(el=>{
+   const key=el.dataset.tr;
+   el.textContent=dictionary[locale]?.[key]||english[key];
+  });
+  $('langToggle').value=locale;
+  if(state.user){
+   set('memberPlan',planLabel(state.user.plan));
+   set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected','متصل نیست'));
+   set('licenseBadge',ui(state.user.license_status==='active'?'ACTIVE':'INACTIVE','غیرفعال'));
+   set('activationDate',ui(state.user.activated_at?'Activated':'Not started','شروع نشده'));
+  }else{
+   set('memberPlan',ui('Not signed in','وارد نشده'));
+   set('mt5Status',ui('Not connected','متصل نیست'));
+  }
+  $('revealSerial').textContent=state.serialVisible?ui('Hide serial','مخفی‌کردن کد'):ui('Reveal code','نمایش کد');
+  try{localStorage.setItem('drfx-language',locale)}catch{}
  }
- function planLabel(plan){return ({
-  trial:ui('1 Month Free','یک ماه رایگان'),quarterly:ui('3 Months Premium','پریمیوم سه‌ماهه'),annual:ui('Annual Elite','الیت سالانه')
- })[plan]||ui('Membership','اشتراک');}
- $('langToggle').addEventListener('click',()=>{language(locale==='en'?'fa':'en');tg?.HapticFeedback?.selectionChanged?.()});
+ function planLabel(plan){
+  const name={trial:'oneMonth',quarterly:'threeMonth',annual:'annualElite'}[plan];
+  return dictionary[locale]?.[name]||dictionary.en?.[name]||'Membership';
+ }
+ $('langToggle').addEventListener('change',()=>{language($('langToggle').value);tg?.HapticFeedback?.selectionChanged?.()});
 
  async function offerBotLaunch(){
   $('launchHint').hidden=false;
@@ -425,7 +443,13 @@ $('miniAdminSearch').addEventListener('change',loadMiniAdmin);
   }finally{signInRunning=false;$('retrySignIn').disabled=false;}
  }
  $('retrySignIn').addEventListener('click',start);
- language(navigator.language?.toLowerCase().startsWith('fa')?'fa':'en');
+ let initialLanguage='en';
+ try{initialLanguage=localStorage.getItem('drfx-language')||'en'}catch{}
+ if(initialLanguage==='en'){
+  const browserLocale=String(navigator.language||'en').slice(0,2);
+  if(locales.includes(browserLocale))initialLanguage=browserLocale;
+ }
+ language(initialLanguage);
  show('home');
  start();
 })();`;
