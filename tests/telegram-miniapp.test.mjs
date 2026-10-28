@@ -84,3 +84,36 @@ test('the existing bot uses Telegram web_app buttons and does not silently merge
  assert.match(source,/if\(user\.plan!=='trial'\|\|secondary\?\.activated_at\|\|activity\)/);
  assert.match(source,/\/api\/auth\/telegram\/code/);
 });
+
+
+test('Mini App matches the approved DrFX site cinematic visual language',()=>{
+ for(const token of [
+  '--obsidian:#030406','--gold:#d4af37','--gold-light:#f7e7b4','--emerald:#10b981',
+  'PRECISION IN MOTION','Precision.','In Motion.','Command Center',
+  'route-stage','GLOBAL ROUTING ARCHITECTURE','DESIGN VISUALIZATION',
+  'SIGNAL BRIDGE','TradingView + Telegram','MetaTrader 5 EA',
+  'data-tr="navHome"','data-tr="navPlans"','id="langToggle"',
+  'prefers-reduced-motion:reduce','env(safe-area-inset-bottom)',
+  'width:min(100%,600px)','data-panel="home"'
+ ]) assert.ok(MINI_HTML.includes(token),token);
+ assert.ok(MINI_HTML.includes('aria-live="polite"'));
+ assert.ok(!MINI_HTML.includes('10.8ms'));
+ assert.ok(!MINI_HTML.includes('TLS 1.3 VERIFIED'));
+ assert.ok(!MINI_HTML.includes('LIVE EXECUTIONS'));
+});
+
+test('Telegram navigation, bilingual mode and license privacy remain functional',()=>{
+ for(const token of [
+  "document.querySelectorAll('[data-jump]')","document.body.dataset.tab=tab",
+  "tg?.BackButton?.onClick","language(locale==='en'?'fa':'en')",
+  "document.documentElement.dir=locale==='fa'?'rtl':'ltr'",
+  "state.serialVisible","'/api/auth/telegram/webapp'",
+  "'/api/me'","tg?.initData"
+ ]) assert.ok(MINI_JS.includes(token),token);
+ assert.ok(MINI_HTML.includes('id="serialValue"'));
+ assert.ok(MINI_HTML.includes('id="revealSerial"'));
+ assert.ok(MINI_HTML.includes('id="copySerial"'));
+ assert.ok(MINI_HTML.includes('data-jump="license"'));
+ assert.ok(!MINI_JS.includes('initDataUnsafe'));
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+});
