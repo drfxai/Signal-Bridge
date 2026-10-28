@@ -132,7 +132,7 @@ async function telegramWebsiteCredential(env,user,rotate=false){
  const code=b64u(rand(24)),encrypted=await encryptCode(env,code),hash=await sha(code);
  if(rotate){
   const result=await env.DB.batch([
-   env.DB.prepare("UPDATE site_permanent_logins SET code_hash=?,encrypted_code=?,nonce=?,rotated_at=CURRENT_TIMESTAMP WHERE user_id=?").bind(hash,encrypted.cipher,encrypted.iv,user.id),
+   env.DB.prepare("INSERT INTO site_permanent_logins(user_id,code_hash,encrypted_code,nonce,rotated_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,encrypted_code=excluded.encrypted_code,nonce=excluded.nonce,rotated_at=CURRENT_TIMESTAMP").bind(user.id,hash,encrypted.cipher,encrypted.iv),
    // An old compromised credential may have been used to create sessions; revoke them.
    env.DB.prepare("DELETE FROM site_sessions WHERE user_id=?").bind(user.id)
   ]);
