@@ -33,6 +33,10 @@ On restart it:
 
 This is intentionally fail-closed. It is safer to require reconciliation than to create a second order.
 
+The EA no longer clears a pending submission merely because a receipt was written to the localhost TCP socket. The Windows Agent first persists that receipt to an fsync-backed outbox and then returns a local `RACK` acknowledgement. Only broker-evidenced terminal outcomes such as `FILLED`, `BROKER_REJECTED` or `DUPLICATE` clear the pending entry after that local persistence acknowledgement.
+
+Cloudflare reconnect replay is also gated by verified MT5 terminal readiness; connecting the Windows Agent process alone does not trigger execution replay.
+
 ## Broker evidence
 
 The EA uses `CTrade` result codes plus `OnTradeTransaction` and broker history/positions. HTTP/Cloudflare delivery does not imply FILLED.
