@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { SITE_HTML, SITE_CSS, SITE_JS } from '../site/src/ui.mjs';
 import handler from '../site/src/worker.mjs';
+import { MEDIA_B64, MEDIA_INFO } from '../site/src/media.mjs';
+import { createHash } from 'node:crypto';
 
 const worker=fs.readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
 const migration=fs.readFileSync(new URL('../site/migrations/0007_site_accounts.sql',import.meta.url),'utf8');
@@ -74,4 +76,34 @@ test('two globe motion placements are lazy, muted, mobile-safe and reduced-motio
  assert.match(SITE_JS,/prefers-reduced-motion/);
  assert.match(SITE_JS,/visibilitychange/);
  assert.match(SITE_CSS,/networkFallbackPulse/);
+});
+
+test('real uploaded globe clips exactly match optimized original binary hashes',()=>{
+ const expected=['48356-globe.mp4','48355-connections.mp4'];
+ assert.deepEqual(Object.keys(MEDIA_B64),expected);
+ for(const name of expected){
+  const bytes=Buffer.from(MEDIA_B64[name],'base64');
+  assert.equal(bytes.length,MEDIA_INFO[name].bytes);
+  assert.equal(createHash('sha256').update(bytes).digest('hex'),MEDIA_INFO[name].sha256);
+  assert.equal(bytes.subarray(4,8).toString('ascii'),'ftyp');
+ }
+});
+test('Cloudflare video routes return actual MP4 bytes, caching and byte range',async()=>{
+ for(const name of ['48356-globe.mp4','48355-connections.mp4']){
+  const url='https://drfx.company/assets/media/'+name;
+  const full=await handler.fetch(new Request(url),{});
+  assert.equal(full.status,200);
+  assert.equal(full.headers.get('content-type'),'video/mp4');
+  assert.equal(full.headers.get('accept-ranges'),'bytes');
+  assert.equal((await full.arrayBuffer()).byteLength,MEDIA_INFO[name].bytes);
+  const partial=await handler.fetch(new Request(url,{headers:{range:'bytes=0-15'}}),{});
+  assert.equal(partial.status,206);
+  assert.equal(partial.headers.get('content-range'),'bytes 0-15/'+MEDIA_INFO[name].bytes);
+  assert.equal((await partial.arrayBuffer()).byteLength,16);
+  const head=await handler.fetch(new Request(url,{method:'HEAD'}),{});
+  assert.equal(head.status,200);
+  assert.equal(head.headers.get('content-length'),String(MEDIA_INFO[name].bytes));
+  const invalid=await handler.fetch(new Request(url,{headers:{range:'bytes=999999999-'}}),{});
+  assert.equal(invalid.status,416);
+ }
 });
