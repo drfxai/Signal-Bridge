@@ -23,13 +23,13 @@ export class AgentHub{
  currentAgentSockets(){return this.currentExecutionSockets()}
  async licenseIsValid(a){
   if(a.role!=='ea')return true;
-  if(!a.licenseId)return false;
+  if(!a.licenseId||!/^[a-f0-9]{64}$/.test(a.licenseHash||''))return false;
   const row=await this.env.DB.prepare(
-   "SELECT l.status,l.expires_at,l.account_login,l.account_server,a.status AS agent_status " +
+   "SELECT l.status,l.expires_at,l.account_login,l.account_server,l.token_sha256,a.status AS agent_status " +
    "FROM ea_licenses l JOIN agent_connections a ON a.id=l.agent_id " +
    "WHERE l.id=? AND l.agent_id=? LIMIT 1"
   ).bind(a.licenseId,a.agentId).first();
-  if(!row||row.status!=='active'||row.agent_status!=='active')return false;
+  if(!row||row.status!=='active'||row.agent_status!=='active'||row.token_sha256!==a.licenseHash)return false;
   if(row.expires_at&&Date.parse(row.expires_at.replace(' ','T')+'Z')<=Date.now())return false;
   if(a.account&&(!row.account_login||!row.account_server||
     row.account_login!==a.account.login||row.account_server!==a.account.server))return false;
@@ -41,8 +41,8 @@ export class AgentHub{
    "UPDATE ea_licenses SET account_login=?,account_server=?,activated_at=CURRENT_TIMESTAMP, " +
    "expires_at=datetime('now',duration_modifier),last_connected_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP " +
    "WHERE id=? AND agent_id=? AND status='active' AND activated_at IS NULL " +
-   "AND account_login IS NULL AND account_server IS NULL"
-  ).bind(account.login,account.server,a.licenseId,a.agentId).run();
+   "AND account_login IS NULL AND account_server IS NULL AND token_sha256=?"
+  ).bind(account.login,account.server,a.licenseId,a.agentId,a.licenseHash).run();
   if(!updated?.success){ws.send('ERR|LICENSE_STORAGE_UNAVAILABLE');ws.close(1011,'license store unavailable');return false}
   const row=await this.env.DB.prepare(
    "SELECT account_login,account_server,status,expires_at FROM ea_licenses WHERE id=? AND agent_id=?"
@@ -115,10 +115,10 @@ export class AgentHub{
   const url=new URL(request.url);
   if(url.pathname==='/ws'){
    if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return json({error:'UPGRADE_REQUIRED'},426);
-   const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'',role=request.headers.get('x-sb-client-role')==='ea'?'ea':'agent',licenseId=request.headers.get('x-sb-license-id')||'';if(!agentId||!tenantId||(role==='ea'&&!licenseId))return json({error:'UNAUTHORIZED'},401);
+   const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'',role=request.headers.get('x-sb-client-role')==='ea'?'ea':'agent',licenseId=request.headers.get('x-sb-license-id')||'',licenseHash=request.headers.get('x-sb-license-hash')||'';if(!agentId||!tenantId||(role==='ea'&&(!licenseId||!/^[a-f0-9]{64}$/.test(licenseHash))))return json({error:'UNAUTHORIZED'},401);
    for(const old of this.currentExecutionSockets()){try{old.close(4001,'superseded by newer execution connection')}catch{}}
    const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
-   server.serializeAttachment({role,agentId,tenantId,licenseId:role==='ea'?licenseId:null,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
+   server.serializeAttachment({role,agentId,tenantId,licenseId:role==='ea'?licenseId:null,licenseHash:role==='ea'?licenseHash:null,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
    if(role==='ea')server.send('READY|signalbridge-ea/1|demo_only');else server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
    const wanted=role==='ea'?'signalbridge-ea-v1':'signalbridge-agent-v1',selected=protocols.includes(wanted)?wanted:null;
