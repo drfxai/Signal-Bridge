@@ -59,3 +59,22 @@ test('direct EA endpoint and line protocol exist alongside legacy rollback trans
  assert.match(command,/correlation_tag/);
  assert.match(command,/correlationTag/);
 });
+
+
+test('direct EA persists broker receipts locally until cloud acknowledgement',()=>{
+ const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA_v0.24.mq5',import.meta.url),'utf8');
+ assert.match(ea,/MAX_RECEIPTS 64/);
+ assert.match(ea,/ReceiptFile\(\)/);
+ assert.match(ea,/ReceiptSave\(\)/);
+ assert.match(ea,/ReceiptLoad\(\)/);
+ assert.match(ea,/QueueReceipt\(/);
+ assert.match(ea,/FlushReceipts\(\)/);
+ assert.match(ea,/ClearReceipt\(/);
+ assert.match(ea,/SignalBridge_receipts_/);
+ assert.match(ea,/INVALID_TRANSITION/);
+});
+
+test('direct EA migration derives correlation tag when an older pending command lacks it',()=>{
+ assert.match(hub,/function eaCorrelationTag/);
+ assert.match(hub,/c\.correlation_tag\|\|eaCorrelationTag\(c\.correlation_id\|\|c\.command_id\)/);
+});
