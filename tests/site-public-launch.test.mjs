@@ -35,8 +35,8 @@ test('All website and Mini App language keys have complete translations in 6 loc
   for(const key of [...siteKeys,...miniKeys])assert.ok(TRANSLATIONS[lang][key],lang+'/'+key);
  }
  assert.match(I18N_JS,/window\.DrFXI18N/);
- assert.match(SITE_HTML,/id="lang"[^>]*<option value="hi">HI<\/option>/);
- assert.match(MINI_HTML,/id="langToggle"[^>]*<option value="hi">HI<\/option>/);
+ assert.match(SITE_HTML,/id="lang"[^>]*><option value="hi">HI<\/option>/);
+ assert.match(MINI_HTML,/id="langToggle"[^>]*><option value="hi">HI<\/option>/);
  assert.match(SITE_HTML,/\/assets\/i18n\.js/);
  assert.match(MINI_HTML,/\/assets\/i18n\.js/);
  assert.match(SITE_JS,/document\.documentElement\.dir=\['fa','ar'\]/);
