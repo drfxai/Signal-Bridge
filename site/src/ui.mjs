@@ -32,3 +32,160 @@ export const SITE_CSS = String.raw`@import url('https://fonts.googleapis.com/css
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 body[dir=rtl]{direction:rtl}body[dir=rtl] .logo-text>span{letter-spacing:.2em}body[dir=rtl] .nav-login span{margin:0 16px 0 0}body[dir=rtl] .hero-art{direction:ltr}body[dir=rtl] .market-widget{float:left}body[dir=rtl] .steps,body[dir=rtl] .plan-grid{direction:rtl}body[dir=rtl] .admin-panel th,body[dir=rtl] .admin-panel td{text-align:right}
 `;
+
+export const SITE_JS = String.raw`(()=>{
+'use strict';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const state={user:null,config:null,plan:null,lang:localStorage.getItem('drfx_lang')==='fa'?'fa':'en'};
+const texts={
+ fa:{
+ 'nav-system':'پلتفرم','nav-plans':'اشتراک‌ها','nav-setup':'راهنمای شروع','hero-label':'هوشمندی برای هر سیگنال','hero-1':'دقت.','hero-2':'بدون سازش.','hero-desc':'اکوسیستم حرفه‌ای معامله‌گری: انتقال مستقیم سیگنال‌های تریدینگ‌ویو و تلگرام به متاتریدر ۵، ۵۲ اندیکاتور پریمیوم و پنل اختصاصی در یک مکان.',
+ 'start':'مشاهده اشتراک‌ها','explore':'معرفی پلتفرم','stat1':'اکسپرت برای نصب','stat2':'اندیکاتور پریمیوم','stat3':'معماری ابری',
+ 'system-title':'استانداردی تازه برای اجرای سیگنال','system-desc':'یک محیط حرفه‌ای با کمترین مراحل میان منبع سیگنال، مجوز و ترمینال MT5.',
+ 'f1-title':'اتصال مستقیم SignalBridge','f1-desc':'فقط یک فایل اجرایی EX5 و یک وب‌هوک تریدینگ‌ویو. بدون نرم‌افزار واسط ویندوز در معماری جدید.',
+ 'f2-title':'۵۲ اندیکاتور پریمیوم','f2-desc':'ابزارهای ویژه برای اشتراک سه‌ماهه و سالانه؛ فایل‌ها پس از انتشار نسخه‌های تأییدشده در کتابخانه خصوصی ارائه می‌شوند.',
+ 'f3-title':'یک حساب امن','f3-desc':'با ایمیل یا تلگرام عضو شوید؛ مجوز، اشتراک و حساب MT5 را در پنل شخصی مدیریت کنید.',
+ 'pricing-title':'اشتراکی متناسب با هدف شما','pricing-desc':'با یک ماه رایگان شروع کنید و در صورت نیاز اشتراک را ارتقا دهید.',
+ 'p1':'آزمایشی رایگان','p1d':'تجربه اتصال SignalBridge','p1f1':'یک ماه استفاده از SignalBridge','p1f2':'سریال اختصاصی فعال‌سازی EA','p1f3':'پنل شخصی مشتری','p1f4':'ثبت‌نام با ایمیل یا تلگرام','p1cta':'شروع رایگان ↗',
+ 'p2':'پریمیوم سه‌ماهه','p2d':'مجموعه اندیکاتورهای پیشرفته','p2f1':'سه ماه استفاده از SignalBridge','p2f2':'هر ۵۲ اندیکاتور پریمیوم','p2f3':'سریال شخصی فعال‌سازی','p2f4':'مدیریت اشتراک در پنل','p2cta':'انتخاب سه‌ماهه ↗',
+ 'p3':'اشتراک ویژه سالانه','p3d':'ابزار، خدمات و مشاوره اختصاصی','p3f1':'یک سال استفاده از SignalBridge','p3f2':'هر ۵۲ اندیکاتور پریمیوم','p3f3':'امکان شخصی‌سازی اندیکاتورها','p3f4':'مشاوره با تیم فنی','p3cta':'انتخاب سالانه ↗',
+ 'how-title':'از ثبت‌نام تا سیگنال در چهار گام','step1':'ساخت حساب','step1d':'با ایمیل یا ربات تلگرام ثبت‌نام کنید.',
+ 'step2':'کپی سریال خصوصی','step2d':'کد اختصاصی حساب متاتریدر خود را بردارید.',
+ 'step3':'نصب یک فایل EX5','step3d':'اکسپرت کامپایل‌شده را در پوشه Experts کپی کنید.',
+ 'step4':'تأیید و فعال‌سازی','step4d':'آدرس کلود را در MT5 مجاز کنید و سریال را در اولین ورودی EA وارد کنید.'
+ }};
+const en={};
+$$('[data-i]').forEach(el=>en[el.dataset.i]=el.textContent);
+function translate(){
+ const fa=state.lang==='fa';
+ document.documentElement.lang=fa?'fa':'en';document.body.dir=fa?'rtl':'ltr';
+ $$('[data-i]').forEach(el=>{const k=el.dataset.i;el.textContent=fa?(texts.fa[k]||en[k]):en[k]});
+ $('#lang').textContent=fa?'EN ↔ FA':'FA ↔ EN';
+ localStorage.setItem('drfx_lang',state.lang);
+}
+$('#lang').addEventListener('click',()=>{state.lang=state.lang==='fa'?'en':'fa';translate()});translate();
+function notice(id,message,type=''){
+ const el=$(id);if(!el)return;
+ el.textContent=message;el.className='message '+type;
+}
+let toastTimer;
+function toast(text){
+ const el=$('#toast');el.textContent=text;el.classList.remove('hidden');
+ clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.add('hidden'),3800);
+}
+function show(id){
+ const el=$(id);el.classList.remove('hidden');el.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
+}
+function hide(id){
+ const el=$(id);el.classList.add('hidden');el.setAttribute('aria-hidden','true');
+ if($$('.overlay:not(.hidden)').length===0)document.body.style.overflow='';
+}
+$$('[data-close]').forEach(el=>el.addEventListener('click',()=>hide('#'+el.dataset.close)));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$$('.overlay:not(.hidden)').forEach(el=>hide('#'+el.id))});
+$$('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)hide('#'+el.id)}));
+async function api(path,data){
+ const opt=data===undefined?{method:'GET',credentials:'same-origin'}:{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(data)};
+ let response;try{response=await fetch(path,opt)}catch{throw Error('NETWORK_UNAVAILABLE')}
+ let body={};try{body=await response.json()}catch{}
+ if(!response.ok)throw Error(body.error||'SERVER_ERROR');
+ return body;
+}
+function showLogin(){show('#authOverlay');notice('#authMsg','');$('#email').focus()}
+$('#loginOpen').addEventListener('click',openPortal);
+$('#bottomJoin').addEventListener('click',openPortal);
+$$('[data-tab]').forEach(b=>b.addEventListener('click',()=>{
+ $$('[data-tab]').forEach(t=>t.classList.toggle('selected',t===b));
+ $('#emailTab').classList.toggle('hidden',b.dataset.tab!=='email');
+ $('#telegramTab').classList.toggle('hidden',b.dataset.tab!=='telegram');
+ notice('#authMsg','');
+}));
+$('#sendEmail').addEventListener('click',async()=>{
+ const email=$('#email').value.trim();if(!email){notice('#authMsg','Enter an email address.','error');return;}
+ const btn=$('#sendEmail');btn.disabled=true;try{await api('/api/auth/email/start',{email});notice('#authMsg','A one-time code was sent. Check your email.','success')}catch(e){notice('#authMsg',e.message==='EMAIL_NOT_CONFIGURED'?'Email delivery is not configured yet. Activate the email provider first.':e.message,'error')}finally{btn.disabled=false}
+});
+$('#verifyEmail').addEventListener('click',async()=>{
+ const btn=$('#verifyEmail');btn.disabled=true;
+ try{await api('/api/auth/email/verify',{email:$('#email').value.trim(),code:$('#emailCode').value.trim()});hide('#authOverlay');await openPortal();}
+ catch(e){notice('#authMsg',e.message,'error')}finally{btn.disabled=false}
+});
+$('#loginTelegram').addEventListener('click',async()=>{
+ const btn=$('#loginTelegram');btn.disabled=true;
+ try{await api('/api/auth/telegram/code',{code:$('#tgCode').value.trim()});hide('#authOverlay');await openPortal();}
+ catch(e){notice('#authMsg',e.message,'error')}finally{btn.disabled=false}
+});
+async function openPortal(){
+ try{const r=await api('/api/me');state.user=r.user;drawPortal();show('#portalOverlay');if(state.user.role==='admin')await adminLoad();}
+ catch(e){if(e.message==='UNAUTHENTICATED'){showLogin()}else{showLogin();notice('#authMsg',e.message,'error')}}
+}
+function drawPortal(){
+ const u=state.user;if(!u)return;
+ $('#portalIdentity').textContent=u.email||u.telegram||'DrFX Member';
+ $('#userPlan').textContent={trial:'Free Trial · 1 Month',quarterly:'Premium · 3 Months',annual:'Elite · 1 Year'}[u.plan]||u.plan;
+ $('#licenseDates').textContent=u.activated_at?'Expires '+(u.expires_at||'pending'):'Starts with first EA activation';
+ $('#licenseStatus').textContent=(u.license_status||'Unknown').toUpperCase();
+ $('#linkedMT5').textContent=u.mt5_account?'MT5 #'+u.mt5_account.login+' · '+u.mt5_account.server:'Not yet bound to a broker account';
+ $('#libraryStatus').textContent=u.plan==='trial'?'Upgrade required':'Included · delivery pending';
+ $('#serial').textContent=u.activation_code||'UNAVAILABLE';
+ $('#adminPanel').classList.toggle('hidden',u.role!=='admin');
+}
+$('#portalClose').addEventListener('click',()=>hide('#portalOverlay'));
+$('#copySerial').addEventListener('click',async()=>{
+ if(!state.user?.activation_code)return;
+ try{await navigator.clipboard.writeText(state.user.activation_code);toast('Activation code copied. Keep it private.')}
+ catch{toast('Clipboard permission denied. Select and copy the code manually.')}
+});
+$('#rotateSerial').addEventListener('click',async()=>{
+ if(!confirm('Regenerate your code? The previous serial will stop working.'))return;
+ try{const r=await api('/api/license/rotate',{});state.user.activation_code=r.activation_code;drawPortal();notice('#portalMsg','New activation code generated. Update the EA input to reconnect.','success')}
+ catch(e){notice('#portalMsg',e.message,'error')}
+});
+$('#linkTelegram').addEventListener('click',async()=>{
+ try{const r=await api('/api/auth/link/create',{});notice('#portalMsg','Send this command to your DrFX bot within 10 minutes: /link '+r.code,'success')}
+ catch(e){notice('#portalMsg',e.message,'error')}
+});
+$('#logout').addEventListener('click',async()=>{try{await api('/api/auth/logout',{})}catch{}state.user=null;hide('#portalOverlay');toast('Signed out.')});
+$$('[data-plan]').forEach(el=>el.addEventListener('click',async()=>{
+ const plan=el.dataset.plan;state.plan=plan;
+ if(!state.user){showLogin();notice('#authMsg',plan==='trial'?'Create your free account to activate a one-month trial.':'Sign in to continue with the '+plan+' plan.');return;}
+ if(plan==='trial'){await openPortal();return;}
+ try{const pay=await api('/api/checkout',{plan});if(pay.invoice_url)location.href=pay.invoice_url;}
+ catch(e){await openPortal();notice('#portalMsg',e.message==='PAYMENTS_NOT_CONFIGURED'?'NOWPayments checkout is prepared but not yet enabled. No payment was charged.':e.message,'error')}
+}));
+async function adminLoad(){
+ try{
+  const [stats,people]=await Promise.all([api('/api/admin/stats'),api('/api/admin/users?q='+encodeURIComponent($('#adminSearch').value.trim()))]);
+  $('#adminStats').textContent='Total: '+stats.stats.total+'  ·  Free: '+stats.stats.trial+'  ·  Quarterly: '+stats.stats.quarterly+'  ·  Annual: '+stats.stats.annual+'  ·  Suspended: '+stats.stats.suspended;
+  const tbody=$('#adminRows');tbody.replaceChildren();
+  people.users.forEach(user=>{
+   const tr=document.createElement('tr'),identity=document.createElement('td'),plan=document.createElement('td'),status=document.createElement('td'),actions=document.createElement('td');
+   identity.textContent=user.email||user.telegram_name||user.telegram_id||'Member';
+   const small=document.createElement('small');small.textContent=user.id;identity.append(small);
+   plan.textContent=user.plan;status.textContent=user.status;
+   const select=document.createElement('select');
+   [['grant_trial','Grant free'],['grant_quarterly','Grant 3mo'],['grant_annual','Grant annual'],['suspend','Suspend'],['resume','Resume'],['revoke_license','Revoke serial']].forEach(([value,label])=>{const op=document.createElement('option');op.value=value;op.textContent=label;select.append(op)});
+   const go=document.createElement('button');go.textContent='Apply';
+   go.addEventListener('click',async()=>{
+    if(!confirm('Apply '+select.value+' to '+(user.email||user.id)+'?'))return;
+    go.disabled=true;try{await api('/api/admin/user',{user_id:user.id,action:select.value});notice('#adminMsg','Updated '+user.id,'success');await adminLoad()}
+    catch(e){notice('#adminMsg',e.message,'error')}finally{go.disabled=false}
+   });
+   actions.append(select,go);tr.append(identity,plan,status,actions);tbody.append(tr);
+  });
+ }catch(e){notice('#adminMsg',e.message,'error')}
+}
+$('#reloadAdmin').addEventListener('click',adminLoad);
+let adminSearchTimer;$('#adminSearch').addEventListener('input',()=>{clearTimeout(adminSearchTimer);adminSearchTimer=setTimeout(adminLoad,300)});
+const candleGroup=$('#candles');if(candleGroup){
+ const highs=[138,129,132,145,124,119,125,112,109,117,100,87,108,103,96,89,71,83,75,61,65,52,45,57,48,38,31,42,38];
+ const lows=[171,157,155,164,154,152,144,147,129,144,129,123,129,125,126,117,105,100,104,94,92,88,82,77,71,69,63,57,57];
+ for(let i=0;i<highs.length;i++){
+  const x=12+i*23,green=i%5!==3,open=highs[i]+5+(i%5)*2,close=lows[i]-6-(i%3)*2,y=Math.min(open,close),h=Math.max(3,Math.abs(close-open));
+  const wick=document.createElementNS('http://www.w3.org/2000/svg','line');
+  wick.setAttribute('x1',x);wick.setAttribute('x2',x);wick.setAttribute('y1',highs[i]);wick.setAttribute('y2',lows[i]);wick.setAttribute('stroke',green?'#67bba8':'#d8747c');wick.setAttribute('stroke-width','1.4');
+  const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');rect.setAttribute('x',x-5);rect.setAttribute('y',y);rect.setAttribute('width',10);rect.setAttribute('height',h);rect.setAttribute('fill',green?'#66bba8':'#d8747c');
+  candleGroup.append(wick,rect);
+ }
+}
+api('/api/config').then(r=>{state.config=r;if(!r.email){$('#sendEmail').title='Email sending requires a verified transactional provider.'}if(!r.telegram){$('#telegramTab').title='Telegram bot connection is pending BotFather token.'}}).catch(()=>{});
+if(new URL(location.href).searchParams.get('paid'))toast('Payment return received. Membership updates only after verified provider confirmation.');
+})();`;
