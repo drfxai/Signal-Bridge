@@ -1,6 +1,6 @@
 {
   "name": "drfx-signalbridge",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "private": true,
   "type": "module",
   "description": "SignalBridge low-latency replay-safe TradingView/God Mode + paired Telegram → MT5 Demo pipeline",
