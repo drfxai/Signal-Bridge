@@ -168,3 +168,23 @@ test('approved HTML is production-ready with self-hosted Tailwind and real membe
  assert.ok((await response.text()).length>18000);
  assert.ok(!worker.includes('cdn.tailwindcss.com'));
 });
+
+test('live feature readiness is reflected honestly in account and checkout UI',async()=>{
+ assert.ok(SITE_HTML.includes('id="serviceReadiness"'));
+ assert.ok(SITE_HTML.includes('id="checkoutReadiness"'));
+ assert.match(SITE_JS,/loadServiceReadiness/);
+ assert.match(SITE_JS,/\/api\/config/);
+ assert.match(SITE_JS,/readiness\.payments===false/);
+ assert.match(SITE_JS,/\$\('sendEmail'\)\.disabled=!readiness\.email/);
+ assert.match(SITE_JS,/Account service is temporarily unavailable/);
+ assert.match(SITE_JS,/state\.user=null;hide\('portalOverlay'\)/);
+ assert.ok(SITE_HTML.includes('loaderFallback'));
+ const r=await handler.fetch(new Request('https://drfx.company/api/config'),{DB:{},LICENSE_VAULT_KEY:'configured-but-not-shared'});
+ assert.equal(r.status,200);
+ assert.deepEqual(await r.json(),{ok:true,email:false,telegram:false,payments:false,licensing:true});
+});
+test('cinematic render loops reuse canvas pixel buffers rather than reallocating at every frame',()=>{
+ assert.match(DESIGN_JS,/indCanvas\.width !== wpx/);
+ assert.match(DESIGN_JS,/globeCanvas\.width !== wpx/);
+ assert.match(DESIGN_JS,/Math\.min\(window\.devicePixelRatio \|\| 1, 2\)/);
+});
