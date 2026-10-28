@@ -1,20 +1,23 @@
 //+------------------------------------------------------------------+
-//|                            DrFX_SignalBridge_EA_v0.23.mq5        |
-//| Low-latency localhost bridge, replay-safe, DEMO-only execution   |
+//|                            DrFX_SignalBridge_EA_v0.24.mq5        |
+//| Direct Cloudflare WebSocket, replay-safe, DEMO-only execution    |
 //+------------------------------------------------------------------+
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
 #property strict
-#property description "SignalBridge MT5 test EA. Persistent localhost TCP Agent transport."
+#property description "SignalBridge MT5 EA. Direct TLS/WebSocket connection to SignalBridge Cloud."
 #property description "DEMO execution only. Live accounts are always refused."
-#property description "Add 127.0.0.1 to Tools > Options > Expert Advisors allowed addresses."
+#property description "Allow https://signalbridge.drfx.online in Tools > Options > Expert Advisors."
 
 #include <Trade\Trade.mqh>
 
-input group "=== SignalBridge Agent ==="
-input string InpAgentHost="127.0.0.1";
-input int InpAgentPort=17777;
+input group "=== SignalBridge Cloud ==="
+input string InpCloudHost="signalbridge.drfx.online";
+input int InpCloudPort=443;
+input string InpCloudPath="/v1/ea/ws";
+input string InpSignalBridgeKey="";
 input int InpTimerMs=50;
+input int InpReconnectMs=1000;
 
 input group "=== DEMO Execution Safety ==="
 input bool InpEnableDemoExecution=false;
@@ -36,12 +39,15 @@ input int InpPanelX=16;
 input int InpPanelY=22;
 input int InpPanelWidth=390;
 
-#define SBP "SB23_"
+#define SBP "SB24_"
 #define MAX_PENDING 32
 CTrade trade;
 int g_socket=INVALID_HANDLE;
-string g_rx="",g_lastSignal="WAITING",g_lastExecution="NO COMMAND",g_lastTicket="-";
-ulong g_lastConnectTry=0,g_lastHb=0,g_lastReconcile=0;
+bool g_wsReady=false;
+uchar g_frameBuf[];
+string g_lastSignal="WAITING",g_lastExecution="NO COMMAND",g_lastTicket="-";
+ulong g_lastConnectTry=0,g_lastHb=0,g_lastReconcile=0,g_lastPing=0,g_pingStarted=0;
+double g_cloudRttMs=0;
 bool g_compact=false;
 string g_pendingTag[MAX_PENDING],g_pendingId[MAX_PENDING];
 color C_BG=C'9,15,25',C_BG2=C'15,25,42',C_BORDER=C'43,65,93',C_TEXT=C'234,245,255',C_MUTED=C'139,160,184',C_CYAN=C'82,215,255',C_GREEN=C'69,213,161',C_AMBER=C'243,189,98',C_RED=C'255,111,125';
@@ -63,13 +69,59 @@ void Rect(string id,int x,int y,int w,int h,color bg,color border){string n=SBP+
 void Label(string id,int x,int y,string text,int size,color col,string font="Segoe UI"){string n=SBP+id;if(ObjectFind(0,n)<0)ObjectCreate(0,n,OBJ_LABEL,0,0,0);ObjectSetInteger(0,n,OBJPROP_CORNER,InpCorner);ObjectSetInteger(0,n,OBJPROP_XDISTANCE,x);ObjectSetInteger(0,n,OBJPROP_YDISTANCE,y);ObjectSetInteger(0,n,OBJPROP_FONTSIZE,size);ObjectSetInteger(0,n,OBJPROP_COLOR,col);ObjectSetInteger(0,n,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);ObjectSetInteger(0,n,OBJPROP_SELECTABLE,false);ObjectSetInteger(0,n,OBJPROP_HIDDEN,true);ObjectSetString(0,n,OBJPROP_FONT,font);ObjectSetString(0,n,OBJPROP_TEXT,text);}
 void Button(string id,int x,int y,int w,int h,string text){string n=SBP+id;if(ObjectFind(0,n)<0)ObjectCreate(0,n,OBJ_BUTTON,0,0,0);ObjectSetInteger(0,n,OBJPROP_CORNER,InpCorner);ObjectSetInteger(0,n,OBJPROP_XDISTANCE,x);ObjectSetInteger(0,n,OBJPROP_YDISTANCE,y);ObjectSetInteger(0,n,OBJPROP_XSIZE,w);ObjectSetInteger(0,n,OBJPROP_YSIZE,h);ObjectSetInteger(0,n,OBJPROP_BGCOLOR,C_BG);ObjectSetInteger(0,n,OBJPROP_COLOR,C_MUTED);ObjectSetInteger(0,n,OBJPROP_BORDER_COLOR,C_BORDER);ObjectSetInteger(0,n,OBJPROP_FONTSIZE,8);ObjectSetString(0,n,OBJPROP_TEXT,text);ObjectSetString(0,n,OBJPROP_FONT,"Segoe UI");}
 
-bool AgentConnected(){return g_socket!=INVALID_HANDLE&&SocketIsConnected(g_socket);}
-bool SendLine(string line){if(!AgentConnected())return false;uchar data[];int n=StringToCharArray(line+"\n",data,0,WHOLE_ARRAY,CP_UTF8);if(n<=1)return false;return SocketSend(g_socket,data,(uint)(n-1))==n-1;}
+bool CloudConnected(){return g_socket!=INVALID_HANDLE&&g_wsReady&&SocketIsConnected(g_socket);}
+void AppendBytes(uchar &dst[],const uchar &src[],int count){
+ if(count<=0)return;int old=ArraySize(dst);ArrayResize(dst,old+count);ArrayCopy(dst,src,old,0,count);
+}
+void DropBytes(uchar &buf[],int count){
+ int n=ArraySize(buf);if(count<=0)return;if(count>=n){ArrayResize(buf,0);return;}for(int i=count;i<n;i++)buf[i-count]=buf[i];ArrayResize(buf,n-count);
+}
+int HeaderEnd(const uchar &buf[]){
+ int n=ArraySize(buf);for(int i=0;i+3<n;i++)if(buf[i]==13&&buf[i+1]==10&&buf[i+2]==13&&buf[i+3]==10)return i+4;return -1;
+}
+string Base64(const uchar &src[],int count){
+ const string tbl="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+ string out="";for(int i=0;i<count;i+=3){int a=src[i],b=(i+1<count)?src[i+1]:0,d=(i+2<count)?src[i+2]:0;int v=(a<<16)|(b<<8)|d;
+  out+=StringSubstr(tbl,(v>>18)&63,1);out+=StringSubstr(tbl,(v>>12)&63,1);out+=(i+1<count)?StringSubstr(tbl,(v>>6)&63,1):"=";out+=(i+2<count)?StringSubstr(tbl,v&63,1):"=";}
+ return out;
+}
+bool TlsSendRaw(const uchar &data[],int len){if(g_socket==INVALID_HANDLE||len<=0)return false;return SocketTlsSend(g_socket,data,(uint)len)==len;}
+bool TlsSendString(string text){uchar data[];int n=StringToCharArray(text,data,0,WHOLE_ARRAY,CP_UTF8);if(n<=1)return false;return TlsSendRaw(data,n-1);}
+bool WsSendFrame(int opcode,string text){
+ if(!CloudConnected())return false;uchar payload[];int n=StringToCharArray(text,payload,0,WHOLE_ARRAY,CP_UTF8);if(n>0)n--;if(n<0||n>65535)return false;
+ int header=(n<126)?6:8,total=header+n;uchar out[];ArrayResize(out,total);out[0]=(uchar)(0x80|(opcode&0x0F));
+ int pos=0;if(n<126){out[1]=(uchar)(0x80|n);pos=2;}else{out[1]=(uchar)(0x80|126);out[2]=(uchar)((n>>8)&255);out[3]=(uchar)(n&255);pos=4;}
+ uchar mask[4];for(int i=0;i<4;i++){mask[i]=(uchar)(MathRand()&255);out[pos+i]=mask[i];}pos+=4;
+ for(int i=0;i<n;i++)out[pos+i]=(uchar)(payload[i]^mask[i&3]);return TlsSendRaw(out,total);
+}
+bool WsSendText(string text){return WsSendFrame(1,text);}
+bool SendLine(string line){return WsSendText(line);}
+void DisconnectCloud(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_socket=INVALID_HANDLE;}g_wsReady=false;ArrayResize(g_frameBuf,0);}
+bool WsHandshake(){
+ uchar nonce[];ArrayResize(nonce,16);for(int i=0;i<16;i++)nonce[i]=(uchar)(MathRand()&255);
+ string key=Base64(nonce,16);
+ string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpSignalBridgeKey+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.24\r\n\r\n";
+ if(!TlsSendString(req))return false;
+ uchar pending[];ulong until=GetTickCount64()+5000;
+ while(GetTickCount64()<until&&!IsStopped()){
+  uchar chunk[];int got=SocketTlsReadAvailable(g_socket,chunk,32768);if(got<0)return false;if(got>0){AppendBytes(pending,chunk,got);int e=HeaderEnd(pending);if(e>0){
+    string h=CharArrayToString(pending,0,e,CP_UTF8);if(StringFind(h," 101 ")<0||StringFind(h,"Sec-WebSocket-Protocol: signalbridge-ea-v1")<0)return false;
+    int rest=ArraySize(pending)-e;if(rest>0){uchar tail[];ArrayResize(tail,rest);ArrayCopy(tail,pending,0,e,rest);AppendBytes(g_frameBuf,tail,rest);}
+    g_wsReady=true;return true;
+   }}
+  Sleep(10);
+ }
+ return false;
+}
 void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions()));g_lastHb=GetTickCount64();}
-void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())))g_lastHb=GetTickCount64();}
-bool Receipt(string id,string status,string ticket,long retcode,string detail){bool sent=SendLine("RCPT|"+Safe(id)+"|"+Safe(status)+"|"+Safe(ticket)+"|"+N64(retcode)+"|"+Safe(detail));g_lastExecution=status+" · "+detail;if(ticket!="")g_lastTicket=ticket;return sent;}
-void DisconnectAgent(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_socket=INVALID_HANDLE;}g_rx="";}
-void EnsureAgent(){if(AgentConnected())return;ulong now=GetTickCount64();if(now-g_lastConnectTry<1000)return;g_lastConnectTry=now;DisconnectAgent();g_socket=SocketCreate(SOCKET_DEFAULT);if(g_socket==INVALID_HANDLE)return;SocketTimeouts(g_socket,100,100);if(!SocketConnect(g_socket,InpAgentHost,(uint)InpAgentPort,200)){DisconnectAgent();return;}SendHello();}
+void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)))g_lastHb=GetTickCount64();}
+void EnsureCloud(){
+ if(CloudConnected())return;ulong now=GetTickCount64();int retry=InpReconnectMs;if(retry<250)retry=250;if(retry>10000)retry=10000;if(now-g_lastConnectTry<(ulong)retry)return;g_lastConnectTry=now;DisconnectCloud();
+ if(StringLen(InpSignalBridgeKey)!=43)return;
+ g_socket=SocketCreate(SOCKET_DEFAULT);if(g_socket==INVALID_HANDLE)return;SocketTimeouts(g_socket,2000,2000);
+ if(!SocketConnect(g_socket,InpCloudHost,(uint)InpCloudPort,3000)){DisconnectCloud();return;}
+ if(!WsHandshake()){DisconnectCloud();return;}SendHello();
+}
 
 string PendingFile(){return "SignalBridge_pending_"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+".txt";}
 void PendingSave(){int h=FileOpen(PendingFile(),FILE_COMMON|FILE_WRITE|FILE_TXT|FILE_ANSI);if(h==INVALID_HANDLE)return;for(int i=0;i<MAX_PENDING;i++)if(g_pendingId[i]!=""&&g_pendingTag[i]!="")FileWriteString(h,Safe(g_pendingTag[i])+"|"+Safe(g_pendingId[i])+"\r\n");FileFlush(h);FileClose(h);}
@@ -132,7 +184,7 @@ bool HasAnyPositionOnSymbol(string sym){
  return false;
 }
 bool HistoryHasTag(string tag,ulong &dealOut){string want="SB:"+tag;if(!HistorySelect(TimeCurrent()-7*86400,TimeCurrent()+60))return false;for(int i=HistoryDealsTotal()-1;i>=0;i--){ulong d=HistoryDealGetTicket(i);if(d==0)continue;if((long)HistoryDealGetInteger(d,DEAL_MAGIC)!=InpMagic)continue;if(StringFind(HistoryDealGetString(d,DEAL_COMMENT),want)>=0){dealOut=d;return true;}}return false;}
-void ReconcilePending(){if(!AgentConnected()||!HasPending())return;for(int i=0;i<MAX_PENDING;i++){string tag=g_pendingTag[i],id=g_pendingId[i];if(tag==""||id=="")continue;ulong ticket=0;string sym="";double volume=0,open=0,sl=0,tp=0;if(FindPosition(tag,ticket,sym,volume,open,sl,tp)){Receipt(id,"FILLED",N64((long)ticket),0,"reconciled open position after terminal restart");continue;}ulong deal=0;if(HistoryHasTag(tag,deal))Receipt(id,"FILLED",N64((long)deal),0,"reconciled broker history after terminal restart");}}
+void ReconcilePending(){if(!CloudConnected()||!HasPending())return;for(int i=0;i<MAX_PENDING;i++){string tag=g_pendingTag[i],id=g_pendingId[i];if(tag==""||id=="")continue;ulong ticket=0;string sym="";double volume=0,open=0,sl=0,tp=0;if(FindPosition(tag,ticket,sym,volume,open,sl,tp)){Receipt(id,"FILLED",N64((long)ticket),0,"reconciled open position after terminal restart");continue;}ulong deal=0;if(HistoryHasTag(tag,deal))Receipt(id,"FILLED",N64((long)deal),0,"reconciled broker history after terminal restart");}}
 bool DemoGate(string id){if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO){Receipt(id,"ACCOUNT_MISMATCH","",0,"DEMO execution refused on non-demo account");return false;}if(!InpEnableDemoExecution){Receipt(id,"REJECTED","",0,"enable InpEnableDemoExecution first");return false;}if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)||!MQLInfoInteger(MQL_TRADE_ALLOWED)){Receipt(id,"REJECTED","",0,"Algo Trading disabled");return false;}return true;}
 
 void HandleOpen(string id,string mode,string side,string requested,string tag,string volumeMode,double volumeValue,double referencePrice,double sl,double tp1,double tp2,double tp3,long expiresMs){
@@ -184,15 +236,33 @@ void HandleCommand(string &parts[]){
  if(ArraySize(parts)<16)return;string id=parts[1],mode=parts[2],action=parts[3],event=parts[4],side=parts[5],requested=parts[6],tag=parts[7],volumeMode=parts[8];double volumeValue=StringToDouble(parts[9]),referencePrice=StringToDouble(parts[10]),sl=StringToDouble(parts[11]),tp1=StringToDouble(parts[12]),tp2=StringToDouble(parts[13]),tp3=StringToDouble(parts[14]);long expiresMs=(long)StringToInteger(parts[15]);if(StringLen(tag)!=12){Receipt(id,"REJECTED","",0,"invalid correlation tag");return;}g_lastSignal=action+" "+event+" "+side+" "+requested;
  if(action=="OPEN"){HandleOpen(id,mode,side,requested,tag,volumeMode,volumeValue,referencePrice,sl,tp1,tp2,tp3,expiresMs);return;}if(action=="MANAGE"){HandleManage(id,mode,event,tag);return;}Receipt(id,"REJECTED","",0,"unsupported command action");
 }
-void ProcessLine(string line){string p[];ushort sep=StringGetCharacter("|",0);int n=StringSplit(line,sep,p);if(n<=0)return;if(p[0]=="CMD"){HandleCommand(p);return;}if(p[0]=="RACK"&&n>=3&&FinalReceiptAckClearsPending(p[2])){ClearPendingById(p[1]);return;}}
-void PumpAgent(){if(!AgentConnected())return;uint readable=SocketIsReadable(g_socket);if(readable==0)return;if(readable>32768)readable=32768;uchar buf[];int n=SocketRead(g_socket,buf,readable,2);if(n<=0){DisconnectAgent();return;}g_rx+=CharArrayToString(buf,0,n,CP_UTF8);for(;;){int pos=StringFind(g_rx,"\n");if(pos<0)break;string line=StringSubstr(g_rx,0,pos);g_rx=StringSubstr(g_rx,pos+1);StringTrimLeft(line);StringTrimRight(line);if(line!="")ProcessLine(line);}}
+void ProcessLine(string line){
+ string p[];ushort sep=StringGetCharacter("|",0);int n=StringSplit(line,sep,p);if(n<=0)return;
+ if(p[0]=="CMD"){HandleCommand(p);return;}
+ if(p[0]=="RACK"&&n>=4&&p[3]=="1"&&FinalReceiptAckClearsPending(p[2])){ClearPendingById(p[1]);return;}
+ if(p[0]=="PONG"&&n>=2){ulong sent=(ulong)StringToInteger(p[1]);ulong now=GetTickCount64();if(sent>0&&now>=sent)g_cloudRttMs=(double)(now-sent);return;}
+}
+void ParseFrames(){
+ for(;;){int n=ArraySize(g_frameBuf);if(n<2)return;int b0=(int)g_frameBuf[0],b1=(int)g_frameBuf[1],opcode=b0&15;bool masked=(b1&128)!=0;ulong len=(ulong)(b1&127);int pos=2;
+  if(len==126){if(n<4)return;len=((ulong)g_frameBuf[2]<<8)|(ulong)g_frameBuf[3];pos=4;}else if(len==127){DisconnectCloud();return;}
+  uchar mask[4];if(masked){if(n<pos+4)return;for(int i=0;i<4;i++)mask[i]=g_frameBuf[pos+i];pos+=4;}
+  if(len>65535){DisconnectCloud();return;}if((ulong)n<(ulong)pos+len)return;
+  uchar payload[];ArrayResize(payload,(int)len);for(int i=0;i<(int)len;i++){uchar v=g_frameBuf[pos+i];payload[i]=masked?(uchar)(v^mask[i&3]):v;}
+  DropBytes(g_frameBuf,pos+(int)len);
+  if(opcode==8){DisconnectCloud();return;}if(opcode==9){string pong=CharArrayToString(payload,0,(int)len,CP_UTF8);WsSendFrame(10,pong);continue;}if(opcode!=1)continue;
+  string line=CharArrayToString(payload,0,(int)len,CP_UTF8);StringTrimLeft(line);StringTrimRight(line);if(line!="")ProcessLine(line);
+ }
+}
+void PumpCloud(){
+ if(!CloudConnected())return;for(int k=0;k<4;k++){uchar chunk[];int got=SocketTlsReadAvailable(g_socket,chunk,32768);if(got<0){DisconnectCloud();return;}if(got==0)break;AppendBytes(g_frameBuf,chunk,got);}ParseFrames();
+}
 
-void RenderPanel(){if(!InpShowPanel){DeletePanel();return;}int x=InpPanelX,y=InpPanelY,w=MathMax(370,InpPanelWidth),h=g_compact?132:300;Rect("root",x,y,w,h,C_BG,C_BORDER);Rect("head",x+1,y+1,w-2,44,C_BG2,C_BORDER);Label("title",x+12,y+8,"SignalBridge EA v0.23 · "+_Symbol,10,C_TEXT);Label("acct",x+12,y+25,AccountInfoString(ACCOUNT_SERVER)+" · #"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+" · "+MarginMode(),7,C_MUTED,"Consolas");Label("conn",x+w-124,y+9,AgentConnected()?"● AGENT LIVE":"● AGENT OFFLINE",8,AgentConnected()?C_GREEN:C_RED,"Consolas");Button("compact",x+w-102,y+24,88,17,g_compact?"EXPAND":"COMPACT");if(g_compact){Label("c1",x+12,y+58,"Equity  "+F2(AccountInfoDouble(ACCOUNT_EQUITY)),9,C_TEXT,"Consolas");Label("c2",x+12,y+80,"Last  "+g_lastSignal,8,C_CYAN,"Consolas");Label("c3",x+12,y+102,"Exec  "+g_lastExecution,8,C_MUTED,"Consolas");ChartRedraw(0);return;}int yy=y+58;Label("k1",x+12,yy,"BALANCE",7,C_MUTED,"Consolas");Label("v1",x+12,yy+16,F2(AccountInfoDouble(ACCOUNT_BALANCE)),11,C_TEXT,"Consolas");Label("k2",x+110,yy,"EQUITY",7,C_MUTED,"Consolas");Label("v2",x+110,yy+16,F2(AccountInfoDouble(ACCOUNT_EQUITY)),11,C_TEXT,"Consolas");Label("k3",x+205,yy,"FLOAT",7,C_MUTED,"Consolas");Label("v3",x+205,yy+16,F2(AccountInfoDouble(ACCOUNT_PROFIT)),11,AccountInfoDouble(ACCOUNT_PROFIT)>=0?C_GREEN:C_RED,"Consolas");Label("k4",x+298,yy,"OPEN",7,C_MUTED,"Consolas");Label("v4",x+298,yy+16,IntegerToString(CountMyPositions()),11,C_CYAN,"Consolas");yy+=68;Label("l1",x+14,yy,"Latest signal",8,C_MUTED);Label("r1",x+130,yy,g_lastSignal,8,C_CYAN,"Consolas");Label("l2",x+14,yy+23,"Execution",8,C_MUTED);Label("r2",x+130,yy+23,g_lastExecution,8,C_TEXT,"Consolas");Label("l3",x+14,yy+46,"Ticket",8,C_MUTED);Label("r3",x+130,yy+46,g_lastTicket,8,C_TEXT,"Consolas");Label("l4",x+14,yy+69,"Account",8,C_MUTED);Label("r4",x+130,yy+69,AccountMode()+" · "+MarginMode(),8,AccountMode()=="DEMO"?C_GREEN:C_AMBER,"Consolas");Label("l5",x+14,yy+92,"Demo execution",8,C_MUTED);Label("r5",x+130,yy+92,InpEnableDemoExecution?"ENABLED":"LOCKED",8,InpEnableDemoExecution?C_AMBER:C_GREEN,"Consolas");Rect("foot",x+12,y+h-42,w-24,28,C_BG2,C_BORDER);Label("foot_t",x+22,y+h-34,AgentConnected()?"50ms local loop · replay-safe cloud path":"Start Windows Agent on 127.0.0.1",7,AgentConnected()?C_GREEN:C_AMBER,"Consolas");ChartRedraw(0);}
+void RenderPanel(){if(!InpShowPanel){DeletePanel();return;}int x=InpPanelX,y=InpPanelY,w=MathMax(370,InpPanelWidth),h=g_compact?132:300;Rect("root",x,y,w,h,C_BG,C_BORDER);Rect("head",x+1,y+1,w-2,44,C_BG2,C_BORDER);Label("title",x+12,y+8,"SignalBridge EA v0.24 · "+_Symbol,10,C_TEXT);Label("acct",x+12,y+25,AccountInfoString(ACCOUNT_SERVER)+" · #"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+" · "+MarginMode(),7,C_MUTED,"Consolas");Label("conn",x+w-124,y+9,CloudConnected()?"● CLOUD LIVE":"● CLOUD OFFLINE",8,CloudConnected()?C_GREEN:C_RED,"Consolas");Button("compact",x+w-102,y+24,88,17,g_compact?"EXPAND":"COMPACT");if(g_compact){Label("c1",x+12,y+58,"Equity  "+F2(AccountInfoDouble(ACCOUNT_EQUITY)),9,C_TEXT,"Consolas");Label("c2",x+12,y+80,"Last  "+g_lastSignal,8,C_CYAN,"Consolas");Label("c3",x+12,y+102,"Exec  "+g_lastExecution,8,C_MUTED,"Consolas");ChartRedraw(0);return;}int yy=y+58;Label("k1",x+12,yy,"BALANCE",7,C_MUTED,"Consolas");Label("v1",x+12,yy+16,F2(AccountInfoDouble(ACCOUNT_BALANCE)),11,C_TEXT,"Consolas");Label("k2",x+110,yy,"EQUITY",7,C_MUTED,"Consolas");Label("v2",x+110,yy+16,F2(AccountInfoDouble(ACCOUNT_EQUITY)),11,C_TEXT,"Consolas");Label("k3",x+205,yy,"FLOAT",7,C_MUTED,"Consolas");Label("v3",x+205,yy+16,F2(AccountInfoDouble(ACCOUNT_PROFIT)),11,AccountInfoDouble(ACCOUNT_PROFIT)>=0?C_GREEN:C_RED,"Consolas");Label("k4",x+298,yy,"OPEN",7,C_MUTED,"Consolas");Label("v4",x+298,yy+16,IntegerToString(CountMyPositions()),11,C_CYAN,"Consolas");yy+=68;Label("l1",x+14,yy,"Latest signal",8,C_MUTED);Label("r1",x+130,yy,g_lastSignal,8,C_CYAN,"Consolas");Label("l2",x+14,yy+23,"Execution",8,C_MUTED);Label("r2",x+130,yy+23,g_lastExecution,8,C_TEXT,"Consolas");Label("l3",x+14,yy+46,"Ticket",8,C_MUTED);Label("r3",x+130,yy+46,g_lastTicket,8,C_TEXT,"Consolas");Label("l4",x+14,yy+69,"Account",8,C_MUTED);Label("r4",x+130,yy+69,AccountMode()+" · "+MarginMode(),8,AccountMode()=="DEMO"?C_GREEN:C_AMBER,"Consolas");Label("l5",x+14,yy+92,"Demo execution",8,C_MUTED);Label("r5",x+130,yy+92,InpEnableDemoExecution?"ENABLED":"LOCKED",8,InpEnableDemoExecution?C_AMBER:C_GREEN,"Consolas");Rect("foot",x+12,y+h-42,w-24,28,C_BG2,C_BORDER);Label("foot_t",x+22,y+h-34,CloudConnected()?"DIRECT EA ↔ CLOUDFLARE · "+IntegerToString((int)g_cloudRttMs)+"ms":"ADD SIGNALBRIDGE KEY / CHECK CLOUD",7,CloudConnected()?C_GREEN:C_AMBER,"Consolas");ChartRedraw(0);}
 
-int OnInit(){g_compact=InpCompact;PendingLoad();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;EventSetMillisecondTimer(ms);EnsureAgent();RenderPanel();return INIT_SUCCEEDED;}
-void OnDeinit(const int reason){EventKillTimer();DisconnectAgent();DeletePanel();ChartRedraw(0);}
+int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));g_compact=InpCompact;PendingLoad();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;EventSetMillisecondTimer(ms);EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+void OnDeinit(const int reason){EventKillTimer();DisconnectCloud();DeletePanel();ChartRedraw(0);}
 void OnTick(){}
-void OnTimer(){EnsureAgent();PumpAgent();ulong now=GetTickCount64();if(AgentConnected()&&now-g_lastHb>2000)SendHeartbeat();if(AgentConnected()&&HasPending()&&now-g_lastReconcile>2000){g_lastReconcile=now;ReconcilePending();}RenderPanel();}
+void OnTimer(){EnsureCloud();PumpCloud();ulong now=GetTickCount64();if(CloudConnected()&&now-g_lastHb>30000)SendHeartbeat();if(CloudConnected()&&now-g_lastPing>60000){g_lastPing=now;g_pingStarted=now;SendLine("PING|"+N64((long)now));}if(CloudConnected()&&HasPending()&&now-g_lastReconcile>2000){g_lastReconcile=now;ReconcilePending();}RenderPanel();}
 void OnTradeTransaction(const MqlTradeTransaction &trans,const MqlTradeRequest &request,const MqlTradeResult &result){
  if(trans.type!=TRADE_TRANSACTION_DEAL_ADD||trans.deal==0)return;if(!HistoryDealSelect(trans.deal))return;if((long)HistoryDealGetInteger(trans.deal,DEAL_MAGIC)!=InpMagic)return;
  string comment=HistoryDealGetString(trans.deal,DEAL_COMMENT);if(StringFind(comment,"SB:")!=0&&StringFind(request.comment,"SB:")==0)comment=request.comment;if(StringFind(comment,"SB:")!=0)return;
