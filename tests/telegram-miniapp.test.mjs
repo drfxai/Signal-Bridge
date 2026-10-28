@@ -243,3 +243,27 @@ test('Mini App provides safe one-time bot /login code UI without exposing EA sec
  assert.ok(source.includes("const consumed=await consumeCode(env,'telegram',row.target,code)"));
  assert.ok(source.includes("return json({ok:true},200,{'set-cookie':await login(env,user.id)})"));
 });
+
+
+test('Mini App exposes private webhook and no-trade connection test for authenticated users',()=>{
+ for(const id of ['miniTestConnection','miniConnectionLicense','miniConnectionLast','miniCreateWebhook','miniCopyWebhook','miniRotateWebhook','miniWebhookUrl'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
+ assert.ok(MINI_HTML.includes('DEMO XAUUSD Buy 0.01'));
+ assert.ok(MINI_HTML.includes('disabled title="Requires a newer compiled EA"'));
+ assert.ok(MINI_JS.includes("'/api/webhook/create'"));
+ assert.ok(MINI_JS.includes("'/api/webhook/rotate'"));
+ assert.ok(MINI_JS.includes("'/api/connection/check'"));
+ assert.ok(MINI_JS.includes('displayMiniWebhook'));
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+});
+test('Mini App admin tab and actions are gated by verified server role',()=>{
+ for(const id of ['miniAdminTab','miniAdminMetrics','miniAdminUsers','miniAdminSearch','miniAdminRefresh','miniAdminStatus'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
+ assert.ok(MINI_HTML.includes('Operations Center'));
+ assert.ok(MINI_JS.includes("user.role==='admin'"));
+ assert.ok(MINI_JS.includes("state.user?.role!=='admin'"));
+ assert.ok(MINI_JS.includes("'/api/admin/stats'"));
+ assert.ok(MINI_JS.includes("'/api/admin/users?q='"));
+ assert.ok(MINI_JS.includes("'/api/admin/user'"));
+ assert.ok(MINI_JS.includes("select.value"));
+ assert.ok(MINI_JS.includes("replaceChildren()"));
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+});
