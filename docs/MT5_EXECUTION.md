@@ -1,48 +1,67 @@
-# MT5 Execution Agent Design
-Planned filename: `DrFX_SignalBridge_EA.mq5`. No EA source code is present yet.
+# MT5 Execution Agent
+Current release source: `mt5/DrFX_SignalBridge_EA_v0.22.mq5`
+Canonical source: `mt5/DrFX_SignalBridge_EA.mq5`
 
-## Runtime architecture
-MQL5 Expert Advisor installed on a supported MT5 Windows terminal (local or Windows VPS). User pairs terminal/account to SignalBridge via short-lived enrollment. EA verifies the account number/server against authorized binding; mismatch disables trading.
+## Current runtime
 
-## EA components
-1. Config + Enrollment Manager: endpoint allowlist, connection tokens, demo/live indicator, heartbeat.
-2. Command Receiver: polling over HTTPS with `OnTimer`, token refresh and command version check.
-3. Validator: expiry, account identity, symbol mapping, volume step/min/max, stops level, freeze level, trading sessions.
-4. Position Ledger: correlated order/deal/position IDs and split TP children.
-5. Execution Manager: `CTrade` requests with full retcode and trade event handling.
-6. Local Safety Gate: duplicate receipt cache, pause, daily loss, exposure and order-rate guards.
-7. Reconciler: start-up and ambiguity reconciliation from order/deal history and current positions.
-8. Telemetry: status, heartbeat, masked diagnostics and outcome receipts.
+SignalBridge uses a Windows companion Agent and localhost TCP. The EA does **not** poll Cloudflare directly.
 
-## Execution lifecycle
-- Claim work: only account-scoped, unexpired command from authenticated server.
-- Persist local receipt intent BEFORE broker submission when feasible; prevent the same command's blind repeat after crash.
-- Validate market rules; reject if quote stale or spread beyond configured cap.
-- Submit order, inspect trade method result and retcode. Do not infer fill solely from request accepted.
-- Track `OnTradeTransaction` and query live orders/history to reconcile position/deal identifiers.
-- Report transitions to backend; classify uncertain submission as UNKNOWN and query broker before any new attempt.
-- On restart, reconcile commands marked CLAIMED/SUBMITTED/UNKNOWN. Never simply replay queue.
+`Cloudflare AgentHub WebSocket → Windows Agent → 127.0.0.1:17777 → MT5 EA`
 
-## MQL5-specific constraints
-- `WebRequest` is synchronous; call in timer path, not performance-critical UI ticks; add backoff, timeouts and outage indicators.
-- Allowed URLs must be configured in terminal options; ship onboarding instructions.
-- `WebRequest` cannot be tested inside Strategy Tester; separate pure strategy/risk unit tests from demo-terminal integration tests.
-- Hedge mode: TP legs may use separate positions. Netting mode: manage target quantities with account-level position semantics and partial close support.
-- Trade server can reject/requote/partially fill; report exact broker state and deviation.
+This keeps Cloudflare request usage low and avoids synchronous internet `WebRequest` calls inside the EA timer path.
 
-## Safety defaults
-- Demo mode default; live disabled until explicitly enabled.
-- Fixed lot = min of requested and policy maximum, or reject if rounding materially changes risk. Never silently increase lots.
-- Price decimals determined from contract spec, not guessed from asset class.
-- CLOSE/MODIFY must match an existing correlated position/ticket.
-- Default stop on disconnected risk backend or missing account state for NEW trades.
-- Kill switch pauses new OPEN; account liquidation is a separate protected action.
+## Safety mode
 
-## Test matrix
-- Hedging vs netting, symbol suffixes, broker digits/tick sizes, min lot/step, invalid SL/TP, spread spikes, market closed.
-- Invalid tokens, repeated command, delayed ACK, terminal restart after submit, server disconnect/reconnect, stale alerts.
-- Partial fills, TP1/2/3 behavior, reject/requote, unknown broker state, competing routes, high-frequency signals.
-- Account switch while EA running, strategy tester limitations and user permission errors.
+- DEMO account required.
+- `InpEnableDemoExecution=false` by default.
+- real/live accounts are hard-refused.
+- broker-side SL is mandatory.
+- requested lot/risk is capped by local EA settings.
+- symbol, spread, price deviation and broker volume limits are revalidated locally.
 
-## Distribution
-Provide signed installer package or manually installable MQ5/EX5 after review; never embed customer secrets in distributions. Keep release channels demo/beta/stable distinct.
+## Replay and restart safety
+
+EA v0.22 writes the pending correlation tag → command ID mapping to terminal common-file storage before broker submission.
+
+On restart it:
+
+1. reloads unresolved submissions;
+2. checks current SignalBridge positions;
+3. checks broker deal history;
+4. reports verified evidence when found;
+5. blocks automatic OPEN replay if the previous broker outcome is still unresolved.
+
+This is intentionally fail-closed. It is safer to require reconciliation than to create a second order.
+
+## Broker evidence
+
+The EA uses `CTrade` result codes plus `OnTradeTransaction` and broker history/positions. HTTP/Cloudflare delivery does not imply FILLED.
+
+Current command states include `SUBMITTED`, `FILLED`, `BROKER_REJECTED`, `REJECTED`, `EXPIRED`, `ERROR` and `DUPLICATE`.
+
+## GOD MODE management
+
+ENTRY uses risk-based or fixed-lot sizing depending on the normalized command.
+
+TP3, SL and CLOSE close the correlated position.
+
+TP1/TP2 partial management is currently implemented for hedging accounts. Netting-account partial semantics remain a release gate and must be implemented/tested before claiming full netting support.
+
+## Native panel
+
+The chart panel displays real terminal/account information, Agent connection state, balance/equity/floating P&L, managed position count, latest signal, latest execution result and DEMO gate state.
+
+## Required certification before public beta
+
+- MetaEditor compile with zero errors/warnings that affect execution.
+- DEMO tests on at least one hedging and one netting broker.
+- restart after broker submission but before receipt;
+- Agent/cloud disconnect/reconnect;
+- duplicate/replayed commands;
+- invalid symbol suffixes, volume steps and stops;
+- market closed, spread spikes and stale quotes;
+- partial fills and broker rejection;
+- netting TP1/TP2 behavior;
+- multiple charts/EA duplicate-instance protection if required.
+
+Live-money mode is outside the current release boundary.
