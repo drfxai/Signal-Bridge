@@ -25,7 +25,7 @@ jobs:
           $installer=Join-Path $env:RUNNER_TEMP 'mt5setup.exe'
           Invoke-WebRequest -Uri 'https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe' -OutFile $installer
           $auth=Get-AuthenticodeSignature $installer
-          if($auth.Status -ne 'Valid'){throw "MetaTrader installer signature not valid: $($auth.Status)"}
+          if($auth.Status -ne 'Valid'){throw "Installer signature invalid: $($auth.Status)"}
           $target=Join-Path $env:RUNNER_TEMP 'meta-trader-5-ci'
           New-Item -ItemType Directory -Path $target -Force | Out-Null
           $p=Start-Process -FilePath $installer -ArgumentList @('/auto',('/path:"'+$target+'"')) -Wait -PassThru
@@ -36,9 +36,8 @@ jobs:
             if($meta){break}
             Start-Sleep -Seconds 3
           }
-          if(-not $meta){throw "Official MetaEditor not installed; EX5 could not be compiled"}
+          if(-not $meta){throw "MetaEditor was not installed"}
           "METAEDITOR_PATH=$($meta.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-          Write-Host "MetaEditor located"
       - name: Compile v0.25 EA and validate EX5
         shell: pwsh
         run: |
@@ -47,10 +46,9 @@ jobs:
           $root=Split-Path $meta -Parent
           $target=Join-Path $env:RUNNER_TEMP 'DrFX_SignalBridge_EA.mq5'
           Copy-Item 'mt5/DrFX_SignalBridge_EA.mq5' $target
-          $installed=Join-Path $root 'terminal64.exe'
-          if(Test-Path $installed){
-            Write-Host 'Initializing MT5 portable data folders'
-            $terminal=Start-Process -FilePath $installed -ArgumentList '/portable' -PassThru
+          $terminalPath=Join-Path $root 'terminal64.exe'
+          if(Test-Path $terminalPath){
+            $terminal=Start-Process -FilePath $terminalPath -ArgumentList '/portable' -PassThru
             Start-Sleep -Seconds 8
             if(-not $terminal.HasExited){Stop-Process -Id $terminal.Id -Force -ErrorAction SilentlyContinue}
           }
@@ -58,46 +56,23 @@ jobs:
           $standard=$null
           foreach($base in $bases){
             if(-not (Test-Path $base)){continue}
-            $standard=Get-ChildItem $base -Filter Trade.mqh -File -Recurse -ErrorAction SilentlyContinue | Where-Object {$_.FullName -match '[\\/]Include[\\/]Trade[\\/]Trade\.mqh
-          $log=[System.IO.Path]::ChangeExtension($target,'.log')
-          if(Test-Path $log){Get-Content $log | Select-Object -Last 80 | Out-Host}
-          $compiled=[System.IO.Path]::ChangeExtension($target,'.ex5')
-          if(-not (Test-Path $compiled)){throw "MetaEditor did not produce EX5 (exit code: $($p.ExitCode))"}
-          $info=Get-Item $compiled
-          if($info.Length -lt 4096){throw "EX5 unexpectedly small"}
-          New-Item -ItemType Directory 'dist' -Force | Out-Null
-          Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.25_DEMO.ex5'
-          $hash=(Get-FileHash $compiled -Algorithm SHA256).Hash
-          @("SignalBridge EA v0.25 — DEMO TEST ONLY","SHA256: $hash","Size: $($info.Length) bytes","Live-money trading is disabled.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
-          Write-Host "Binary built: $($info.Length) bytes; SHA256 $hash"
-      - name: Upload actual EX5 for download
-        uses: actions/upload-artifact@v4
-        with:
-          name: DrFX_SignalBridge_EA_v0.25_DEMO_EX5
-          path: dist/
-          if-no-files-found: error
-          retention-days: 30
-} | Select-Object -First 1
+            $standard=Get-ChildItem -Path $base -Filter Trade.mqh -File -Recurse -ErrorAction SilentlyContinue | Where-Object {$_.FullName.EndsWith('\Include\Trade\Trade.mqh',[StringComparison]::OrdinalIgnoreCase)} | Select-Object -First 1
             if($standard){break}
           }
-          if(-not $standard){
-            Write-Host 'MetaEditor executable installed but MQL5 Standard Library Trade.mqh is missing'
-            foreach($base in $bases){if(Test-Path $base){Get-ChildItem $base -Directory -ErrorAction SilentlyContinue | Select-Object -First 15 | ForEach-Object {Write-Host $_.FullName}}}
-            throw 'Cannot compile without official MQL5 standard library (Trade.mqh)'
-          }
+          if(-not $standard){throw 'Official MQL5 Standard Library Trade.mqh not found in installation or data folders'}
           $includeDir=Split-Path (Split-Path (Split-Path $standard.FullName -Parent) -Parent) -Parent
-          Write-Host "Official standard library located; using include root: $includeDir"
+          Write-Host "Compiling with standard include root: $includeDir"
           $p=Start-Process -FilePath $meta -ArgumentList @(('/compile:"'+$target+'"'),('/include:"'+$includeDir+'"'),'/log') -PassThru -Wait
           $log=[System.IO.Path]::ChangeExtension($target,'.log')
           if(Test-Path $log){Get-Content $log | Select-Object -Last 80 | Out-Host}
           $compiled=[System.IO.Path]::ChangeExtension($target,'.ex5')
-          if(-not (Test-Path $compiled)){throw "MetaEditor did not produce EX5 (exit code: $($p.ExitCode))"}
+          if(-not (Test-Path $compiled)){throw "No EX5 generated (MetaEditor exit: $($p.ExitCode))"}
           $info=Get-Item $compiled
           if($info.Length -lt 4096){throw "EX5 unexpectedly small"}
           New-Item -ItemType Directory 'dist' -Force | Out-Null
           Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.25_DEMO.ex5'
           $hash=(Get-FileHash $compiled -Algorithm SHA256).Hash
-          @("SignalBridge EA v0.25 — DEMO TEST ONLY","SHA256: $hash","Size: $($info.Length) bytes","Live-money trading is disabled.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
+          @("SignalBridge EA v0.25 - DEMO TEST ONLY","SHA256: $hash","Size: $($info.Length) bytes","Live trading disabled.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
           Write-Host "Binary built: $($info.Length) bytes; SHA256 $hash"
       - name: Upload actual EX5 for download
         uses: actions/upload-artifact@v4
