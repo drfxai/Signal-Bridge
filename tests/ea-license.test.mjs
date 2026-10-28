@@ -9,7 +9,7 @@ const hash=createHash('sha256').update(code).digest('hex');
 
 test('EA login only accepts an opaque credential and queries active, unexpired license',async()=>{
  let query='',bound='';
- const env={DB:{prepare(sql){query=sql;return{bind(value){bound=value;return{first:async()=>({id:'ea_1',license_id:'lic_1'})}}}}}}};
+ const env={DB:{prepare(sql){query=sql;return{bind(value){bound=value;return{first:async()=>({id:'ea_1',license_id:'lic_1'})};}};}}};
  const request=new Request('https://signalbridge.drfx.online/v1/ea/ws',{headers:{'sec-websocket-protocol':'signalbridge-ea-v1, sb-token.'+code}});
  const license=await authenticateEaLicense(request,env);
  assert.equal(license.license_id,'lic_1');
