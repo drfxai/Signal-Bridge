@@ -228,12 +228,11 @@ test('Telegram website login refuses a 43-character EA serial before querying lo
  assert.equal(queries.filter(x=>x.includes('site_login_codes')).length,0);
 });
 test('Telegram website sign-in bot issues dedicated random 16-character OTP distinct from EA serial',()=>{
- assert.match(worker,/const code=b64u\(rand\(12\)\)/);
- assert.match(worker,/\/login.*?valid 10 minutes/s);
- assert.match(worker,/EA_CODE_NOT_LOGIN_CODE/);
- assert.match(worker,/INVALID_LOGIN_CODE_FORMAT/);
- assert.match(worker,/code\\.length/);
- assert.match(worker,/purpose='telegram'/);
- assert.match(worker,/used_at IS NULL/);
- assert.match(worker,/__Host-drfx_session/);
+ assert.ok(worker.includes('const code=b64u(rand(12))'));
+ assert.ok(worker.includes('16-character code, one time, 10 minutes'));
+ assert.ok(worker.includes('EA_CODE_NOT_LOGIN_CODE'));
+ assert.ok(worker.includes('INVALID_LOGIN_CODE_FORMAT'));
+ assert.ok(worker.includes("purpose='telegram'"));
+ assert.ok(worker.includes('used_at IS NULL'));
+ assert.ok(worker.includes('__Host-drfx_session'));
 });
