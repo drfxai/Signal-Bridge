@@ -270,18 +270,35 @@ async function rotateUserWebhook(req,env,user){
 }
 async function connectionDiagnostic(env,user){
  const row=await env.DB.prepare(
-  "SELECT el.status,el.plan,el.activated_at,el.expires_at,el.account_login,el.account_server," +
+  "SELECT sl.agent_id,el.status,el.plan,el.activated_at,el.expires_at,el.account_login,el.account_server," +
   "a.status AS agent_status,a.last_connected_at FROM site_licenses sl " +
   "JOIN ea_licenses el ON el.id=sl.license_id JOIN agent_connections a ON a.id=sl.agent_id " +
   "WHERE sl.user_id=? LIMIT 1"
  ).bind(user.id).first();
  if(!row)return {license:'missing',mt5_bound:false,last_handshake:null,live_socket_verified:false,trade_executed:false};
+ let live=false,terminal=false,connectedAt=null,snapshotAvailable=false;
+ if(env.AGENT_HUB){
+  try{
+   const hub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(row.agent_id));
+   const resp=await hub.fetch(new Request('https://agent-hub/snapshot'));
+   if(resp.ok){
+    const state=await resp.json();
+    snapshotAvailable=true;
+    const socket=(state.clients||[]).find(c=>c.agent_id===row.agent_id&&c.client_type==='ea');
+    const matches=!!socket&&!!row.account_login&&!!row.account_server&&
+      socket.account?.login===row.account_login&&socket.account?.server===row.account_server;
+    live=matches;terminal=matches&&socket.terminal_online===true;
+    connectedAt=matches?socket.connected_at||null:null;
+   }
+  }catch{ /* A failed read-only snapshot never counts as an online EA. */ }
+ }
  return {license:row.status,agent_status:row.agent_status,plan:row.plan,
   mt5_bound:!!(row.account_login&&row.account_server),
   mt5_account:row.account_login?{login:row.account_login,server:row.account_server}:null,
   last_handshake:row.last_connected_at||null,activated_at:row.activated_at||null,
-  live_socket_verified:false,trade_executed:false,
-  note:'Database connectivity snapshot only; not a current EA WebSocket ping.'};
+  live_socket_verified:live,terminal_online:terminal,live_snapshot_available:snapshotAvailable,
+  connected_at:connectedAt,trade_executed:false,
+  note:snapshotAvailable?'Live Durable Object EA snapshot; no order was placed.':'Live socket could not be independently verified. Database history shown only.'};
 }
 async function adminUpdate(req,env,admin){
  const b=await readBody(req);if(!ADMIN_ACTIONS.has(b.action)||!/^usr_[0-9a-f]{32}$/.test(b.user_id||''))return fail('INVALID_ACTION');

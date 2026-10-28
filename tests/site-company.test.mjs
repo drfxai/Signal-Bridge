@@ -269,7 +269,15 @@ test('user TradingView credentials are encrypted, isolated and created in dry-ru
 });
 test('connection check never claims active socket or silently creates a demo trade',async()=>{
  assert.ok(worker.includes("path==='/api/connection/check'"));
- assert.ok(worker.includes("live_socket_verified:false,trade_executed:false"));
+ assert.ok(worker.includes('live_socket_verified:live'));
+ assert.ok(worker.includes('trade_executed:false'));
+ assert.ok(worker.includes("https://agent-hub/snapshot"));
+ assert.ok(worker.includes("c.client_type==='ea'"));
+ assert.ok(worker.includes("socket.account?.login===row.account_login"));
+ assert.ok(worker.includes("socket.account?.server===row.account_server"));
+ assert.ok(worker.includes("socket.terminal_online===true"));
+ assert.ok(SITE_JS.includes("d.live_snapshot_available"));
+
  assert.ok(worker.includes("DEMO_TRADE_TEST_REQUIRES_UPDATED_EA"));
  assert.ok(SITE_HTML.includes('DEMO · Coming with EA update'));
  const p=new Request('https://drfx.company/api/connection/test-demo',{method:'POST',headers:{origin:'https://drfx.company'}});
