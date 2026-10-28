@@ -276,3 +276,12 @@ test('connection check never claims active socket or silently creates a demo tra
  const r=await handler.fetch(p,{});
  assert.equal(r.status,503); // no D1 => endpoint cannot trade or authenticate
 });
+
+test('last connection ATTEMPT is never misrepresented as live broker execution',()=>{
+ assert.ok(worker.includes('AS last_connection_attempt'));
+ assert.ok(worker.includes('last_connection_attempt:row.last_connection_attempt||null'));
+ assert.ok(worker.includes('live_socket_verified:false,trade_executed:false'));
+ assert.ok(SITE_JS.includes('d.last_connection_attempt'));
+ assert.ok(SITE_JS.includes('Last recorded EA connection attempt'));
+ assert.ok(SITE_JS.includes("$('personalWebhookUrl').textContent='No webhook created'"));
+});
