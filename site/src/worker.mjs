@@ -4,6 +4,8 @@ import { MINI_HTML, MINI_JS } from './telegram-mini.mjs';
 import { inspectTelegramInitData } from './telegram-auth.mjs';
 import { telegramHealth } from './telegram-health.mjs';
 import { botLanguage, botText, botLanguageKeyboard } from './telegram-i18n.mjs';
+import { I18N_JS } from './i18n.mjs';
+import { PROMO_ASSETS } from './promo.mjs';
 
 const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
@@ -631,6 +633,12 @@ export default {
   const url=new URL(request.url);
   if(request.method==='GET'&&url.pathname==='/')return new Response(SITE_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests"}});
   if(request.method==='GET'&&(url.pathname==='/telegram'||url.pathname==='/telegram/'))return new Response(MINI_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'none'; script-src 'self' https://telegram.org; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"}});
+  if(request.method==='GET'&&url.pathname==='/assets/i18n.js')return asset(I18N_JS,'text/javascript; charset=utf-8');
+  if(request.method==='GET'&&url.pathname.startsWith('/assets/promo/')){
+   const name=url.pathname.slice('/assets/promo/'.length);
+   if(!Object.hasOwn(PROMO_ASSETS,name))return new Response('Not found',{status:404,headers:HEAD});
+   return new Response(PROMO_ASSETS[name],{headers:{'content-type':'image/svg+xml; charset=utf-8','x-content-type-options':'nosniff','cache-control':'public, max-age=86400','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; sandbox"}});
+  }
   if(request.method==='GET'&&url.pathname==='/assets/telegram-mini.js')return asset(MINI_JS,'text/javascript; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/app.css')return asset(SITE_CSS,'text/css; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/tailwind.css')return asset(TAILWIND_CSS,'text/css; charset=utf-8');

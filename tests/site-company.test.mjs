@@ -133,7 +133,7 @@ test('mobile navigation is available, accessible, closable and translated',()=>{
  assert.match(SITE_CSS,/\[hidden\]/);
  assert.match(SITE_JS,/function closeMobileNav/);
  assert.match(SITE_JS,/mobileNav\.querySelectorAll\('a'\)/);
- assert.ok(SITE_JS.includes("document.querySelectorAll('[data-i=\"'+key+'\"]')"));
+ assert.ok(SITE_JS.includes("document.querySelectorAll('[data-i], [data-i18n]')"));
 });
 test('pricing handoff and sign out are guarded against stale auth states',()=>{
  assert.match(SITE_JS,/state\.plan!=='trial'/);
