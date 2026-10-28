@@ -93,6 +93,18 @@ void RememberPositionIdentity(string tag,ulong ticket){
  long pid=PositionGetInteger(POSITION_IDENTIFIER);if(pid>0)GlobalVariableSet(GVPosId(tag),(double)pid);
  FlushTradeIdentity();
 }
+void RememberPositionFromDeal(string tag,ulong deal){
+ if(deal==0)return;
+ for(int attempt=0;attempt<5;attempt++){
+  HistorySelect(TimeCurrent()-300,TimeCurrent()+60);
+  if(HistoryDealSelect(deal)){
+   long pid=HistoryDealGetInteger(deal,DEAL_POSITION_ID);
+   if(pid>0){GlobalVariableSet(GVPosId(tag),(double)pid);FlushTradeIdentity();for(int i=0;i<PositionsTotal();i++){ulong t=PositionGetTicket(i);if(t==0||!PositionSelectByTicket(t))continue;if(PositionGetInteger(POSITION_IDENTIFIER)==pid&&(long)PositionGetInteger(POSITION_MAGIC)==InpMagic){RememberPositionIdentity(tag,t);break;}}}
+   return;
+  }
+  if(attempt<4)Sleep(40);
+ }
+}
 bool FillPositionSnapshot(ulong t,ulong &ticket,string &sym,double &volume,double &open,double &sl,double &tp){
  if(t==0||!PositionSelectByTicket(t))return false;
  if((long)PositionGetInteger(POSITION_MAGIC)!=InpMagic)return false;
@@ -129,6 +141,7 @@ void HandleOpen(string id,string mode,string side,string requested,string tag,st
  double lots=(volumeMode=="RISK_PERCENT")?LotsForRisk(sym,buy,sl,volumeValue):NormalizeVolume(sym,volumeValue);if(lots<=0){Receipt(id,"REJECTED","",0,"position size invalid or below broker minimum");return;}double finalTp=(tp3>0?tp3:(tp2>0?tp2:tp1));if(finalTp<=0||!StopsValid(sym,buy,sl,finalTp)){Receipt(id,"REJECTED","",0,"SL/TP/spread validation failed");return;}
  if(mode=="dry_run"){Receipt(id,"PREVIEWED","",0,"preview accepted by MT5");return;}if(mode!="demo_execute"){Receipt(id,"REJECTED","",0,"unknown execution mode");return;}if(!DemoGate(id))return;if(CountMyPositions()>=InpMaxOpenTrades){Receipt(id,"REJECTED","",0,"max open trades reached");return;}
  if(!RegisterPending(tag,id)){Receipt(id,"ERROR","",0,"persistent pending-command ledger is full");return;}trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.SetTypeFillingBySymbol(sym);bool ok=buy?trade.Buy(lots,sym,0.0,sl,finalTp,"SB:"+tag):trade.Sell(lots,sym,0.0,sl,finalTp,"SB:"+tag);long rc=(long)trade.ResultRetcode();if(!ok){if(Receipt(id,"BROKER_REJECTED","",rc,trade.ResultRetcodeDescription()))ClearPending(tag);return;}GlobalVariableSet(GVVol(tag),lots);FlushTradeIdentity();
+ RememberPositionFromDeal(tag,trade.ResultDeal());
  ulong openedTicket=0;string openedSym="";double openedVol=0,openedPrice=0,openedSl=0,openedTp=0;if(FindPosition(tag,openedTicket,openedSym,openedVol,openedPrice,openedSl,openedTp))RememberPositionIdentity(tag,openedTicket);
  Receipt(id,"SUBMITTED",N64((long)trade.ResultOrder()),rc,trade.ResultRetcodeDescription());
 }
@@ -178,7 +191,7 @@ void OnTick(){}
 void OnTimer(){EnsureAgent();PumpAgent();ulong now=GetTickCount64();if(AgentConnected()&&now-g_lastHb>2000)SendHeartbeat();if(AgentConnected()&&HasPending()&&now-g_lastReconcile>2000){g_lastReconcile=now;ReconcilePending();}RenderPanel();}
 void OnTradeTransaction(const MqlTradeTransaction &trans,const MqlTradeRequest &request,const MqlTradeResult &result){
  if(trans.type!=TRADE_TRANSACTION_DEAL_ADD||trans.deal==0)return;if(!HistoryDealSelect(trans.deal))return;if((long)HistoryDealGetInteger(trans.deal,DEAL_MAGIC)!=InpMagic)return;
- string comment=HistoryDealGetString(trans.deal,DEAL_COMMENT);if(StringFind(comment,"SB:")!=0)return;
+ string comment=HistoryDealGetString(trans.deal,DEAL_COMMENT);if(StringFind(comment,"SB:")!=0&&StringFind(request.comment,"SB:")==0)comment=request.comment;if(StringFind(comment,"SB:")!=0)return;
  string tag=StringSubstr(comment,3);int colon=StringFind(tag,":");if(colon>0)tag=StringSubstr(tag,0,colon);
  long pid=HistoryDealGetInteger(trans.deal,DEAL_POSITION_ID);if(pid>0){GlobalVariableSet(GVPosId(tag),(double)pid);FlushTradeIdentity();}
  if((ENUM_DEAL_ENTRY)HistoryDealGetInteger(trans.deal,DEAL_ENTRY)!=DEAL_ENTRY_IN)return;
