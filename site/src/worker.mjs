@@ -169,7 +169,10 @@ async function emailVerify(req,env){
 async function loginFromTelegram(req,env){
  if(!await limited(req,env,'telegram:web-login',15))return fail('RATE_LIMITED',429);
  const body=await readBody(req),code=String(body.code||'').trim();
- if(!/^[A-Za-z0-9_-]{8,64}$/.test(code))return fail('INVALID_CODE',401);
+ // EA activation serials are 43 chars and MUST NOT be used as website sign-in credentials.
+ if(/^[A-Za-z0-9_-]{43}$/.test(code))return fail('EA_CODE_NOT_LOGIN_CODE',400);
+ // /login delivers 12 random bytes in base64url: exactly 16 characters.
+ if(!/^[A-Za-z0-9_-]{16}$/.test(code))return fail('INVALID_LOGIN_CODE_FORMAT',400);
  const digest=await sha(code);
  const row=await env.DB.prepare("SELECT user_id,target FROM site_login_codes WHERE code_hash=? AND purpose='telegram' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP").bind(digest).first();
  if(!row)return fail('INVALID_OR_EXPIRED_CODE',401);
@@ -320,7 +323,7 @@ async function telegramWebhook(req,env){
  }else if(command==='/login'){
   if(!await limited(req,env,'bot:code:'+telegramId,200)){await botSend(env,chatId,'Try again later.');return json({ok:true});}
   const code=await issueCode(env,'telegram',telegramId,user.id,10);
-  await botSend(env,chatId,'🔐 Your web login code (valid 10 minutes, one-time):\n<code>'+code+'</code>\nEnter at '+API_ORIGIN);
+  await botSend(env,chatId,'🔐 <b>DrFX Website Sign-in</b> (16-character code, one time, 10 minutes):\n<code>'+code+'</code>\nEnter this code only in the Telegram tab at '+API_ORIGIN+'\n⚠️ /code is your separate 43-character MT5 EA activation serial, not your website sign-in code.');
  }else if(command==='/code'){
   try{const record=await licenseRecord(env,user);const code=await decryptCode(env,record.encrypted_code,record.nonce);
     await botSend(env,chatId,'🔑 <b>Your private EA activation code</b>\n<code>'+code+'</code>\nDo not share it.');}
