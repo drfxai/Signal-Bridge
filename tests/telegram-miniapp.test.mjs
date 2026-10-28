@@ -173,7 +173,7 @@ test('external mobile browser offers a verified Telegram bot link instead of pre
  assert.match(MINI_JS,/await offerBotLaunch\(\)/);
  assert.match(MINI_JS,/if\(tg\?\.initData&&state\.telegramEnabled\)/);
  assert.ok(!MINI_JS.includes('initDataUnsafe'));
- assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261028-mobile-v4'));
+ assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261028-mobile-v5'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });
 
