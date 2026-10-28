@@ -4,7 +4,6 @@
 //+------------------------------------------------------------------+
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
-#property version   "0.23"
 #property strict
 #property description "SignalBridge MT5 test EA. Persistent localhost TCP Agent transport."
 #property description "DEMO execution only. Live accounts are always refused."
@@ -181,7 +180,7 @@ void HandleManage(string id,string mode,string event,string tag){
  Receipt(id,(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)?"FILLED":"SUBMITTED",N64((long)trade.ResultDeal()),rc,detail);
 }
 
-void HandleCommand(string parts[]){
+void HandleCommand(string &parts[]){
  if(ArraySize(parts)<16)return;string id=parts[1],mode=parts[2],action=parts[3],event=parts[4],side=parts[5],requested=parts[6],tag=parts[7],volumeMode=parts[8];double volumeValue=StringToDouble(parts[9]),referencePrice=StringToDouble(parts[10]),sl=StringToDouble(parts[11]),tp1=StringToDouble(parts[12]),tp2=StringToDouble(parts[13]),tp3=StringToDouble(parts[14]);long expiresMs=(long)StringToInteger(parts[15]);if(StringLen(tag)!=12){Receipt(id,"REJECTED","",0,"invalid correlation tag");return;}g_lastSignal=action+" "+event+" "+side+" "+requested;
  if(action=="OPEN"){HandleOpen(id,mode,side,requested,tag,volumeMode,volumeValue,referencePrice,sl,tp1,tp2,tp3,expiresMs);return;}if(action=="MANAGE"){HandleManage(id,mode,event,tag);return;}Receipt(id,"REJECTED","",0,"unsupported command action");
 }
