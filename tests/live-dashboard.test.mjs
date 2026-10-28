@@ -33,3 +33,13 @@ test('live dashboard displays only durable/backend account state',()=>{
  for(const token of ['counts?.commands','counts?.signals','counts?.telegram_updates','terminal_online','broker_ticket'])
   assert.match(ui,new RegExp(token.replace(/[?.]/g,m=>m==='?'?'\\?':'\\.')));
 });
+
+
+test('MTProto Telegram Account Connector is UI-only and explicitly inactive',()=>{
+ assert.match(ui,/Telegram Account Connector/);
+ assert.match(ui,/MTProto/);
+ assert.match(ui,/COMING SOON/);
+ assert.match(ui,/به‌زودی/);
+ assert.doesNotMatch(index,/\/v1\/.*mtproto/i);
+ assert.doesNotMatch(index,/api_hash|api_id|phone_number|telegram_session/i);
+});
