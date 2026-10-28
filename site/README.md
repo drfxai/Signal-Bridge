@@ -44,3 +44,6 @@ Cloudflare Email Sending to arbitrary recipients requires Workers Paid as of Oct
 
 ## Deployment and account verification
 The Worker `drfx-company-site` has been deployed to Cloudflare with a D1 binding, and the D1 schema migrations are applied. Email delivery, Telegram BotFather credentials, payment merchant secrets, published EX5 and downloadable indicator packages remain external release gates. Do not send test real-money orders; canonical EA is DEMO-only.
+
+## Two original globe animations (2026-10-28)
+User-supplied clips `48356.mp4` and `48355.mp4` are placed at (1) landing hero and (2) global signal connectivity section respectively. The site uses muted/loop/playsinline, IntersectionObserver lazy playback, save-data and reduced-motion controls, with CSS motion fallbacks while the binaries are unavailable. Source videos contain unrelated promotional text, therefore serve only reviewed edited/cropped versions. The MP4 binaries are **not committed or uploaded** by this code change. Production will serve them from `/assets/media/48356-globe.mp4` and `/assets/media/48355-connections.mp4` once CDN objects are uploaded and route/bindings verified. Never claim the MP4s play until GET checks return status 200 with `video/mp4` content type. Optimized media assets prepared locally for authorized hosting.
