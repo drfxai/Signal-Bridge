@@ -14,7 +14,7 @@ SignalBridge is a low-latency, replay-safe signal bridge built around Cloudflare
 - Durable command state with retry-safe PENDING redispatch.
 - Account-scoped Durable Object WebSocket transport.
 - Read-only realtime dashboard observer WebSocket that does not replace the execution Agent.
-- Windows SignalBridge Agent using persistent Cloudflare WebSocket + localhost TCP to MT5.
+- Windows SignalBridge Agent v0.23.1 using persistent Cloudflare WebSocket + localhost TCP to MT5, with measured Cloudflare RTT telemetry.
 - MT5 EA v0.23 with:
   - DEMO-only execution gate;
   - broker-side SL/TP/spread/lot checks;
