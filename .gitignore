@@ -5,4 +5,8 @@ coverage/
 playwright-report/
 test-results/agent-windows/config.json
 *.ex5
+private/
+*.set
+*.mq5.log
+*.mq5.txt
 agent-windows/receipt-outbox.jsonl
