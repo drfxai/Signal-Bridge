@@ -3,4 +3,5 @@ node_modules/
 *.log
 coverage/
 playwright-report/
-test-results/
+test-results/agent-windows/config.json
+*.ex5
