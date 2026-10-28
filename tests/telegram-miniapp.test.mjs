@@ -130,3 +130,35 @@ test('Telegram navigation, bilingual mode and license privacy remain functional'
  assert.ok(!MINI_JS.includes('initDataUnsafe'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });
+
+test('Mini App recovers an authenticated browser session without Telegram initData',()=>{
+ assert.match(MINI_JS,/const signedIn=await refresh\('session'\)/);
+ assert.match(MINI_JS,/const config=await api\('\/api\/config'\)/);
+ assert.match(MINI_JS,/if\(tg\?\.initData&&state\.telegramEnabled\)/);
+ assert.match(MINI_JS,/await api\('\/api\/auth\/telegram\/webapp',\{init_data:tg\.initData\}\)/);
+ assert.match(MINI_JS,/if\(!signedIn\)/);
+ assert.match(MINI_JS,/document\.documentElement\.lang=locale/);
+ assert.match(MINI_JS,/navigator\.language\?\.toLowerCase\(\)\.startsWith\('fa'\)/);
+});
+test('Mini App clears private EA activation material on failed session refresh',()=>{
+ assert.match(MINI_JS,/function clearPrivateAccount\(\)/);
+ assert.match(MINI_JS,/state\.user=null;state\.serialVisible=false/);
+ assert.match(MINI_JS,/set\('serialValue','•••• •••• •••• ••••'\)/);
+ assert.match(MINI_JS,/\$\('revealSerial'\)\.disabled=true;\$\('copySerial'\)\.disabled=true/);
+ assert.match(MINI_JS,/catch\(error\)\{\s*clearPrivateAccount\(\)/);
+ assert.match(MINI_HTML,/id="retrySignIn"[^>]*hidden/);
+ assert.match(MINI_JS,/\$\('retrySignIn'\)\.addEventListener\('click',start\)/);
+ assert.match(MINI_HTML,/telegram-mini\.js\?v=20261028-mobile-v3/);
+});
+test('Persian translation covers account safety, MT5 onboarding, and error states',()=>{
+ for(const label of [
+  'data-tr="licenseNote"','data-tr="step1"','data-tr="step2"','data-tr="step3"','data-tr="step4"',
+  'data-tr="help1"','data-tr="help2"','data-tr="help3"','data-tr="help4"',
+  'data-tr="memberCaption"','data-tr="mt5Caption"','data-tr="eaCaption"',
+  'data-tr="premiumNote"','data-tr="securityTitle"'
+ ])assert.ok(MINI_HTML.includes(label),label);
+ assert.match(MINI_JS,/مینی‌اپ را از داخل بات رسمی/);
+ assert.match(MINI_JS,/کد فعال‌سازی/);
+ assert.match(MINI_JS,/خطا|دوباره تلاش کنید|ارتباط برقرار نشد/);
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+});
