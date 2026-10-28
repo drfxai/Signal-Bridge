@@ -16,7 +16,7 @@ test('repository home points to the premium product UI and live surfaces',()=>{
 test('standard V3 install is one EA and one webhook without companion setup',()=>{
  assert.match(readme,/One MT5 EA/i);
  assert.match(readme,/one TradingView webhook/i);
- assert.match(readme,/no Node\\.js, no PowerShell, no local Windows Agent/i);
+ assert.match(readme,/no Node\.js, no PowerShell, no local Windows Agent/i);
  assert.doesNotMatch(readme,/Install-SignalBridge\.ps1/);
  assert.doesNotMatch(readme,/Start-SignalBridge-Agent\.cmd/);
 });
