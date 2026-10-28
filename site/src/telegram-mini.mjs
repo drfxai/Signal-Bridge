@@ -258,8 +258,8 @@ async function refreshMiniConnection(){
   const [c,w]=await Promise.all([api('/api/connection/check'),api('/api/webhook')]);
   const d=c.diagnostic||{};
   set('miniConnectionLicense',d.license==='active'?'ACTIVE':'INACTIVE');
-  set('miniConnectionLast',d.last_handshake||'Not seen');
-  set('miniConnectionInfo','Last recorded handshake only, not a live WebSocket ping or order.');
+  set('miniConnectionLast',d.live_snapshot_available?(d.terminal_online?'● MT5 ONLINE':d.live_socket_verified?'● EA CONNECTED':'● EA OFFLINE'):(d.last_handshake||'Live status unknown'));
+  set('miniConnectionInfo',d.live_snapshot_available?(d.terminal_online?'Live MT5 terminal confirmed. No order placed.':'No matching live MT5 terminal connected. No order placed.'):'Live WebSocket check unavailable. Showing historical handshake only.');
   displayMiniWebhook(w.webhook);
  }catch(e){set('miniConnectionInfo','Connection status unavailable: '+e.message);}
 }
