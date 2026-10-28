@@ -1,7 +1,7 @@
 import { SITE_HTML, SITE_CSS, SITE_JS, DESIGN_JS } from './ui.mjs';
 import { TAILWIND_CSS } from './tailwind.mjs';
 import { MINI_HTML, MINI_JS } from './telegram-mini.mjs';
-import { verifyTelegramInitData } from './telegram-auth.mjs';
+import { inspectTelegramInitData } from './telegram-auth.mjs';
 import { telegramHealth } from './telegram-health.mjs';
 
 const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
@@ -183,8 +183,14 @@ async function loginFromTelegramMiniApp(req,env){
  if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_WEBHOOK_SECRET)return fail('BOT_NOT_CONFIGURED',503);
  if(!await limited(req,env,'telegram:mini-login',12))return fail('RATE_LIMITED',429);
  const body=await readBody(req,9000);
- const principal=await verifyTelegramInitData(body.init_data,env.TELEGRAM_BOT_TOKEN);
- if(!principal)return fail('INVALID_TELEGRAM_INIT_DATA',401);
+ const validation=await inspectTelegramInitData(body.init_data,env.TELEGRAM_BOT_TOKEN);
+ if(!validation.principal){
+  // Expose only a generic, safe code; never emit signed initData, timestamps or account identifiers.
+  if(validation.reason==='EXPIRED')return fail('TELEGRAM_INIT_DATA_EXPIRED',401);
+  if(validation.reason==='BOT_CONFIGURATION')return fail('BOT_NOT_CONFIGURED',503);
+  return fail('INVALID_TELEGRAM_INIT_DATA',401);
+ }
+ const principal=validation.principal;
  const user=await getOrCreateTelegram(env,principal.id,principal.name);
  if(!user||user.status!=='active')return fail('ACCOUNT_SUSPENDED',403);
  try{await licenseRecord(env,user);}catch{return fail('LICENSING_NOT_READY',503);}
