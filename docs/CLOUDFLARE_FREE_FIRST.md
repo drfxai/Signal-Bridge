@@ -61,7 +61,7 @@ flowchart LR
 ### 1. Dashboard
 The HTML/CSS/JS shell can be delivered efficiently, but the **dashboard itself is live**. State comes from D1 and AgentHub through authenticated API reads plus a separate read-only observer WebSocket.
 
-The observer connection is distinct from the Windows execution Agent, so opening a dashboard never disconnects or supersedes the terminal Agent. High-frequency polling is avoided; account state and broker receipts are event-driven. Manual refresh remains available for durable history reconciliation.
+The observer connection is distinct from the Windows execution Agent, so opening a dashboard never disconnects or supersedes the terminal Agent. High-frequency polling is avoided; account state, broker receipts and measured Agent↔Cloudflare WebSocket RTT are event-driven. Manual refresh remains available for durable history reconciliation.
 
 ### 2. Worker
 One lightweight Worker handles:
@@ -158,7 +158,7 @@ If the free budget is under pressure, protect in this order:
 4. user dashboard API;
 5. analytics and non-critical diagnostics.
 
-Static UI remains separately cacheable/static.
+Only the UI shell/assets are cacheable; account, command, broker and latency state remains live and event-driven.
 
 ## Migration to Workers Paid
 
@@ -189,9 +189,9 @@ Before opening to external users:
 - [completed] apply current migrations and create scoped DEMO test credentials;
 - prove ingress remains inside the 10 ms CPU envelope under fixture load;
 - record actual D1 row-read/write amplification;
-- implement per-source abuse/rate controls;
+- [completed] dashboard/test API abuse rate control is deployed; ingress-specific controls remain conservative to preserve signal latency;
 - [completed] Agent Hub + Hibernatable WebSocket is implemented; execution Agent and read-only dashboard observer use separate socket roles;
 - build quota dashboards/alerts;
-- run a 100-user synthetic load test, then 250, then 500.
+- [completed] offline 100/250/500 capacity model exists; validate it against measured Cloudflare analytics before external scale claims.
 
 No quota estimate substitutes for measured load testing.
