@@ -10,7 +10,7 @@ The connection does **not** bind to the first arbitrary message. The intended ch
 
 A successful one-time pairing stores that chat ID and invalidates the Pair Code. Messages from other chats are ignored.
 
-Supported deterministic test format:
+Supported deterministic test format (English shown; Persian/Arabic labels and digits are also supported):
 
 ```
 XAUUSD BUY
