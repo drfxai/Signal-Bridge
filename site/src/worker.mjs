@@ -302,16 +302,36 @@ async function telegramWebhook(req,env){
   const rec=await licenseRecord(env,user);
   await botSend(env,chatId,'👤 Your account\nPlan: '+user.plan+'\nEA: '+rec.status+'\nExpires: '+(rec.expires_at||'Starts on first EA activation')+'\nDashboard: '+API_ORIGIN,true);
  }else if(command==='/link'){
-  const code=text.split(/\s+/)[1]||'',digest=await sha(code);
+  const code=text.split(/\s+/)[1]||'';
+  if(!/^[A-Za-z0-9_-]{8,64}$/.test(code)){await botSend(env,chatId,'Usage: /link CODE');return json({ok:true});}
+  const digest=await sha(code);
   const entry=await env.DB.prepare("SELECT user_id FROM site_login_codes WHERE code_hash=? AND purpose='link' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP").bind(digest).first();
   if(!entry){await botSend(env,chatId,'Invalid or expired linking code.');return json({ok:true});}
-  if(user){await botSend(env,chatId,user.id===entry.user_id?'Already linked.':'Telegram is already registered. Use /login for that account, or contact support to merge accounts securely.');return json({ok:true});}
-  const recipient=await env.DB.prepare('SELECT telegram_id FROM site_users WHERE id=?').bind(entry.user_id).first();
-  if(!recipient||recipient.telegram_id){await botSend(env,chatId,'Account already has Telegram linked.');return json({ok:true});}
-  const used=await env.DB.prepare('UPDATE site_login_codes SET used_at=CURRENT_TIMESTAMP WHERE code_hash=? AND used_at IS NULL').bind(digest).run();
-  if(used.meta?.changes!==1)return json({ok:true});
-  await env.DB.prepare('UPDATE site_users SET telegram_id=?,telegram_name=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND telegram_id IS NULL').bind(telegramId,username,entry.user_id).run();
-  await botSend(env,chatId,'✅ Linked this Telegram to your existing website account.');
+  const target=await env.DB.prepare("SELECT * FROM site_users WHERE id=? AND status='active'").bind(entry.user_id).first();
+  if(!target?.email||target.telegram_id){await botSend(env,chatId,'This website account cannot be linked.');return json({ok:true});}
+  if(user.id===target.id){await botSend(env,chatId,'Already linked.');return json({ok:true});}
+  const secondary=await env.DB.prepare("SELECT sl.agent_id,el.activated_at FROM site_licenses sl JOIN ea_licenses el ON el.id=sl.license_id WHERE sl.user_id=?").bind(user.id).first();
+  const activity=await env.DB.prepare("SELECT id FROM site_orders WHERE user_id=? AND status='paid' LIMIT 1").bind(user.id).first();
+  if(user.plan!=='trial'||secondary?.activated_at||activity){
+   await botSend(env,chatId,'Your Telegram account has used or paid membership. Contact support for a verified account merge.');return json({ok:true});
+  }
+  try{
+   const statements=[
+    env.DB.prepare("UPDATE site_login_codes SET used_at=CURRENT_TIMESTAMP WHERE code_hash=? AND used_at IS NULL").bind(digest),
+    env.DB.prepare("DELETE FROM site_sessions WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM site_login_codes WHERE user_id=? AND code_hash<>?").bind(user.id,digest),
+    env.DB.prepare("DELETE FROM site_licenses WHERE user_id=?").bind(user.id),
+    env.DB.prepare("DELETE FROM ea_licenses WHERE agent_id=? AND activated_at IS NULL").bind(secondary?.agent_id||'none'),
+    env.DB.prepare("DELETE FROM agent_connections WHERE id=?").bind(secondary?.agent_id||'none'),
+    env.DB.prepare("DELETE FROM site_orders WHERE user_id=? AND status<>'paid'").bind(user.id),
+    env.DB.prepare("DELETE FROM site_users WHERE id=? AND telegram_id=? AND plan='trial'").bind(user.id,telegramId),
+    env.DB.prepare("UPDATE site_users SET telegram_id=?,telegram_name=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND telegram_id IS NULL").bind(telegramId,safeText(username,80),target.id)
+   ];
+   const results=await env.DB.batch(statements);
+   if(results[0]?.meta?.changes!==1||results[7]?.meta?.changes!==1||results[8]?.meta?.changes!==1)throw Error('LINK_CONFLICT');
+   await audit(env,user.id,'link_telegram_account',target.id);
+   await botSend(env,chatId,'✅ Telegram linked to your existing verified email account. Use /login to open it on the website.');
+  }catch{await botSend(env,chatId,'Could not link accounts. Request a fresh code.');}
  }else if(command==='/admin'&&user.role==='admin'){
   const stats=await env.DB.prepare('SELECT COUNT(*) AS total,SUM(CASE WHEN plan="quarterly" THEN 1 ELSE 0 END) AS quarter,SUM(CASE WHEN plan="annual" THEN 1 ELSE 0 END) AS annual FROM site_users').first();
   await botSend(env,chatId,'DrFX Admin\nUsers: '+stats.total+'\nQuarterly: '+stats.quarter+'\nAnnual: '+stats.annual+'\nFull management: '+API_ORIGIN);
