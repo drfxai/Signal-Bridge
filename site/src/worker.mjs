@@ -1,4 +1,5 @@
 import { SITE_HTML, SITE_CSS, SITE_JS } from './ui.mjs';
+import { MEDIA_B64, MEDIA_INFO } from './media.mjs';
 
 const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
@@ -424,9 +425,38 @@ async function api(req,env){
  if(path==='/api/admin/user'&&req.method==='POST')return adminUpdate(req,env,user);
  return fail('NOT_FOUND',404);
 }
+// Cached binary assets: original user-provided globe motion clips, transcodes for Workers Free.
+const videoCache=new Map();
+function serveVideo(request,path){
+ const key=path.slice('/assets/media/'.length);
+ if(!Object.prototype.hasOwnProperty.call(MEDIA_B64,key))return new Response('Not found',{status:404,headers:HEAD});
+ const info=MEDIA_INFO[key],etag='"'+info.sha256+'"';
+ const common={...HEAD,'content-type':'video/mp4','accept-ranges':'bytes','cache-control':'public, max-age=3600, stale-while-revalidate=86400','etag':etag,'cross-origin-resource-policy':'same-origin'};
+ if(request.headers.get('if-none-match')===etag)return new Response(null,{status:304,headers:common});
+ let bytes=videoCache.get(key);
+ if(!bytes){bytes=Uint8Array.from(atob(MEDIA_B64[key]),ch=>ch.charCodeAt(0));if(bytes.length!==info.bytes)return new Response('Asset integrity failure',{status:503,headers:HEAD});videoCache.set(key,bytes);}
+ const range=request.headers.get('range');
+ if(range){
+  const match=/^bytes=(\d*)-(\d*)$/.exec(range.trim());
+  if(!match||(!match[1]&&!match[2]))return new Response(null,{status:416,headers:{...common,'content-range':'bytes */'+bytes.length}});
+  let start,end;
+  if(match[1]){
+   start=Number(match[1]);end=match[2]?Number(match[2]):bytes.length-1;
+  }else{
+   const suffix=Number(match[2]);if(!Number.isSafeInteger(suffix)||suffix<=0)return new Response(null,{status:416,headers:{...common,'content-range':'bytes */'+bytes.length}});
+   start=Math.max(0,bytes.length-suffix);end=bytes.length-1;
+  }
+  if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=bytes.length||end<start)return new Response(null,{status:416,headers:{...common,'content-range':'bytes */'+bytes.length}});
+  end=Math.min(end,bytes.length-1);
+  const chunk=bytes.subarray(start,end+1);
+  return new Response(request.method==='HEAD'?null:chunk,{status:206,headers:{...common,'content-range':'bytes '+start+'-'+end+'/'+bytes.length,'content-length':String(chunk.length)}});
+ }
+ return new Response(request.method==='HEAD'?null:bytes,{status:200,headers:{...common,'content-length':String(bytes.length)}});
+}
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
+  if((request.method==='GET'||request.method==='HEAD')&&url.pathname.startsWith('/assets/media/'))return serveVideo(request,url.pathname);
   if(request.method==='GET'&&url.pathname==='/')return new Response(SITE_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; media-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests"}});
   if(request.method==='GET'&&url.pathname==='/assets/app.css')return asset(SITE_CSS,'text/css; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/app.js')return asset(SITE_JS,'text/javascript; charset=utf-8');
