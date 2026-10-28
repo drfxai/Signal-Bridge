@@ -55,7 +55,6 @@ The dashboard uses authenticated API reads plus a separate read-only observer We
 
 - Compile/QA EA v0.23 in real MetaEditor/MT5 and confirm zero compile errors.
 - Run real DEMO end-to-end tests for TradingView and Telegram, including hedging and netting accounts.
-- Complete netting-account TP1/TP2 management behavior.
 - Cloudflare dashboard/test rate limiting is active; add quota/usage alerting from measured analytics.
 - Run reconnect/chaos tests and validate the offline 100 → 250 → 500 capacity model against measured Cloudflare analytics.
 - Add production owner/session authentication before multi-user dashboard rollout.
