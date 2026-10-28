@@ -1,98 +1,116 @@
-# SignalBridge — Technical Architecture
-Version 0.3 · Free-first realtime DEMO beta · 2026-10-28
+# SignalBridge — V3 Technical Architecture
+Version 0.4 · Direct-EA beta · 2026-10-28
 
-## Current deployment
+## Product rule
 
-SignalBridge is deployed on **Cloudflare Free** using:
+The standard installation path is intentionally reduced to:
+
+1. one MetaTrader 5 EA;
+2. one private SignalBridge Key inside the EA;
+3. one private TradingView webhook URL.
+
+No Node.js, PowerShell or Windows companion Agent is required in the V3 standard flow.
+
+## Production edge
 
 - Worker: `drfx-signalbridge-ingress`
-- Production custom domain: `signalbridge.drfx.online`
+- Custom domain: `signalbridge.drfx.online`
 - D1: `signalbridge-ingress`
-- account-scoped Durable Object: `AgentHub`
-- Windows SignalBridge Agent
-- MT5 EA v0.22
-
-The current execution boundary is **DEMO accounts only**.
+- Durable Object: `AgentHub` (legacy internal name; now coordinates both direct EA and legacy Agent clients)
+- Direct EA WebSocket endpoint: `/v1/ea/ws`
+- Legacy Windows Agent endpoint: `/v1/agent/ws`
 
 ## Realtime data flow
 
 ```mermaid
 flowchart TD
-    TV[TradingView / GOD MODE] --> W[Cloudflare Worker]
-    TG[Paired Telegram Bot] --> W
-    DASH[Live Dashboard] -->|Authenticated API| W
-    W --> DB[(D1 durable state)]
-    W --> HUB[AgentHub Durable Object]
-    HUB <-->|Execution WebSocket| AG[Windows SignalBridge Agent]
-    HUB <-->|Read-only observer WebSocket| DASH
-    AG <-->|localhost TCP| EA[MT5 EA v0.22]
-    EA --> BROKER[Broker DEMO]
-    BROKER --> EA
-    EA --> AG
-    AG --> HUB
-    HUB --> DB
+ TV[TradingView Alert] --> W[Cloudflare Worker]
+ TG[Telegram Bot] --> W
+ DASH[Web Dashboard / Telegram Web App] --> W
+ W --> DB[(D1)]
+ W --> HUB[Durable Object execution hub]
+ HUB <-->|Direct TLS/WebSocket| EA[MT5 SignalBridge EA v0.24]
+ HUB <-->|Read-only WebSocket| DASH
+ EA --> BROKER[Broker DEMO]
+ BROKER --> EA
+ EA --> HUB
+ HUB --> DB
 ```
 
-## Why the dashboard is not static
+## Direct EA protocol
 
-Static HTML/CSS assets may be cacheable, but **dashboard state is live**. Account state, terminal availability, command history and broker receipts come from D1/AgentHub. The dashboard opens a separate read-only observer WebSocket so UI updates do not supersede the Windows execution Agent. No high-frequency polling is required.
+The EA establishes an outbound TLS connection to `signalbridge.drfx.online:443`, upgrades it to WebSocket and selects `signalbridge-ea-v1`.
 
-## Ingress reliability
+Authentication uses the existing high-entropy execution-connection token. The token is consumed at the Worker boundary; the Durable Object receives only the authenticated connection identity.
 
-1. Authenticate the source.
-2. Parse and validate fail-closed.
-3. Persist source event before acknowledging acceptance.
-4. Create an idempotent durable command.
-5. Attempt realtime dispatch only when the Agent socket and MT5 terminal state are both online.
+The direct EA transport intentionally uses a compact text protocol inside WebSocket frames:
+
+- `HELLO|...`
+- `HB|...`
+- `PING|...`
+- `CMD|...`
+- `RCPT|...`
+- `RACK|...`
+
+This avoids putting a JSON parser inside the EA while retaining the same durable command lifecycle as the former Windows Agent path.
+
+## Command durability
+
+1. Authenticate source.
+2. Validate fail-closed.
+3. Persist source event.
+4. Create durable command with deterministic correlation tag.
+5. Dispatch only to a verified execution socket.
 6. Keep undelivered work PENDING.
-7. Redispatch PENDING work safely on source retry/reconnect.
+7. Replay PENDING/DELIVERED only after MT5 account readiness is known.
 8. Reconcile broker evidence before accepting a retry as a new order.
+9. Keep local pending state until a cloud `RACK` confirms the terminal result was stored.
 
-Telegram update identity and TradingView signal identity are both persisted before command creation. A Telegram retry can reconstruct/redispatch its command rather than being discarded after a partial failure.
+## TradingView
 
-## Agent/terminal distinction
+TradingView posts to:
 
-`Agent online` and `MT5 online` are separate states.
+```text
+POST /v1/ingress/tradingview/<private_connection_token>
+```
 
-- Agent online + MT5 offline → OPEN remains PENDING and is not dispatched.
-- MT5 connect/disconnect is propagated event-driven to AgentHub.
-- Local queue overflow never silently evicts an older command.
+The Worker validates, persists, normalizes and dispatches through the same execution hub.
 
-## MT5 execution/reconciliation
+## Telegram
 
-EA v0.22 persists the pending command/tag mapping to local terminal storage **before broker submission**. On restart:
+Telegram Bot updates enter:
 
-- an existing correlated position or broker-history deal is reconciled;
-- an unresolved previous submission blocks automatic replay;
-- no blind duplicate OPEN is sent.
+```text
+POST /v1/ingress/telegram/<connection_id>
+```
 
-Only verified terminal/broker evidence may move a command to FILLED.
+Bot pairing remains explicit. Telegram Web App is a control/monitoring surface.
 
-## Command lifecycle
+The personal-account **MTProto connector is Coming Soon and inactive**. No personal Telegram session is created in the current release.
 
-`PENDING → DELIVERED → PREVIEWED`
+## Dashboard
 
-or
+The live dashboard remains backend-backed. It observes the execution hub through a read-only observer WebSocket and displays MT5 state, account telemetry, recent commands, cloud RTT and broker receipts.
 
-`PENDING → DELIVERED → SUBMITTED → FILLED`
+## Legacy Agent
 
-with terminal outcomes such as `BROKER_REJECTED`, `REJECTED`, `ACCOUNT_MISMATCH`, `EXPIRED`, `ERROR`, or `DUPLICATE`.
+`agent-windows/` remains for rollback/reference during migration. It is not shown in the standard V3 install flow.
 
-Receipt transitions are validated server-side; terminal states cannot be rewritten back to an earlier execution state.
+## Current safety boundary
 
-## GOD MODE lifecycle
+- DEMO execution only.
+- Live MT5 account execution remains hard-blocked.
+- Broker-side SL and local risk checks stay inside the EA.
+- Unknown/ambiguous state fails closed.
 
-ENTRY creates an OPEN command. TP1/TP2/TP3/SL/CLOSE create correlated MANAGE commands. Management events are treated as durable safety/lifecycle events and are not discarded merely because an ordinary reconnect took several hours.
+## Release gates
 
-## Free-plan scale policy
+Before v0.24 can be called release-certified:
 
-The launch architecture avoids terminal HTTP polling. Hibernatable Durable Object WebSockets remain the preferred transport. Paid migration begins around 500 DAU or earlier if measured Worker/D1/DO budgets approach the thresholds in [CLOUDFLARE_FREE_FIRST.md](CLOUDFLARE_FREE_FIRST.md).
-
-## Remaining architecture gates
-
-- real MetaEditor compile + DEMO broker E2E certification;
-- netting TP1/TP2 semantics;
-- WAF/rate controls and quota alerts;
-- owner/session authentication for multi-user dashboard access;
-- 100/250/500-agent load tests;
-- independent security review before any live-money release.
+- compile in a real Windows MetaEditor;
+- run direct TLS/WebSocket handshake against Production;
+- validate reconnect + replay on DEMO;
+- validate broker-rejection receipt recovery;
+- run end-to-end TradingView → Cloudflare → EA → DEMO broker tests;
+- repeat Telegram Bot → EA DEMO tests;
+- security review of the direct WebSocket implementation.
