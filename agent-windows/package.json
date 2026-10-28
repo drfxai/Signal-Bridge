@@ -1,8 +1,12 @@
 {
-  "name":"signalbridge-windows-agent",
-  "version":"0.21.0",
-  "private":true,
-  "type":"module",
-  "scripts":{"start":"node agent.mjs"},
-  "engines":{"node":">=22"}
+  "name": "signalbridge-windows-agent",
+  "version": "0.23.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node agent.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }
