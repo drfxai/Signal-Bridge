@@ -1,120 +1,98 @@
 # SignalBridge — Technical Architecture
-Version 0.2 · Free-first / scale-ready architecture
+Version 0.3 · Free-first realtime DEMO beta · 2026-10-28
 
-## Deployment decision
+## Current deployment
 
-SignalBridge launches on **Cloudflare Free**. The system must not require a paid Cloudflare feature to serve the first beta users.
+SignalBridge is deployed on **Cloudflare Free** using:
 
-The initial target is up to ~500 daily active users under measured usage budgets. Paid migration starts after 500 DAU or earlier when usage thresholds in [CLOUDFLARE_FREE_FIRST.md](CLOUDFLARE_FREE_FIRST.md) are reached, and should complete before routine operation around 1,000 DAU.
+- Worker: `drfx-signalbridge-ingress`
+- Production custom domain: `signalbridge.drfx.online`
+- D1: `signalbridge-ingress`
+- account-scoped Durable Object: `AgentHub`
+- Windows SignalBridge Agent
+- MT5 EA v0.22
 
-## Design constraints
+The current execution boundary is **DEMO accounts only**.
 
-- Cloud edge cannot host a Windows MetaTrader 5 terminal or MQL5 Expert Advisor.
-- MT5 execution occurs on an authorized Windows terminal, user VPS, or future managed Windows host.
-- HTTP 2xx at webhook ingress means accepted by SignalBridge, **not filled by broker**.
-- Every tenant, connection, command and receipt is isolated and auditable.
-- The Free launch cannot depend on frequent terminal HTTP polling.
-- Queue delivery is at-least-once; future queue consumers still require application idempotency and reconciliation.
-
-## Free launch data flow
+## Realtime data flow
 
 ```mermaid
 flowchart TD
-    TV[TradingView webhook] --> W[Cloudflare Worker]
-    TG[Authorized Telegram webhook] --> W
-    UI[Static web / Mini App UI] --> W
-    W --> AUTH[Authenticate + validate + risk pre-check]
-    AUTH --> DB[(Cloudflare D1)]
-    DB --> HUB[Account Agent Hub]
-    HUB <-->|Hibernatable WebSocket| AG[Windows SignalBridge Agent]
-    AG <--> EA[MT5 EA / Terminal]
-    EA --> BROKER[Broker]
-    AG --> HUB
-    HUB --> DB
-    DB --> UI
-```
-
-## Why realtime delivery is WebSocket-first
-
-A polling architecture does not fit the Free Worker request budget at hundreds of terminals. Five-second polling by 500 terminals would generate millions of requests per day before any TradingView or dashboard traffic.
-
-The scale-ready design therefore uses:
-- one authenticated long-lived Agent connection;
-- Durable Objects with the WebSocket Hibernation API;
-- sparse reconnect/recovery requests;
-- HTTP polling only as a recovery fallback.
-
-The Windows Agent is a planned component and is not implemented yet.
-
-## Launch components
-
-1. **Static dashboard** — serve static assets with minimal dynamic API use.
-2. **Edge API / ingress** — Cloudflare Worker for TradingView/Telegram ingress, auth and owner-scoped APIs.
-3. **Durable store** — D1 for connections, normalized signals, compact command state and receipts.
-4. **Realtime Agent Hub** — Durable Object per account or account group, using Hibernatable WebSockets.
-5. **Windows Agent** — persistent secure connection to Cloudflare and local coordination with MT5.
-6. **MT5 EA** — performs broker-facing checks/execution and reports broker evidence.
-7. **Risk/policy engine** — deterministic checks independent of source channel.
-8. **Observability** — quota/health/error measurements with redacted diagnostics.
-
-## Free-mode reliability model
-
-The critical path does not require Cloudflare Queues:
-
-1. validate request;
-2. persist to D1;
-3. return accepted only after durable persistence;
-4. signal the Agent Hub when a route/account command is ready;
-5. mark undelivered work as pending;
-6. reconcile pending work after reconnect or through sparse recovery.
-
-Queues are added after Paid migration for dispatcher/dead-letter scalability.
-
-## Planned paid topology
-
-```mermaid
-flowchart TD
-    SRC[TradingView / Telegram] --> W[Workers]
-    W --> DB[(Sharded D1)]
-    W --> Q[Cloudflare Queues]
-    Q --> R[Router / Risk]
-    R --> HUB[Durable Object Account Hubs]
-    HUB <-->|WebSocket| AG[Windows Agents]
-    AG --> MT5[MT5]
-    MT5 --> AG
+    TV[TradingView / GOD MODE] --> W[Cloudflare Worker]
+    TG[Paired Telegram Bot] --> W
+    DASH[Live Dashboard] -->|Authenticated API| W
+    W --> DB[(D1 durable state)]
+    W --> HUB[AgentHub Durable Object]
+    HUB <-->|Execution WebSocket| AG[Windows SignalBridge Agent]
+    HUB <-->|Read-only observer WebSocket| DASH
+    AG <-->|localhost TCP| EA[MT5 EA v0.22]
+    EA --> BROKER[Broker DEMO]
+    BROKER --> EA
+    EA --> AG
     AG --> HUB
     HUB --> DB
 ```
 
-## Command state machine
+## Why the dashboard is not static
 
-RECEIVED → VALIDATED → {REJECTED | APPROVAL_REQUIRED | READY} → DISPATCH_PENDING → DELIVERED → SUBMITTED → {BROKER_REJECTED | FILLED | PARTIAL | UNKNOWN_RECONCILE} → SETTLED.
+Static HTML/CSS assets may be cacheable, but **dashboard state is live**. Account state, terminal availability, command history and broker receipts come from D1/AgentHub. The dashboard opens a separate read-only observer WebSocket so UI updates do not supersede the Windows execution Agent. No high-frequency polling is required.
 
-Only verified terminal/broker evidence may mark FILLED. UNKNOWN_RECONCILE blocks blind resubmission.
+## Ingress reliability
 
-## Storage rules
+1. Authenticate the source.
+2. Parse and validate fail-closed.
+3. Persist source event before acknowledging acceptance.
+4. Create an idempotent durable command.
+5. Attempt realtime dispatch only when the Agent socket and MT5 terminal state are both online.
+6. Keep undelivered work PENDING.
+7. Redispatch PENDING work safely on source retry/reconnect.
+8. Reconcile broker evidence before accepting a retry as a new order.
 
-- use tenant-scoped indexed lookups;
-- keep the Free-phase event model compact;
-- do not update/write telemetry on every UI render;
-- unique idempotency constraints protect signal and command creation;
-- preserve the minimum evidence required to reconstruct a trade lifecycle;
-- move verbose analytics/long retention to later paid infrastructure;
-- measure actual D1 rows written per accepted signal before increasing beta limits.
+Telegram update identity and TradingView signal identity are both persisted before command creation. A Telegram retry can reconstruct/redispatch its command rather than being discarded after a partial failure.
 
-## Risk-critical implementation notes
+## Agent/terminal distinction
 
-- Never rely on connection state alone as proof of broker execution.
-- Do not blindly retry a submission whose broker outcome is unknown.
-- Agent and EA both validate account identity and command revision.
-- CLOSE/MODIFY actions require correlation to a known position/order.
-- Server-side risk approval does not replace terminal-side broker specification checks.
-- Reconnect always reconciles pending/unknown commands before accepting blind replay.
+`Agent online` and `MT5 online` are separate states.
 
-## Environments
+- Agent online + MT5 offline → OPEN remains PENDING and is not dispatched.
+- MT5 connect/disconnect is propagated event-driven to AgentHub.
+- Local queue overflow never silently evicts an older command.
 
-Development → Cloudflare Free staging → closed Free beta → Free public beta (within quotas) → Workers Paid production scale.
+## MT5 execution/reconciliation
 
-Live execution remains a separate release gate from infrastructure deployment.
+EA v0.22 persists the pending command/tag mapping to local terminal storage **before broker submission**. On restart:
 
-See [CLOUDFLARE_FREE_FIRST.md](CLOUDFLARE_FREE_FIRST.md) for quotas, budget thresholds and migration policy.
+- an existing correlated position or broker-history deal is reconciled;
+- an unresolved previous submission blocks automatic replay;
+- no blind duplicate OPEN is sent.
+
+Only verified terminal/broker evidence may move a command to FILLED.
+
+## Command lifecycle
+
+`PENDING → DELIVERED → PREVIEWED`
+
+or
+
+`PENDING → DELIVERED → SUBMITTED → FILLED`
+
+with terminal outcomes such as `BROKER_REJECTED`, `REJECTED`, `ACCOUNT_MISMATCH`, `EXPIRED`, `ERROR`, or `DUPLICATE`.
+
+Receipt transitions are validated server-side; terminal states cannot be rewritten back to an earlier execution state.
+
+## GOD MODE lifecycle
+
+ENTRY creates an OPEN command. TP1/TP2/TP3/SL/CLOSE create correlated MANAGE commands. Management events are treated as durable safety/lifecycle events and are not discarded merely because an ordinary reconnect took several hours.
+
+## Free-plan scale policy
+
+The launch architecture avoids terminal HTTP polling. Hibernatable Durable Object WebSockets remain the preferred transport. Paid migration begins around 500 DAU or earlier if measured Worker/D1/DO budgets approach the thresholds in [CLOUDFLARE_FREE_FIRST.md](CLOUDFLARE_FREE_FIRST.md).
+
+## Remaining architecture gates
+
+- real MetaEditor compile + DEMO broker E2E certification;
+- netting TP1/TP2 semantics;
+- WAF/rate controls and quota alerts;
+- owner/session authentication for multi-user dashboard access;
+- 100/250/500-agent load tests;
+- independent security review before any live-money release.
