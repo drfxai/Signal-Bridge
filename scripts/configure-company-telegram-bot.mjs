@@ -22,7 +22,7 @@ try{
  await call('setWebhook',{
   url:'https://drfx.company/api/telegram/webhook',
   secret_token:secret,
-  allowed_updates:['message'],
+  allowed_updates:['message','callback_query'],
   drop_pending_updates:false,
   max_connections:10
  });
@@ -31,7 +31,8 @@ try{
  });
  await call('setMyCommands',{
   commands:[
-   {command:'start',description:'Create or open your DrFX account'},
+   {command:'start',description:'Choose language and open your DrFX account'},
+   {command:'language',description:'Change bot language · 6 options'},
    {command:'app',description:'Open Telegram Mini App'},
    {command:'login',description:'View your permanent website login code'},
    {command:'resetlogin',description:'Revoke and replace your website login code'},
