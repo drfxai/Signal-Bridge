@@ -236,3 +236,43 @@ test('Telegram website sign-in bot issues dedicated random 16-character OTP dist
  assert.ok(worker.includes('used_at IS NULL'));
  assert.ok(worker.includes('__Host-drfx_session'));
 });
+
+
+test('mobile header and premium administration dashboard use responsive, role-protected controls',async()=>{
+ const {DESIGN_HTML}=await import('../site/src/design.mjs');
+ for(const id of ['adminPanel','adminRows','adminStats','adminSearch','runConnectionCheck','runDemoTrade','personalWebhookUrl','createWebhook','rotateWebhook','copyWebhook'])assert.ok(DESIGN_HTML.includes('id="'+id+'"'),id);
+ assert.ok(DESIGN_HTML.includes('Operations Center'));
+ assert.ok(DESIGN_HTML.includes('data-admin-only'));
+ assert.ok(SITE_CSS.includes('@media(max-width:850px)'));
+ assert.ok(SITE_CSS.includes('header.sticky>div'));
+ assert.ok(SITE_CSS.includes('.admin-stats'));
+ assert.ok(SITE_CSS.includes('.portal-bridge-tools'));
+ assert.ok(SITE_JS.includes("u.role==='admin'"));
+ assert.ok(SITE_JS.includes("'/api/webhook/create'"));
+ assert.ok(SITE_JS.includes("'/api/webhook/rotate'"));
+ assert.ok(SITE_JS.includes("'/api/connection/check'"));
+ assert.ok(SITE_JS.includes('const d=check.diagnostic'));
+ assert.doesNotThrow(()=>new Function(SITE_JS));
+});
+test('user TradingView credentials are encrypted, isolated and created in dry-run',()=>{
+ assert.ok(worker.includes('site_tradingview_webhooks'));
+ assert.ok(worker.includes('FROM site_tradingview_webhooks w'));
+ assert.ok(worker.includes('c.tenant_id=w.user_id'));
+ assert.ok(worker.includes("delivery_mode) VALUES (?,?,'tradingview',?,'active',?,'dry_run')"));
+ assert.ok(worker.includes('encrypted_token'));
+ assert.ok(worker.includes('encryptCode(env,token)'));
+ assert.ok(worker.includes('decryptCode(env,row.encrypted_token,row.nonce)'));
+ assert.ok(worker.includes("path==='/api/webhook/create'"));
+ assert.ok(worker.includes("path==='/api/webhook/rotate'"));
+ assert.ok(worker.includes('previous webhook URL revoked'));
+ assert.ok(worker.includes('uid('+"'tv'"+')'));
+});
+test('connection check never claims active socket or silently creates a demo trade',()=>{
+ assert.ok(worker.includes("path==='/api/connection/check'"));
+ assert.ok(worker.includes("live_socket_verified:false,trade_executed:false"));
+ assert.ok(worker.includes("DEMO_TRADE_TEST_REQUIRES_UPDATED_EA"));
+ assert.ok(SITE_HTML.includes('DEMO · Coming with EA update'));
+ const p=new Request('https://drfx.company/api/connection/test-demo',{method:'POST',headers:{origin:'https://drfx.company'}});
+ const r=await handler.fetch(p,{});
+ assert.equal(r.status,503); // no D1 => endpoint cannot trade or authenticate
+});
