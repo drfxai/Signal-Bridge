@@ -4,7 +4,26 @@
 
 ### TradingView + Telegram → MetaTrader 5
 
-**One EA. One webhook. Direct realtime execution.**
+**Commercial source-available software · DEMO-only execution at present.**
+The public repository is not an open-source license grant. Read [LICENSE](LICENSE),
+[SECURITY.md](SECURITY.md) and the [Public Release Checklist](docs/PUBLIC_RELEASE_CHECKLIST.md).
+
+### Product Gallery
+
+The following original promotional renders are **illustrative UI concepts**;
+they do not demonstrate verified latency, uptime, profitability or broker fills.
+
+| SignalBridge Dashboard | Telegram & Website | Admin Operations |
+|:--:|:--:|:--:|
+| [![SignalBridge routing UI](https://drfx.company/assets/promo/dashboard.svg)](https://drfx.company) | [![Member Mini App UI](https://drfx.company/assets/promo/mobile.svg)](https://drfx.company/telegram) | [![Administration concept](https://drfx.company/assets/promo/admin.svg)](https://drfx.company) |
+
+**Languages:** English · فارسی · العربية · Türkçe · Русский · हिन्दी.
+Language selection is available on the website, Telegram Mini App and in bot
+messages. Persian and Arabic use right-to-left layout.
+
+
+
+**One licensed EA. One personal TradingView webhook. DEMO-first routing.**
 
 [![Direct MT5 EA](https://img.shields.io/badge/MT5-Direct%20EA-4b8bf4?style=for-the-badge)](#-install-in-3-steps)
 [![1 Month Free](https://img.shields.io/badge/Trial-1%20Month%20Free-4fd9a8?style=for-the-badge)](#-simple-pricing)
