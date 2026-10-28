@@ -26,20 +26,22 @@ Updated 2026-10-28
 - [x] separate Agent-online vs MT5-online state
 - [x] read-only dashboard observer WebSocket
 - [x] no high-frequency terminal HTTP polling
-- [ ] 100 → 250 → 500 simulated Agent load suite
+- [x] offline 100 → 250 → 500 Free-plan capacity model
+- [ ] validate capacity model with measured staging/production analytics
 
 ## Milestone 3 — MT5 DEMO execution
 - [x] DEMO-only BUY/SELL
 - [x] broker-side SL/TP/spread/volume validation
 - [x] risk-percent sizing from broker contract values
 - [x] broker retcode and `OnTradeTransaction`
-- [x] persistent pending-submission ledger in EA v0.22
+- [x] persistent pending-submission ledger in EA v0.23
 - [x] restart reconciliation / unresolved-replay block
 - [x] GOD MODE TP/SL/CLOSE correlation
 - [x] hedging TP1/TP2 partial management
 - [ ] MetaEditor compile certification
 - [ ] real DEMO E2E execution test
-- [ ] netting TP1/TP2 implementation and test
+- [x] netting TP1/TP2 implementation with absolute-volume replay guards
+- [ ] real broker validation of netting TP1/TP2 behavior
 - [ ] broker matrix / symbol suffix validation
 
 ## Milestone 4 — Live Dashboard
@@ -56,7 +58,7 @@ Updated 2026-10-28
 - [x] Telegram → MT5 deterministic DEMO route
 - [x] chat/channel pairing
 - [x] retry-safe update idempotency
-- [ ] richer multilingual production parser
+- [x] deterministic English/Persian/Arabic production parser with conflict/duplicate guards
 - [ ] edited-message revision workflow
 - [ ] TradingView → Telegram notifications
 - [ ] MT5 → Telegram execution/status notifications
