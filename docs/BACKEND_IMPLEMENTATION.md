@@ -51,7 +51,7 @@ This avoids treating an Agent process as proof that MT5 itself is ready.
 Execution Agent and dashboard observer are different socket roles.
 
 - execution Agent: may send terminal state and receipts;
-- dashboard observer: read-only, receives account/terminal/receipt events;
+- dashboard observer: read-only, receives account/terminal/receipt events and measured Agent↔Cloudflare RTT;
 - observer connections never replace the execution Agent.
 
 The secret-bearing WebSocket protocol is consumed for authentication; only a public protocol identifier is echoed by the server.
@@ -65,7 +65,7 @@ The secret-bearing WebSocket protocol is consumed for authentication; only a pub
 - CSP/frame restrictions on Worker-served HTML.
 - receipt state transitions validated.
 - no blind broker retry after unknown outcome.
-- live account execution hard-refused in EA v0.22.
+- live account execution hard-refused in EA v0.23.
 
 ## Validation
 
@@ -80,8 +80,7 @@ GitHub Actions runs syntax and contract/regression tests on Worker, parsers, Age
 ## Still required before public beta
 
 - real MetaEditor compile and DEMO broker E2E test;
-- Cloudflare rate limiting/quota monitoring;
+- Cloudflare dashboard/test rate limiting is active; measured quota/usage alerting remains to be added;
 - owner/session auth for multi-user dashboard use;
 - chaos/reconnect testing;
 - load testing;
-- netting-account partial management completion.
