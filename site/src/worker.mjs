@@ -1,5 +1,7 @@
 import { SITE_HTML, SITE_CSS, SITE_JS, DESIGN_JS } from './ui.mjs';
 import { TAILWIND_CSS } from './tailwind.mjs';
+import { MINI_HTML, MINI_JS } from './telegram-mini.mjs';
+import { verifyTelegramInitData } from './telegram-auth.mjs';
 
 const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
@@ -114,7 +116,7 @@ async function getOrCreateTelegram(env,id,username){
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(id).first();
  if(user)return user;
  const userId=uid('usr'),role=env.ADMIN_TELEGRAM_ID&&safeEq(id,env.ADMIN_TELEGRAM_ID)?'admin':'user';
- await env.DB.prepare("INSERT INTO site_users (id,telegram_id,telegram_name,role) VALUES (?,?,?,?)").bind(userId,id,safeText(username,80),role).run();
+ await env.DB.prepare("INSERT OR IGNORE INTO site_users (id,telegram_id,telegram_name,role) VALUES (?,?,?,?)").bind(userId,id,safeText(username,80),role).run();
  user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(userId).first();
  return user;
 }
@@ -174,6 +176,18 @@ async function loginFromTelegram(req,env){
  const user=await env.DB.prepare("SELECT * FROM site_users WHERE id=? AND status='active'").bind(row.user_id).first();
  if(!user)return fail('ACCOUNT_UNAVAILABLE',403);
  try{await licenseRecord(env,user);}catch{return fail('LICENSING_NOT_READY',503);}
+ return json({ok:true},200,{'set-cookie':await login(env,user.id)});
+}
+async function loginFromTelegramMiniApp(req,env){
+ if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_WEBHOOK_SECRET)return fail('BOT_NOT_CONFIGURED',503);
+ if(!await limited(req,env,'telegram:mini-login',12))return fail('RATE_LIMITED',429);
+ const body=await readBody(req,9000);
+ const principal=await verifyTelegramInitData(body.init_data,env.TELEGRAM_BOT_TOKEN);
+ if(!principal)return fail('INVALID_TELEGRAM_INIT_DATA',401);
+ const user=await getOrCreateTelegram(env,principal.id,principal.name);
+ if(!user||user.status!=='active')return fail('ACCOUNT_SUSPENDED',403);
+ try{await licenseRecord(env,user);}catch{return fail('LICENSING_NOT_READY',503);}
+ await audit(env,user.id,'telegram_mini_sign_in',user.id);
  return json({ok:true},200,{'set-cookie':await login(env,user.id)});
 }
 async function rotateLicense(env,user,adminId=null){
@@ -272,7 +286,7 @@ async function ipnHandler(req,env){
 async function botSend(env,chatId,text,keyboard){
  if(!env.TELEGRAM_BOT_TOKEN)return;
  const body={chat_id:chatId,text,parse_mode:'HTML',disable_web_page_preview:true};
- if(keyboard)body.reply_markup={inline_keyboard:[[ {text:'Open DrFX Dashboard',url:API_ORIGIN} ]]};
+ if(keyboard)body.reply_markup={inline_keyboard:[[ {text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}} ],[ {text:'Open website',url:API_ORIGIN} ]]};
  await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/sendMessage',{
   method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)
  });
@@ -286,14 +300,16 @@ async function telegramWebhook(req,env){
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=text.split(' ')[0].split('@')[0];
- if(!['/start','/login','/me','/code','/link','/admin','/users','/detail','/grant','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/app','/login','/me','/code','/link','/admin','/users','/detail','/grant','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  if(user&&user.status!=='active'){await botSend(env,chatId,'Your account is suspended. Contact support.');return json({ok:true});}
  if(command==='/start'){
   try{await licenseRecord(env,user);}
   catch{await botSend(env,chatId,'Account created. Licensing is being configured; try /code later.');return json({ok:true});}
-  await botSend(env,chatId,'⚡ <b>Welcome to DrFX Company</b>\nYour unified website account is ready.\nUse /login to get a one-time web sign-in code.\nUse /code for your EA activation serial.',true);
+  await botSend(env,chatId,'⚡ <b>Welcome to DrFX Company</b>\nYour unified website account is ready.\nTap Open Mini App to access your private membership and MT5 license.\nUse /login to get a one-time web sign-in code.\nUse /code for your EA activation serial.',true);
+ }else if(command==='/app'){
+  await botSend(env,chatId,'📱 Open the DrFX Mini App. Telegram securely verifies your identity before displaying your membership.',true);
  }else if(command==='/login'){
   if(!await limited(req,env,'bot:code:'+telegramId,200)){await botSend(env,chatId,'Try again later.');return json({ok:true});}
   const code=await issueCode(env,'telegram',telegramId,user.id,10);
@@ -385,6 +401,7 @@ async function api(req,env){
  if(path==='/api/auth/email/start'&&req.method==='POST')return emailStart(req,env);
  if(path==='/api/auth/email/verify'&&req.method==='POST')return emailVerify(req,env);
  if(path==='/api/auth/telegram/code'&&req.method==='POST')return loginFromTelegram(req,env);
+ if(path==='/api/auth/telegram/webapp'&&req.method==='POST')return loginFromTelegramMiniApp(req,env);
  const user=await authUser(req,env);
  if(path==='/api/me'&&req.method==='GET'){
   if(!user)return fail('UNAUTHENTICATED',401);
@@ -429,6 +446,8 @@ export default {
  async fetch(request,env){
   const url=new URL(request.url);
   if(request.method==='GET'&&url.pathname==='/')return new Response(SITE_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests"}});
+  if(request.method==='GET'&&(url.pathname==='/telegram'||url.pathname==='/telegram/'))return new Response(MINI_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'none'; script-src 'self' https://telegram.org; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"}});
+  if(request.method==='GET'&&url.pathname==='/assets/telegram-mini.js')return asset(MINI_JS,'text/javascript; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/app.css')return asset(SITE_CSS,'text/css; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/tailwind.css')return asset(TAILWIND_CSS,'text/css; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/app.js')return asset(SITE_JS,'text/javascript; charset=utf-8');

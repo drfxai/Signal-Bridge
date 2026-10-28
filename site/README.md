@@ -54,3 +54,33 @@ The Worker `drfx-company-site` has been deployed to Cloudflare with a D1 binding
 - English and Persian website translations are included; customer/administrator dialogs and existing email/Telegram flows remain connected to the existing D1-backed API.
 - Cloudflare deployment requires **two** Worker modules: `worker.mjs` and `ui.mjs`. Preserve all existing D1 and secret bindings; never rotate `LICENSE_VAULT_KEY`.
 - This design deployment does not imply email, Telegram, NOWPayments, live trading, EA EX5 delivery or indicator releases have completed their separate operational gates.
+
+## Account provider onboarding — email first, Telegram second, billing last (2026-10-28)
+
+The public GET https://drfx.company/api/config returns readiness flags: email, telegram, payments and licensing. These booleans never disclose credentials. The following steps require the actual provider account credentials.
+
+### 1. Verify email sender
+
+1. Verify drfx.company in a transactional email provider such as Resend. Add **only the DNS records Resend generates** for the domain, including SPF/DKIM and suitable DMARC; do not create speculative records or duplicate SPF entries.
+2. Add the encrypted Cloudflare Worker secret RESEND_API_KEY to drfx-company-site. MAIL_FROM=activation@drfx.company is already supplied as plain text.
+3. Use a real mailbox to test sign-in code sending, receipt and one-time code validation. The email login code is hashed in D1 and expires after 10 minutes.
+4. Check that email=true on /api/config. Without a verified domain and working provider, leave signup disabled.
+
+### 2. Configure dedicated Telegram bot
+
+1. Create/select the DrFX Company membership bot with BotFather. Do not repurpose an unrelated trading webhook bot without confirmation of its existing functions.
+2. Add Cloudflare Worker encrypted secrets TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET (random 16–256 characters using alphanumerics, underscores or hyphens) to the same drfx-company-site Worker. Optionally set ADMIN_TELEGRAM_ID to the verified numeric admin user ID.
+3. From a trusted local terminal with secrets loaded as environment variables, execute:
+   node scripts/configure-company-telegram-bot.mjs
+   This installs the secret-protected Telegram webhook, private-chat Mini App menu button and user commands without printing credentials.
+4. Send /start, then /app in a private chat. Users can still request /login for website OTPs. Link a verified email account with its unique website-generated /link CODE; never merge accounts based on unverified contact details.
+
+### 3. Telegram Mini App
+
+The dedicated Mini App is https://drfx.company/telegram and loads in an ordinary browser only as a non-authenticated preview. The Telegram WebView supplies Telegram.WebApp.initData. The server POST /api/auth/telegram/webapp validates an HMAC-SHA-256 signature (WebAppData), signed timestamp (15-minute maximum age, future clock skew at most 60s), absence of duplicate parameters, and a valid Telegram identity before creating a site session.
+
+After login, GET /api/me displays the same membership, trial period and encrypted-at-rest license record as the main site. The serial is masked by default. The web app never trusts initDataUnsafe and does not auto-merge email and Telegram identities. For verification run tests/telegram-miniapp.test.mjs, then test in Telegram on Android/iOS and desktop, including expired/revoked accounts.
+
+### 4. NOWPayments after identity and EA testing
+
+Only after email → Telegram bot → Mini App → first EA DEMO license activation and revocation tests pass, configure encrypted NOWPAYMENTS_API_KEY and NOWPAYMENTS_IPN_SECRET and run independent sandbox IPN checks. Quarterly remains $47, annual $165. Browser success URLs do not grant subscriptions. Do not modify the running signalbridge ingress Worker in this onboarding.
