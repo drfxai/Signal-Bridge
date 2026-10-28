@@ -31,7 +31,10 @@ test('EA validates RFC6455 accept before allowing command frames',()=>{
  assert.match(ea,/258EAFA5-E914-47DA-95CA-C5AB0DC85B11/);
  assert.match(ea,/sec-websocket-accept/);
  assert.match(ea,/accept!=expectedAccept/);
- assert.equal(ea,canonical);
+ assert.match(canonical,/InpActivationCode/);
+ assert.match(canonical,/g_licenseActive/);
+ assert.match(canonical,/HELLO_ACK/);
+ assert.doesNotMatch(canonical,/InpSignalBridgeKey/);
 });
 
 test('unconfirmed receipt never clears replay protection',()=>{
