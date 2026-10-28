@@ -188,3 +188,52 @@ test('cinematic render loops reuse canvas pixel buffers rather than reallocating
  assert.match(DESIGN_JS,/globeCanvas\.width !== wpx/);
  assert.match(DESIGN_JS,/Math\.min\(window\.devicePixelRatio \|\| 1, 2\)/);
 });
+
+
+test('website explicitly distinguishes one-time Telegram login and EA activation serial',async()=>{
+ const {DESIGN_HTML}=await import('../site/src/design.mjs');
+ assert.ok(DESIGN_HTML.includes('Sign in with your existing Signal Bridge account'));
+ assert.ok(DESIGN_HTML.includes('Send <code>/login</code> — not <code>/code</code>'));
+ assert.ok(DESIGN_HTML.includes('16-character'));
+ assert.ok(DESIGN_HTML.includes('43-character EA activation code'));
+ assert.ok(DESIGN_HTML.includes('id="openLoginBot"'));
+ assert.ok(DESIGN_HTML.includes('id="tgCodeHint"'));
+ assert.ok(SITE_CSS.includes('.telegram-login-guide'));
+ assert.ok(SITE_CSS.includes('@media(max-width:600px)'));
+ assert.ok(SITE_CSS.includes('font-size:16px;min-height:48px'));
+ assert.ok(SITE_JS.includes('function validateWebsiteLoginCode()'));
+ assert.ok(SITE_JS.includes('code.length===43'));
+ assert.ok(SITE_JS.includes('code.length!==16'));
+ assert.ok(SITE_JS.includes("switchAuthTab('telegram')"));
+ assert.ok(SITE_JS.includes('loadTelegramBotLink()'));
+ assert.ok(SITE_JS.includes("'/api/telegram/health'"));
+ assert.ok(SITE_JS.includes("'/api/auth/telegram/code'"));
+ assert.ok(SITE_JS.includes("$('tgCode').value=''"));
+ assert.doesNotThrow(()=>new Function(SITE_JS));
+});
+
+test('Telegram website login refuses a 43-character EA serial before querying login tokens',async()=>{
+ // Rate-limit-only D1 stub. A 43-char serial must be rejected before login-code lookup.
+ const queries=[];
+ const DB={prepare(sql){
+  queries.push(sql);
+  return {bind(){return this},async run(){return {success:true}},async first(){return {requests:1}}};
+ }};
+ const response=await handler.fetch(new Request('https://drfx.company/api/auth/telegram/code',{
+  method:'POST',headers:{origin:'https://drfx.company','content-type':'application/json'},
+  body:JSON.stringify({code:'A'.repeat(43)})
+ }),{DB});
+ assert.equal(response.status,400);
+ assert.deepEqual(await response.json(),{ok:false,error:'EA_CODE_NOT_LOGIN_CODE'});
+ assert.equal(queries.filter(x=>x.includes('site_login_codes')).length,0);
+});
+test('Telegram website sign-in bot issues dedicated random 16-character OTP distinct from EA serial',()=>{
+ assert.match(worker,/const code=b64u\(rand\(12\)\)/);
+ assert.match(worker,/\/login.*?valid 10 minutes/s);
+ assert.match(worker,/EA_CODE_NOT_LOGIN_CODE/);
+ assert.match(worker,/INVALID_LOGIN_CODE_FORMAT/);
+ assert.match(worker,/code\\.length/);
+ assert.match(worker,/purpose='telegram'/);
+ assert.match(worker,/used_at IS NULL/);
+ assert.match(worker,/__Host-drfx_session/);
+});
