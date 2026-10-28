@@ -48,9 +48,9 @@
   <text x="192" y="286" fill="#55d7f7">→</text>
   <rect x="210" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="275" y="286" fill="#eef6ff">Cloudflare</text>
   <text x="358" y="286" fill="#55d7f7">→</text>
-  <rect x="376" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="441" y="286" fill="#eef6ff">Agent Hub</text>
+  <rect x="376" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="441" y="286" fill="#eef6ff">Execution Hub</text>
   <text x="524" y="286" fill="#55d7f7">→</text>
-  <rect x="542" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="607" y="286" fill="#eef6ff">MT5 Agent</text>
+  <rect x="542" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="607" y="286" fill="#eef6ff">Direct MT5 EA</text>
   <text x="690" y="286" fill="#55d7f7">→</text>
   <rect x="708" y="260" width="68" height="42" rx="12" fill="#123229" stroke="#2f8175"/><text x="742" y="286" fill="#6be6b7">Broker</text>
  </g>
