@@ -3,8 +3,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { SITE_HTML, SITE_CSS, SITE_JS } from '../site/src/ui.mjs';
 import handler from '../site/src/worker.mjs';
-import { MEDIA_B64, MEDIA_INFO } from '../site/src/media.mjs';
-import { createHash } from 'node:crypto';
 
 const worker=fs.readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
 const migration=fs.readFileSync(new URL('../site/migrations/0007_site_accounts.sql',import.meta.url),'utf8');
@@ -66,44 +64,45 @@ test('Telegram bot exposes admin user lookup, grant and suspension operations be
  assert.match(worker,/botSend/);
 });
 
-test('two globe motion placements are lazy, muted, mobile-safe and reduced-motion-aware',()=>{
- const videos=SITE_HTML.match(/<video /g)||[];
- assert.equal(videos.length,2);
- assert.ok(SITE_HTML.includes('data-video-source="/assets/media/48356-globe.mp4"'));
- assert.ok(SITE_HTML.includes('data-video-source="/assets/media/48355-connections.mp4"'));
- assert.equal((SITE_HTML.match(/muted loop playsinline preload="none"/g)||[]).length,2);
- assert.match(SITE_JS,/IntersectionObserver/);
- assert.match(SITE_JS,/prefers-reduced-motion/);
- assert.match(SITE_JS,/visibilitychange/);
- assert.match(SITE_CSS,/networkFallbackPulse/);
-});
 
-test('real uploaded globe clips exactly match optimized original binary hashes',()=>{
- const expected=['48356-globe.mp4','48355-connections.mp4'];
- assert.deepEqual(Object.keys(MEDIA_B64),expected);
- for(const name of expected){
-  const bytes=Buffer.from(MEDIA_B64[name],'base64');
-  assert.equal(bytes.length,MEDIA_INFO[name].bytes);
-  assert.equal(createHash('sha256').update(bytes).digest('hex'),MEDIA_INFO[name].sha256);
-  assert.equal(bytes.subarray(4,8).toString('ascii'),'ftyp');
- }
+test('cinematic design matches the approved reference hierarchy',()=>{
+ assert.ok(SITE_HTML.includes('Trade Smarter.'));
+ assert.ok(SITE_HTML.includes('Go Further.'));
+ assert.ok(SITE_HTML.includes('A Complete <em>Trading System</em>'));
+ assert.ok(SITE_HTML.includes('id="globalNetworkCanvas"'));
+ assert.ok(SITE_HTML.includes('data-i="network-label"'));
+ assert.ok(SITE_HTML.includes('id="plans"'));
+ assert.ok(SITE_HTML.includes('data-plan="trial"'));
+ assert.ok(SITE_HTML.includes('data-plan="quarterly"'));
+ assert.ok(SITE_HTML.includes('data-plan="annual"'));
+ assert.ok(SITE_HTML.includes('$0'));
+ assert.ok(SITE_HTML.includes('$47'));
+ assert.ok(SITE_HTML.includes('$165'));
+ assert.ok(SITE_CSS.includes('.lux-hero-visual'));
+ assert.ok(SITE_CSS.includes('.lux-ecosystem'));
+ assert.ok(SITE_CSS.includes('.lux-membership'));
+ assert.ok(SITE_CSS.includes('@media(max-width:520px)'));
 });
-test('Cloudflare video routes return actual MP4 bytes, caching and byte range',async()=>{
- for(const name of ['48356-globe.mp4','48355-connections.mp4']){
-  const url='https://drfx.company/assets/media/'+name;
-  const full=await handler.fetch(new Request(url),{});
-  assert.equal(full.status,200);
-  assert.equal(full.headers.get('content-type'),'video/mp4');
-  assert.equal(full.headers.get('accept-ranges'),'bytes');
-  assert.equal((await full.arrayBuffer()).byteLength,MEDIA_INFO[name].bytes);
-  const partial=await handler.fetch(new Request(url,{headers:{range:'bytes=0-15'}}),{});
-  assert.equal(partial.status,206);
-  assert.equal(partial.headers.get('content-range'),'bytes 0-15/'+MEDIA_INFO[name].bytes);
-  assert.equal((await partial.arrayBuffer()).byteLength,16);
-  const head=await handler.fetch(new Request(url,{method:'HEAD'}),{});
-  assert.equal(head.status,200);
-  assert.equal(head.headers.get('content-length'),String(MEDIA_INFO[name].bytes));
-  const invalid=await handler.fetch(new Request(url,{headers:{range:'bytes=999999999-'}}),{});
-  assert.equal(invalid.status,416);
- }
+test('first animation removed and second reimplemented at native display resolution',async()=>{
+ assert.equal((SITE_HTML.match(/<video /g)||[]).length,0);
+ assert.ok(!SITE_HTML.includes('48356-globe.mp4'));
+ assert.ok(!SITE_HTML.includes('48355-connections.mp4'));
+ assert.ok(!worker.includes("from './media.mjs'"));
+ assert.ok(!worker.includes('serveVideo(request'));
+ assert.ok(SITE_JS.includes('devicePixelRatio'));
+ assert.ok(SITE_JS.includes('requestAnimationFrame'));
+ assert.ok(SITE_JS.includes('ResizeObserver'));
+ assert.ok(SITE_JS.includes('IntersectionObserver'));
+ assert.ok(SITE_JS.includes('prefers-reduced-motion'));
+ assert.ok(SITE_JS.includes('navigator.connection?.saveData'));
+ assert.ok(SITE_JS.includes('visibilitychange'));
+ assert.ok(SITE_JS.includes('quadraticCurveTo'));
+ const noOld=await handler.fetch(new Request('https://drfx.company/assets/media/48356-globe.mp4'),{});
+ assert.equal(noOld.status,404);
+});
+test('preserves account, pricing, MT5 setup and admin experience',()=>{
+ for(const id of ['authOverlay','portalOverlay','adminPanel','sendEmail','verifyEmail','loginTelegram','serial','copySerial','rotateSerial','linkTelegram','adminRows','bottomJoin','loginOpen','lang'])assert.ok(SITE_HTML.includes('id="'+id+'"'),id);
+ for(const route of ['/api/auth/email/start','/api/auth/email/verify','/api/auth/telegram/code','/api/me','/api/checkout'])assert.ok(worker.includes(route),route);
+ assert.ok(SITE_HTML.includes('https://signalbridge.drfx.online'));
+ assert.ok(SITE_CSS.includes('body[dir=rtl]'));
 });
