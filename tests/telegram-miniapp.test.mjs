@@ -13,7 +13,7 @@ const hmac=async(key,value)=>{
 };
 const signed=async(params)=>{
  const key=await hmac(enc.encode('WebAppData'),token);
- const joined=[...new URLSearchParams(params)].filter(([k])=>k!=='hash'&&k!=='signature')
+ const joined=[...new URLSearchParams(params)].filter(([k])=>k!=='hash')
    .sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([k,v])=>k+'='+v).join('\n');
  const hash=Array.from(await hmac(key,joined),b=>b.toString(16).padStart(2,'0')).join('');
  const p=new URLSearchParams(params);p.append('hash',hash);return p.toString();
@@ -173,7 +173,7 @@ test('external mobile browser offers a verified Telegram bot link instead of pre
  assert.match(MINI_JS,/await offerBotLaunch\(\)/);
  assert.match(MINI_JS,/if\(tg\?\.initData&&state\.telegramEnabled\)/);
  assert.ok(!MINI_JS.includes('initDataUnsafe'));
- assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261028-mobile-v5'));
+ assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261028-mobile-v6'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });
 
@@ -204,4 +204,42 @@ test('separate signed expiration from bad signature without exposing sensitive d
  assert.match(MINI_JS,/error\.message==='INVALID_TELEGRAM_INIT_DATA'/);
  assert.match(MINI_JS,/\/code/);
  assert.ok(!JSON.stringify(expired).includes('Ada'));
+});
+
+
+test('Telegram bot HMAC includes optional Ed25519 signature field in signed data',async()=>{
+ const now=Date.now();
+ const data=await signed([
+  ['query_id','demo_query'],
+  ['auth_date',String(Math.floor(now/1000)-5)],
+  ['user',JSON.stringify({id:785643210,first_name:'Trading user'})],
+  ['signature','eHVtbXlfcHVibGljLXNpZ25hdHVyZQ']
+ ]);
+ const ok=await inspectTelegramInitData(data,token,now);
+ assert.equal(ok.reason,null);
+ assert.equal(ok.principal.id,'785643210');
+ assert.equal((await inspectTelegramInitData(data.replace('signature=eHV','signature=bad%2BeHV'),token,now)).reason,'BAD_SIGNATURE');
+ const without=await signed([
+  ['auth_date',String(Math.floor(now/1000))],
+  ['user',JSON.stringify({id:785643210})]
+ ]);
+ assert.equal((await inspectTelegramInitData(without,token,now)).reason,null);
+});
+test('Mini App provides safe one-time bot /login code UI without exposing EA secret',()=>{
+ for(const token of ['id="otpLogin"','id="otpForm"','id="otpInput"','id="otpSubmit"','id="otpStatus"',
+  'autocomplete="one-time-code"','inputmode="text"','/login',
+  'id="revealSerial"','id="copySerial"','telegram-mini.js?v=20261028-mobile-v6'])
+   assert.ok(MINI_HTML.includes(token),token);
+ for(const token of ["'/api/auth/telegram/code'","await api('/api/auth/telegram/code',{code})",
+  "await refresh('session')","$('otpLogin').hidden=false",
+  "code=$('otpInput').value.trim()","invalid, expired or already used",
+  "event.preventDefault()"])
+   assert.ok(MINI_JS.includes(token),token);
+ assert.match(MINI_JS,/\\^\\[A-Za-z0-9_\\-\\]\\{8,64\\}\\$/);
+ assert.ok(!MINI_JS.includes('initDataUnsafe'));
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+ const source=readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
+ assert.match(source,/if\(path==='\\/api\\/auth\\/telegram\\/code'&&req\.method==='POST'\)return loginFromTelegram\(req,env\)/);
+ assert.match(source,/const consumed=await consumeCode\(env,'telegram',row\.target,code\)/);
+ assert.match(source,/return json\(\{ok:true\},200,\{'set-cookie':await login\(env,user\.id\)\}\)/);
 });
