@@ -193,14 +193,42 @@ export const MINI_JS=String.raw`(() => {
  const $ = id => document.getElementById(id);
  const tg = window.Telegram?.WebApp || null;
  const state = {user:null, serialVisible:false,telegramEnabled:false};
+
+ const fa={eyebrow:'محیط اختصاصی معامله‌گری',hero1:'دقت بالا.',hero2:'در هر حرکت.',desc:'مرکز فرمان شخصی شما؛ هویت امن تلگرام، اشتراک سیگنال‌بریج و فعال‌سازی متاتریدر ۵ در یک محیط.',command:'مرکز فرمان',privateKey:'کد فعال‌سازی اختصاصی',connect:'اتصال به متاتریدر ۵',advantage:'اشتراک‌های شما',support:'امنیت و پشتیبانی',reveal:'نمایش کد',hide:'مخفی‌کردن کد',copy:'کپی کد فعال‌سازی',guide:'راهنمای MT5 ←',explore:'اشتراک‌ها ←',back:'بازگشت به کد فعال‌سازی ←',pricing:'مشاهده طرح‌ها در سایت ←',website:'باز کردن سایت DrFX ←',refresh:'به‌روزرسانی حساب ↻',navHome:'خانه',navEA:'اکسپرت',navPlans:'اشتراک',navHelp:'راهنما'};
+ const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
+ let locale='en';
+ const ui=(en,faText)=>locale==='fa'?faText:en;
+ function language(lang){
+  locale=lang==='fa'?'fa':'en';
+  document.documentElement.lang=locale;
+  document.documentElement.dir=locale==='fa'?'rtl':'ltr';
+  document.querySelectorAll('[data-tr]').forEach(el=>{const key=el.dataset.tr;el.textContent=locale==='fa'?(fa[key]||english[key]):english[key]});
+  $('langToggle').setAttribute('aria-pressed',String(locale==='fa'));
+  $('langToggle').textContent=locale==='fa'?'EN / FA':'FA / EN';
+  if(state.user){set('memberPlan',planLabel(state.user.plan));set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected',state.user.mt5_account?'متصل':'متصل نیست'));}
+  else {set('memberPlan',ui('Not signed in','وارد نشده'));set('mt5Status',ui('Not connected','متصل نیست'));}
+  $('revealSerial').textContent=state.serialVisible?ui('Hide serial','مخفی‌کردن کد'):ui('Reveal serial','نمایش کد');
+ }
+ function planLabel(plan){return ({
+  trial:ui('1 Month Free','یک ماه رایگان'),quarterly:ui('3 Months Premium','پریمیوم سه‌ماهه'),annual:ui('Annual Elite','الیت سالانه')
+ })[plan]||ui('Membership','اشتراک');}
+ $('langToggle').addEventListener('click',()=>{language(locale==='en'?'fa':'en');tg?.HapticFeedback?.selectionChanged?.()});
+
  const set = (id,text) => {const el=$(id);if(el)el.textContent=String(text??'');};
  function message(text,kind='') {const e=$('statusMessage');e.textContent=text;e.className='message '+kind;}
  function show(tab){
+  if(!['home','license','plans','help'].includes(tab))return;
+  document.body.dataset.tab=tab;
   document.querySelectorAll('[data-panel]').forEach(e=>e.hidden=e.dataset.panel!==tab);
   document.querySelectorAll('[data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
+  if(tg?.BackButton){if(tab==='home')tg.BackButton.hide();else tg.BackButton.show();}
+  window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth'});
   tg?.HapticFeedback?.selectionChanged?.();
  }
  document.querySelectorAll('[data-tab]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.tab)));
+ document.querySelectorAll('[data-jump]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.jump)));
+ tg?.BackButton?.onClick?.(()=>show('home'));
+
  function navigate(url){try{if(tg?.openLink)tg.openLink(url);else window.location.assign(url);}catch{window.location.assign(url);}}
  $('openWebsite').addEventListener('click',()=>navigate('https://drfx.company'));
  $('openPricing').addEventListener('click',()=>navigate('https://drfx.company/#plans'));
@@ -214,24 +242,26 @@ export const MINI_JS=String.raw`(() => {
  function applyUser(user){
   state.user=user;
   state.serialVisible=false;
-  set('memberPlan',({trial:'1 Month Free',quarterly:'3 Months Premium',annual:'Annual Elite'})[user.plan]||'Membership');
+  set('memberPlan',planLabel(user.plan));
   set('memberIdentity',user.email||user.telegram||'Telegram account');
-  set('licenseBadge',user.license_status==='active'?'ACTIVE':'INACTIVE');
-  set('mt5Status',user.mt5_account?'Linked':'Not linked');
+  set('licenseBadge',ui(user.license_status==='active'?'ACTIVE':'INACTIVE',user.license_status==='active'?'فعال':'غیرفعال'));
+  $('licenseBadge').dataset.active=String(user.license_status==='active');
+  set('mt5Status',ui(user.mt5_account?'Linked':'Not connected',user.mt5_account?'متصل':'متصل نیست'));
   set('mt5Server',user.mt5_account?('Account '+user.mt5_account.login+' · '+user.mt5_account.server):'Waiting for first verified EA connection');
-  set('activationDate',user.activated_at?'Activated':'Not started');
+  set('activationDate',ui(user.activated_at?'Activated':'Not started',user.activated_at?'فعال شده':'شروع نشده'));
   set('expiryStatus',user.expires_at?('Expires '+user.expires_at):'Starts at first verified activation');
   set('serialValue','•••• •••• •••• ••••');
   $('revealSerial').disabled=!user.activation_code;
   $('copySerial').disabled=!user.activation_code;
-  $('revealSerial').textContent='Reveal serial';
+  $('revealSerial').textContent=ui('Reveal serial','نمایش کد');
  }
  async function refresh(){
   try{
    const {user}=await api('/api/me');
    applyUser(user);
-   set('connection','IDENTITY VERIFIED');
-   message('Your Telegram account is verified and the membership status is loaded.','success');
+   set('connection',ui('IDENTITY VERIFIED','هویت تأیید شد'));
+   $('connection').classList.add('verified');
+   message(ui('Your Telegram account is verified and the membership status is loaded.','هویت تلگرام تأیید و اطلاعات عضویت بارگذاری شد.'),'success');
   }catch(error){message(error.message==='UNAUTHENTICATED'?'Sign in from your DrFX bot to access the private dashboard.':'Account service unavailable: '+error.message,'error');}
  }
  $('refreshAccount').addEventListener('click',refresh);
@@ -239,26 +269,28 @@ export const MINI_JS=String.raw`(() => {
   if(!state.user?.activation_code)return;
   state.serialVisible=!state.serialVisible;
   set('serialValue',state.serialVisible?state.user.activation_code:'•••• •••• •••• ••••');
-  $('revealSerial').textContent=state.serialVisible?'Hide serial':'Reveal serial';
+  $('revealSerial').textContent=state.serialVisible?ui('Hide serial','مخفی‌کردن کد'):ui('Reveal serial','نمایش کد');
   tg?.HapticFeedback?.impactOccurred?.('light');
  });
  $('copySerial').addEventListener('click',async()=>{
   if(!state.user?.activation_code)return;
-  try{await navigator.clipboard.writeText(state.user.activation_code);message('Private EA code copied. Keep it confidential.','success');}
-  catch{message('Clipboard not accessible. Reveal the serial and copy manually.','error');}
+  try{await navigator.clipboard.writeText(state.user.activation_code);message(ui('Private EA code copied. Keep it confidential.','کد فعال‌سازی کپی شد. آن را محرمانه نگه دارید.'),'success');}
+  catch{message(ui('Clipboard unavailable. Reveal your serial to copy it.','دسترسی به کلیپ‌بورد ممکن نیست. کد را نمایش داده و دستی کپی کنید.'),'error');}
  });
  async function start(){
-  try{tg?.ready?.();tg?.expand?.();tg?.setHeaderColor?.('#03070c');tg?.setBackgroundColor?.('#03070c');}catch{}
+  try{tg?.ready?.();tg?.expand?.();tg?.setHeaderColor?.('#030406');tg?.setBackgroundColor?.('#030406');}catch{}
   let config;try{config=await api('/api/config');}
   catch{message('Cannot contact DrFX services. Check network access and retry.','error');return;}
   state.telegramEnabled=!!config.telegram;
   set('paymentStatus',config.payments?'Payment provider is configured on the website. Open the pricing page to check availability.':'Paid memberships are not accepting payments yet.');
   if(!config.telegram){message('Telegram bot connection is not configured yet. The interface is available for preview, but login is disabled.','error');return;}
-  if(!tg?.initData){message('Open this Mini App from the official DrFX Telegram bot. Web browser preview cannot authenticate.','error');return;}
+  if(!tg?.initData){message(ui('Open this Mini App from the official DrFX Telegram bot. Web browser preview cannot authenticate.','مینی‌اپ را از داخل بات رسمی DrFX باز کنید. نسخه مرورگر نمی‌تواند هویت شما را تأیید کند.'),'error');return;}
   try{
    await api('/api/auth/telegram/webapp',{init_data:tg.initData});
    await refresh();
   }catch(error){message(error.message==='INVALID_TELEGRAM_INIT_DATA'?'Telegram identity could not be verified. Reopen this Mini App from the bot.':'Telegram sign-in unavailable: '+error.message,'error');}
  }
+ language('en');
+ show('home');
  start();
 })();`;
