@@ -267,7 +267,7 @@ test('user TradingView credentials are encrypted, isolated and created in dry-ru
  assert.ok(worker.includes('previous webhook URL revoked'));
  assert.ok(worker.includes('uid('+"'tv'"+')'));
 });
-test('connection check never claims active socket or silently creates a demo trade',()=>{
+test('connection check never claims active socket or silently creates a demo trade',async()=>{
  assert.ok(worker.includes("path==='/api/connection/check'"));
  assert.ok(worker.includes("live_socket_verified:false,trade_executed:false"));
  assert.ok(worker.includes("DEMO_TRADE_TEST_REQUIRES_UPDATED_EA"));
