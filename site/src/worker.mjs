@@ -121,6 +121,30 @@ async function getOrCreateTelegram(env,id,username){
  user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(userId).first();
  return user;
 }
+// A stable website credential is a password, not a disposable Telegram OTP.
+// Random 192-bit value is SHA-256 indexed, AES-GCM encrypted for private chat redisplay.
+async function telegramWebsiteCredential(env,user,rotate=false){
+ if(!user?.telegram_id)throw Error('TELEGRAM_ACCOUNT_REQUIRED');
+ if(!rotate){
+  const previous=await env.DB.prepare("SELECT encrypted_code,nonce FROM site_permanent_logins WHERE user_id=?").bind(user.id).first();
+  if(previous)return decryptCode(env,previous.encrypted_code,previous.nonce);
+ }
+ const code=b64u(rand(24)),encrypted=await encryptCode(env,code),hash=await sha(code);
+ if(rotate){
+  const updated=await env.DB.prepare("UPDATE site_permanent_logins SET code_hash=?,encrypted_code=?,nonce=?,rotated_at=CURRENT_TIMESTAMP WHERE user_id=?")
+   .bind(hash,encrypted.cipher,encrypted.iv,user.id).run();
+  if(updated.meta?.changes!==1)throw Error('CREDENTIAL_NOT_PROVISIONED');
+  // All existing sessions remain valid; only the stable login credential is rotated.
+  await audit(env,user.id,'website_login_credential_rotated',user.id);
+  return code;
+ }
+ await env.DB.prepare("INSERT OR IGNORE INTO site_permanent_logins(user_id,code_hash,encrypted_code,nonce) VALUES (?,?,?,?)")
+  .bind(user.id,hash,encrypted.cipher,encrypted.iv).run();
+ // Concurrent /login commands must both return the stored winner, never an unusable code.
+ const stored=await env.DB.prepare("SELECT encrypted_code,nonce FROM site_permanent_logins WHERE user_id=?").bind(user.id).first();
+ if(!stored)throw Error('CREDENTIAL_NOT_PROVISIONED');
+ return decryptCode(env,stored.encrypted_code,stored.nonce);
+}
 async function issueCode(env,purpose,target,userId=null,minutes=10){
  const code=b64u(rand(12));
  const digest=await sha(code);
@@ -171,15 +195,27 @@ async function loginFromTelegram(req,env){
  const body=await readBody(req),code=String(body.code||'').trim();
  // EA activation serials are 43 chars and MUST NOT be used as website sign-in credentials.
  if(/^[A-Za-z0-9_-]{43}$/.test(code))return fail('EA_CODE_NOT_LOGIN_CODE',400);
- // /login delivers 12 random bytes in base64url: exactly 16 characters.
- if(!/^[A-Za-z0-9_-]{16}$/.test(code))return fail('INVALID_LOGIN_CODE_FORMAT',400);
+ // 32-character reusable website credential, or a legacy 16-character OTP while it expires.
+ if(!/^[A-Za-z0-9_-]{32}$/.test(code)&&!/^[A-Za-z0-9_-]{16}$/.test(code))return fail('INVALID_LOGIN_CODE_FORMAT',400);
  const digest=await sha(code);
- const row=await env.DB.prepare("SELECT user_id,target FROM site_login_codes WHERE code_hash=? AND purpose='telegram' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP").bind(digest).first();
- if(!row)return fail('INVALID_OR_EXPIRED_CODE',401);
- const consumed=await consumeCode(env,'telegram',row.target,code);if(!consumed)return fail('CODE_ALREADY_USED',401);
- const user=await env.DB.prepare("SELECT * FROM site_users WHERE id=? AND status='active'").bind(row.user_id).first();
+ let user=null;
+ if(code.length===32){
+  user=await env.DB.prepare(
+   "SELECT u.* FROM site_permanent_logins c JOIN site_users u ON u.id=c.user_id WHERE c.code_hash=? AND u.status='active' LIMIT 1"
+  ).bind(digest).first();
+ }else{
+  // The previously issued 10-minute tokens work only until their normal expiration.
+  const row=await env.DB.prepare("SELECT user_id,target FROM site_login_codes WHERE code_hash=? AND purpose='telegram' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP").bind(digest).first();
+  if(row){
+   const consumed=await consumeCode(env,'telegram',row.target,code);
+   if(consumed)user=await env.DB.prepare("SELECT * FROM site_users WHERE id=? AND status='active'").bind(row.user_id).first();
+  }
+ }
+ if(!user)return fail('INVALID_LOGIN_CREDENTIAL',401);
  if(!user)return fail('ACCOUNT_UNAVAILABLE',403);
  try{await licenseRecord(env,user);}catch{return fail('LICENSING_NOT_READY',503);}
+ if(code.length===32)await env.DB.prepare("UPDATE site_permanent_logins SET last_used_at=CURRENT_TIMESTAMP WHERE code_hash=? AND user_id=?").bind(digest,user.id).run();
+ await audit(env,user.id,'website_login',user.id,code.length===32?'permanent_telegram_credential':'legacy_otp');
  return json({ok:true},200,{'set-cookie':await login(env,user.id)});
 }
 async function loginFromTelegramMiniApp(req,env){
@@ -388,20 +424,29 @@ async function telegramWebhook(req,env){
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=text.split(' ')[0].split('@')[0];
- if(!['/start','/app','/login','/me','/code','/link','/admin','/users','/detail','/grant','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/app','/login','/resetlogin','/me','/code','/link','/admin','/users','/detail','/grant','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  if(user&&user.status!=='active'){await botSend(env,chatId,'Your account is suspended. Contact support.');return json({ok:true});}
  if(command==='/start'){
   try{await licenseRecord(env,user);}
   catch{await botSend(env,chatId,'Account created. Licensing is being configured; try /code later.');return json({ok:true});}
-  await botSend(env,chatId,'⚡ <b>Welcome to DrFX Company</b>\nYour unified website account is ready.\nTap Open Mini App to access your private membership and MT5 license.\nUse /login to get a one-time web sign-in code.\nUse /code for your EA activation serial.',true);
+  await botSend(env,chatId,'⚡ <b>Welcome to DrFX Company</b>\nYour unified website account is ready.\nTap Open Mini App to access your private membership and MT5 license.\nUse /login to view your reusable website sign-in code, or /resetlogin to replace it.\nUse /code for your EA activation serial.',true);
  }else if(command==='/app'){
   await botSend(env,chatId,'📱 Open the DrFX Mini App. Telegram securely verifies your identity before displaying your membership.',true);
- }else if(command==='/login'){
-  if(!await limited(req,env,'bot:code:'+telegramId,200)){await botSend(env,chatId,'Try again later.');return json({ok:true});}
-  const code=await issueCode(env,'telegram',telegramId,user.id,10);
-  await botSend(env,chatId,'🔐 <b>DrFX Website Sign-in</b> (16-character code, one time, 10 minutes):\n<code>'+code+'</code>\nEnter this code only in the Telegram tab at '+API_ORIGIN+'\n⚠️ /code is your separate 43-character MT5 EA activation serial, not your website sign-in code.');
+ }else if(command==='/login'||command==='/resetlogin'){
+  if(!await limited(req,env,'bot:code:'+telegramId,8)){await botSend(env,chatId,'Too many requests. Try again later.');return json({ok:true});}
+  try{
+   const code=await telegramWebsiteCredential(env,user,command==='/resetlogin');
+   await botSend(env,chatId,
+    '🔐 <b>DrFX Website Sign-in</b>\n<code>'+code+'</code>\n'+
+    (command==='/resetlogin'?'Your previous website sign-in code has been revoked.\n':'')+
+    'This is your permanent 32-character website login code. It does not expire and can be reused.\n'+
+    'Keep it private like a password. Use /resetlogin to replace it if compromised.\n'+
+    'Enter it only on '+API_ORIGIN+' (Telegram tab).\n'+
+    '⚠️ /code is a different 43-character MT5 activation serial.'
+   );
+  }catch{await botSend(env,chatId,'Website sign-in is temporarily unavailable. Your existing EA license is unaffected.');}
  }else if(command==='/code'){
   try{const record=await licenseRecord(env,user);const code=await decryptCode(env,record.encrypted_code,record.nonce);
     await botSend(env,chatId,'🔑 <b>Your private EA activation code</b>\n<code>'+code+'</code>\nDo not share it.');}
