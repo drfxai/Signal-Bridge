@@ -272,7 +272,7 @@ test('connection check never claims active socket or silently creates a demo tra
  assert.ok(worker.includes('live_socket_verified:live'));
  assert.ok(worker.includes('trade_executed:false'));
  assert.ok(worker.includes("https://agent-hub/snapshot"));
- assert.ok(worker.includes("socket.client_type==='ea'"));
+ assert.ok(worker.includes("c.client_type==='ea'"));
  assert.ok(worker.includes("socket.account?.login===row.account_login"));
  assert.ok(worker.includes("socket.account?.server===row.account_server"));
  assert.ok(worker.includes("socket.terminal_online===true"));
