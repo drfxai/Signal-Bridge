@@ -12,14 +12,14 @@ const mocked=(methodData)=>async url=>{
  return new Response(JSON.stringify({ok:true,result}),{status:200,headers:{'content-type':'application/json'}});
 };
 const good={
- getMe:{id:123456789,is_bot:true,first_name:'DrFX Bot'},
+ getMe:{id:123456789,is_bot:true,first_name:'DrFX Bot',username:'SignalBridgeDemoBot'},
  getWebhookInfo:{url:'https://drfx.company/api/telegram/webhook',pending_update_count:0,last_error_message:'private provider info'},
  getChatMenuButton:{type:'web_app',text:'Open App',web_app:{url:'https://drfx.company/telegram'}}
 };
 test('Telegram diagnostics confirms real webhook and menu without leaking private fields',async()=>{
  const status=await telegramHealth(env,mocked(good),Date.now());
  assert.deepEqual(status,{
-  ok:true,configured:true,bot_token_valid:true,webhook_secret_format_valid:true,
+  ok:true,configured:true,bot_token_valid:true,bot_username:'SignalBridgeDemoBot',webhook_secret_format_valid:true,
   admin_id_format_valid:true,webhook_registered:true,webhook_matches:true,
   mini_app_menu_configured:true,webhook_pending_updates:0
  });
@@ -36,6 +36,7 @@ test('Telegram diagnostics detects missing webhook or wrong menu and wrong admin
  }),Date.now()+61_000);
  assert.equal(status.configured,true);
  assert.equal(status.bot_token_valid,true);
+ assert.equal(status.bot_username,'SignalBridgeDemoBot');
  assert.equal(status.webhook_registered,false);
  assert.equal(status.webhook_matches,false);
  assert.equal(status.mini_app_menu_configured,false);
@@ -47,6 +48,7 @@ test('Telegram diagnostics reports invalid webhook secret and bad token without 
   mocked({}),Date.now()+122_000);
  assert.equal(status.configured,false);
  assert.equal(status.bot_token_valid,false);
+ assert.equal(status.bot_username,null);
  assert.equal(status.webhook_secret_format_valid,false);
  assert.equal(status.webhook_matches,false);
  assert.ok(!JSON.stringify(status).includes('https://drfx.company/api/telegram/webhook'));
