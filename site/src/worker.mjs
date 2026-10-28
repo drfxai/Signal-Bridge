@@ -3,6 +3,7 @@ import { TAILWIND_CSS } from './tailwind.mjs';
 import { MINI_HTML, MINI_JS } from './telegram-mini.mjs';
 import { inspectTelegramInitData } from './telegram-auth.mjs';
 import { telegramHealth } from './telegram-health.mjs';
+import { botLanguage, botText, botLanguageKeyboard } from './telegram-i18n.mjs';
 
 const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
@@ -412,50 +413,89 @@ async function ipnHandler(req,env){
 async function botSend(env,chatId,text,keyboard){
  if(!env.TELEGRAM_BOT_TOKEN)return;
  const body={chat_id:chatId,text,parse_mode:'HTML',disable_web_page_preview:true};
- if(keyboard)body.reply_markup={inline_keyboard:[[ {text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}} ],[ {text:'Open website',url:API_ORIGIN} ]]};
+ if(keyboard===true)body.reply_markup={inline_keyboard:[[ {text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}} ],[ {text:'Open website',url:API_ORIGIN} ]]};
+ else if(keyboard&&typeof keyboard==='object')body.reply_markup=keyboard;
  await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/sendMessage',{
   method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)
  });
+}
+async function userBotLocale(env,telegramId){
+ const row=await env.DB.prepare("SELECT language_code FROM site_bot_preferences WHERE telegram_id=?").bind(telegramId).first();
+ return botLanguage(row?.language_code);
+}
+async function setBotLocale(env,telegramId,language){
+ const lang=botLanguage(language);
+ if(lang!==language)throw Error('INVALID_LANGUAGE_SELECTION');
+ await env.DB.prepare("INSERT INTO site_bot_preferences (telegram_id,language_code) VALUES (?,?) ON CONFLICT(telegram_id) DO UPDATE SET language_code=excluded.language_code,selected_at=CURRENT_TIMESTAMP")
+  .bind(telegramId,lang).run();
+ return lang;
+}
+async function botAnswerCallback(env,callbackId){
+ if(!env.TELEGRAM_BOT_TOKEN||!callbackId)return;
+ try{await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/answerCallbackQuery',{
+  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({callback_query_id:callbackId})
+ });}catch{/* Telegram may have expired the callback; language selection still persists. */}
+}
+async function botWelcome(env,chatId,user,lang){
+ try{await licenseRecord(env,user);}
+ catch{
+  await botSend(env,chatId,botText(lang,'licensePending'));
+  return;
+ }
+ await botSend(env,chatId,botText(lang,'selected')+'\n\n'+botText(lang,'welcome'),true);
+}
+async function botLanguageCallback(update,env){
+ const cb=update?.callback_query;
+ if(!cb?.id||!cb.from?.id||cb.message?.chat?.type!=='private'||!cb.message?.chat?.id||
+  String(cb.from.id)!==String(cb.message.chat.id))return json({ok:true,ignored:'CALLBACK_NOT_PRIVATE'});
+ const match=/^lang:(en|fa|ar|tr|ru|hi)$/.exec(String(cb.data||''));
+ if(!match){await botAnswerCallback(env,cb.id);return json({ok:true,ignored:'UNKNOWN_CALLBACK'});}
+ const telegramId=String(cb.from.id),chatId=String(cb.message.chat.id);
+ let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
+ if(!user)user=await getOrCreateTelegram(env,telegramId,cb.from.username||cb.from.first_name||'Trader');
+ if(user.status!=='active'){await botAnswerCallback(env,cb.id);await botSend(env,chatId,botText('en','suspended'));return json({ok:true});}
+ const lang=await setBotLocale(env,telegramId,match[1]);
+ await botAnswerCallback(env,cb.id);
+ await botWelcome(env,chatId,user,lang);
+ return json({ok:true});
 }
 async function telegramWebhook(req,env){
  if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_WEBHOOK_SECRET)return fail('BOT_NOT_CONFIGURED',503);
  const secret=req.headers.get('x-telegram-bot-api-secret-token')||'';
  if(!safeEq(secret,env.TELEGRAM_WEBHOOK_SECRET))return fail('UNAUTHORIZED',401);
- const data=await readBody(req,16384),msg=data.message;
+ const data=await readBody(req,16384);
+ if(data.callback_query)return botLanguageCallback(data,env);
+ const msg=data.message;
  if(!msg||msg.chat?.type!=='private'||!msg.from?.id)return json({ok:true,ignored:'NO_PRIVATE_MESSAGE'});
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=text.split(' ')[0].split('@')[0];
- if(!['/start','/app','/login','/resetlogin','/me','/code','/link','/admin','/users','/detail','/grant','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/language','/lang','/app','/login','/resetlogin','/me','/code','/link','/admin','/users','/detail','/grant','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
- if(user&&user.status!=='active'){await botSend(env,chatId,'Your account is suspended. Contact support.');return json({ok:true});}
- if(command==='/start'){
-  try{await licenseRecord(env,user);}
-  catch{await botSend(env,chatId,'Account created. Licensing is being configured; try /code later.');return json({ok:true});}
-  await botSend(env,chatId,'⚡ <b>Welcome to DrFX Company</b>\nYour unified website account is ready.\nTap Open Mini App to access your private membership and MT5 license.\nUse /login to view your reusable website sign-in code, or /resetlogin to replace it.\nUse /code for your EA activation serial.',true);
+ const language=await userBotLocale(env,telegramId);
+ const tx=key=>botText(language,key);
+ if(user&&user.status!=='active'){await botSend(env,chatId,tx('suspended'));return json({ok:true});}
+ if(command==='/start'||command==='/language'||command==='/lang'){
+  await botSend(env,chatId,tx('choose'),botLanguageKeyboard());
  }else if(command==='/app'){
-  await botSend(env,chatId,'📱 Open the DrFX Mini App. Telegram securely verifies your identity before displaying your membership.',true);
+  await botSend(env,chatId,tx('app'),true);
  }else if(command==='/login'||command==='/resetlogin'){
-  if(!await limited(req,env,'bot:code:'+telegramId,8)){await botSend(env,chatId,'Too many requests. Try again later.');return json({ok:true});}
+  if(!await limited(req,env,'bot:code:'+telegramId,8)){await botSend(env,chatId,tx('tooMany'));return json({ok:true});}
   try{
    const code=await telegramWebsiteCredential(env,user,command==='/resetlogin');
    await botSend(env,chatId,
-    '🔐 <b>DrFX Website Sign-in</b>\n<code>'+code+'</code>\n'+
-    (command==='/resetlogin'?'Your previous website sign-in code has been revoked.\n':'')+
-    'This is your permanent 32-character website login code. It does not expire and can be reused.\n'+
-    'Keep it private like a password. Use /resetlogin to replace it if compromised.\n'+
-    'Enter it only on '+API_ORIGIN+' (Telegram tab).\n'+
-    '⚠️ /code is a different 43-character MT5 activation serial.'
+    tx('loginTitle')+'\n<code>'+code+'</code>\n'+
+    (command==='/resetlogin'?tx('reset')+'\n':'')+tx('loginText')
    );
-  }catch{await botSend(env,chatId,'Website sign-in is temporarily unavailable. Your existing EA license is unaffected.');}
+  }catch{await botSend(env,chatId,tx('loginUnavailable'));}
  }else if(command==='/code'){
   try{const record=await licenseRecord(env,user);const code=await decryptCode(env,record.encrypted_code,record.nonce);
-    await botSend(env,chatId,'🔑 <b>Your private EA activation code</b>\n<code>'+code+'</code>\nDo not share it.');}
-  catch{await botSend(env,chatId,'Licensing service is not configured.');}
+    await botSend(env,chatId,tx('serialTitle')+'\n<code>'+code+'</code>\n'+tx('serialNotice'));}
+  catch{await botSend(env,chatId,tx('licenseUnavailable'));}
  }else if(command==='/me'){
   const rec=await licenseRecord(env,user);
-  await botSend(env,chatId,'👤 Your account\nPlan: '+user.plan+'\nEA: '+rec.status+'\nExpires: '+(rec.expires_at||'Starts on first EA activation')+'\nDashboard: '+API_ORIGIN,true);
+  await botSend(env,chatId,tx('member')+'\n'+tx('plan')+': '+user.plan+'\n'+tx('license')+': '+rec.status+'\n'+tx('expires')+': '+(rec.expires_at||tx('notActivated'))+'\n'+tx('dashboard')+': '+API_ORIGIN,true);
  }else if(command==='/link'){
   const code=text.split(/\s+/)[1]||'';
   if(!/^[A-Za-z0-9_-]{8,64}$/.test(code)){await botSend(env,chatId,'Usage: /link CODE');return json({ok:true});}
