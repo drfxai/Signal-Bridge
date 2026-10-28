@@ -2,6 +2,7 @@ import { SITE_HTML, SITE_CSS, SITE_JS, DESIGN_JS } from './ui.mjs';
 import { TAILWIND_CSS } from './tailwind.mjs';
 import { MINI_HTML, MINI_JS } from './telegram-mini.mjs';
 import { verifyTelegramInitData } from './telegram-auth.mjs';
+import { telegramHealth } from './telegram-health.mjs';
 
 const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
@@ -397,6 +398,10 @@ async function api(req,env){
  if(path==='/api/telegram/webhook'&&req.method==='POST')return telegramWebhook(req,env);
  if(path==='/api/payments/ipn'&&req.method==='POST')return ipnHandler(req,env);
  if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY});
+ if(path==='/api/telegram/health'&&req.method==='GET'){
+  if(!await limited(req,env,'public:telegram-health',5))return fail('RATE_LIMITED',429);
+  return json(await telegramHealth(env));
+ }
  if(req.method==='POST'&&!originSafe(req))return fail('ORIGIN_REJECTED',403);
  if(path==='/api/auth/email/start'&&req.method==='POST')return emailStart(req,env);
  if(path==='/api/auth/email/verify'&&req.method==='POST')return emailVerify(req,env);
