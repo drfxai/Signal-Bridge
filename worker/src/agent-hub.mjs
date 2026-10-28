@@ -7,6 +7,8 @@ function parseMessage(message){if(typeof message!=='string'||message.length>1638
 
 export class AgentHub{
  constructor(ctx,env){this.ctx=ctx;this.env=env}
+ broadcast(event){for(const ws of this.ctx.getWebSockets()){const a=ws.deserializeAttachment()||{};if(a.role==='observer'&&ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(event))}catch{}}}}
+ currentAgentSockets(){return this.ctx.getWebSockets().filter(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='agent'&&ws.readyState===WebSocket.OPEN})}
  async replay(agentId,ws){
   const q=await this.env.DB.prepare("SELECT id,payload_json FROM commands WHERE agent_id=? AND status IN ('PENDING','DELIVERED') ORDER BY CASE WHEN status='PENDING' THEN 0 ELSE 1 END, created_at ASC LIMIT 200").bind(agentId).all();
   for(const row of q?.results||[]){
@@ -27,24 +29,35 @@ export class AgentHub{
   if(url.pathname==='/ws'){
    if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return json({error:'UPGRADE_REQUIRED'},426);
    const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'';if(!agentId||!tenantId)return json({error:'UNAUTHORIZED'},401);
-   for(const old of this.ctx.getWebSockets()){try{old.close(4001,'superseded by newer agent connection')}catch{}}
+   for(const old of this.currentAgentSockets()){try{old.close(4001,'superseded by newer agent connection')}catch{}}
    const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
-   server.serializeAttachment({agentId,tenantId,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
+   server.serializeAttachment({role:'agent',agentId,tenantId,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
    server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
    this.ctx.waitUntil(this.replay(agentId,server));
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
    const selected=protocols.includes('signalbridge-agent-v1')?'signalbridge-agent-v1':null;
    return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
   }
+  if(url.pathname==='/observer'){
+   if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return json({error:'UPGRADE_REQUIRED'},426);
+   const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'';if(!agentId||!tenantId)return json({error:'UNAUTHORIZED'},401);
+   const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
+   server.serializeAttachment({role:'observer',agentId,tenantId,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString()});
+   const agents=this.currentAgentSockets(),a=agents[0]?.deserializeAttachment?.()||{};
+   server.send(JSON.stringify({type:'dashboard_snapshot',agent_online:agents.length>0,terminal_online:terminalReadyAttachment(a),account:a.account||null,server_time:new Date().toISOString()}));
+   const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
+   const selected=protocols.includes('signalbridge-dashboard-v1')?'signalbridge-dashboard-v1':null;
+   return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
+  }
   if(url.pathname==='/dispatch'&&request.method==='POST'){
    const body=await request.json().catch(()=>null);if(!body||body.protocol!=='signalbridge-command/1'||!body.command_id)return json({error:'BAD_COMMAND'},400);
-   const sockets=this.ctx.getWebSockets().filter(ws=>ws.readyState===WebSocket.OPEN);if(!sockets.length)return json({ok:true,delivered:0,reason:'AGENT_OFFLINE'});
+   const sockets=this.currentAgentSockets();if(!sockets.length)return json({ok:true,delivered:0,reason:'AGENT_OFFLINE'});
    const socket=sockets.find(ws=>terminalReadyAttachment(ws.deserializeAttachment()||{}));
    if(!socket)return json({ok:true,delivered:0,reason:'TERMINAL_OFFLINE'});
-   socket.send(JSON.stringify({type:'command',...body}));return json({ok:true,delivered:1,reason:null});
+   socket.send(JSON.stringify({type:'command',...body}));this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
   }
   if(url.pathname==='/snapshot'&&request.method==='GET'){
-   const clients=this.ctx.getWebSockets().map(ws=>{const a=ws.deserializeAttachment()||{};return {agent_id:a.agentId||null,connected_at:a.connectedAt||null,last_seen_at:a.lastSeenAt||null,terminal_online:a.terminalOnline===true,account:a.account||null}});
+   const clients=this.currentAgentSockets().map(ws=>{const a=ws.deserializeAttachment()||{};return {agent_id:a.agentId||null,connected_at:a.connectedAt||null,last_seen_at:a.lastSeenAt||null,terminal_online:a.terminalOnline===true,account:a.account||null}});
    return json({connected:clients.length,clients});
   }
   return json({error:'NOT_FOUND'},404);
@@ -52,8 +65,10 @@ export class AgentHub{
  async webSocketMessage(ws,message){
   const body=parseMessage(message);if(!body){ws.send(JSON.stringify({type:'error',code:'INVALID_MESSAGE'}));return}
   const a=ws.deserializeAttachment()||{};a.lastSeenAt=new Date().toISOString();
+  if(a.role==='observer'){if(body.type==='ping')ws.send(JSON.stringify({type:'pong',server_time:new Date().toISOString()}));else ws.send(JSON.stringify({type:'error',code:'OBSERVER_READ_ONLY'}));return}
+  if(a.role!=='agent'){ws.send(JSON.stringify({type:'error',code:'UNAUTHORIZED_SOCKET'}));return}
   if(body.type==='terminal_state'){
-   if(body.online===false){a.terminalOnline=false;a.account=null;ws.serializeAttachment(a);ws.send(JSON.stringify({type:'terminal_state_ack',online:false}));return}
+   if(body.online===false){a.terminalOnline=false;a.account=null;ws.serializeAttachment(a);this.broadcast({type:'terminal_state',agent_online:true,terminal_online:false,account:null,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'terminal_state_ack',online:false}));return}
    if(body.online!==true||!body.account||typeof body.account!=='object'){ws.send(JSON.stringify({type:'error',code:'INVALID_TERMINAL_STATE'}));return}
    const account={login:safe(body.account.login,64),server:safe(body.account.server,120),mode:safe(body.account.mode,32),balance:Number.isFinite(Number(body.account.balance))?Number(body.account.balance):null,equity:Number.isFinite(Number(body.account.equity))?Number(body.account.equity):null,positions:Number.isFinite(Number(body.account.positions))?Number(body.account.positions):null};
    if(!account.login||!account.server){ws.send(JSON.stringify({type:'error',code:'INVALID_TERMINAL_ACCOUNT'}));return}
@@ -64,7 +79,7 @@ export class AgentHub{
     if(!result?.success||result.meta?.changes!==1){ws.send(JSON.stringify({type:'error',code:'ACCOUNT_MISMATCH'}));ws.close(1008,'account binding rejected');return}
     a.expectedLogin=account.login;a.expectedServer=account.server;
    }
-   a.account=account;a.terminalOnline=true;a.lastSeenAt=new Date().toISOString();ws.serializeAttachment(a);ws.send(JSON.stringify({type:'terminal_state_ack',online:true}));return;
+   a.account=account;a.terminalOnline=true;a.lastSeenAt=new Date().toISOString();ws.serializeAttachment(a);this.broadcast({type:'terminal_state',agent_online:true,terminal_online:true,account,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'terminal_state_ack',online:true}));return;
   }
   if(body.type==='heartbeat'){
    const account=body.account&&typeof body.account==='object'?{login:safe(body.account.login,64),server:safe(body.account.server,120),mode:safe(body.account.mode,32),balance:Number.isFinite(Number(body.account.balance))?Number(body.account.balance):null,equity:Number.isFinite(Number(body.account.equity))?Number(body.account.equity):null,positions:Number.isFinite(Number(body.account.positions))?Number(body.account.positions):null}:null;
@@ -77,7 +92,7 @@ export class AgentHub{
      a.expectedLogin=account.login;a.expectedServer=account.server;
     }a.account=account;a.terminalOnline=true;
    }
-   ws.serializeAttachment(a);ws.send(JSON.stringify({type:'heartbeat_ack',server_time:new Date().toISOString()}));return;
+   ws.serializeAttachment(a);if(account)this.broadcast({type:'account_telemetry',agent_online:true,terminal_online:true,account,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'heartbeat_ack',server_time:new Date().toISOString()}));return;
   }
   if(body.type==='receipt'){
    const commandId=safe(body.command_id,64),status=safe(body.status,32);if(!commandId||!RECEIPT_STATES.has(status)){ws.send(JSON.stringify({type:'error',code:'INVALID_RECEIPT'}));return}
@@ -87,7 +102,7 @@ export class AgentHub{
    if(!receiptTransitionAllowed(current.status,status)){ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,stored:false,code:'INVALID_TRANSITION',from:current.status,to:status}));return}
    const result=await this.env.DB.prepare(`UPDATE commands SET status=?,broker_ticket=COALESCE(?,broker_ticket),broker_retcode=COALESCE(?,broker_retcode),last_error=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND agent_id=? AND status=?`)
     .bind(status,ticket,retcode,(status==='REJECTED'||status==='BROKER_REJECTED'||status==='ERROR'||status==='ACCOUNT_MISMATCH')?detail:null,commandId,a.agentId,current.status).run();
-   ws.serializeAttachment(a);ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,stored:result?.meta?.changes===1}));return;
+   const stored=result?.meta?.changes===1;ws.serializeAttachment(a);if(stored)this.broadcast({type:'receipt',command_id:commandId,status,broker_ticket:ticket,broker_retcode:retcode,detail,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,stored}));return;
   }
   ws.send(JSON.stringify({type:'error',code:'UNSUPPORTED_MESSAGE'}));
  }
