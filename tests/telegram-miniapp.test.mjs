@@ -120,7 +120,7 @@ test('Telegram navigation, bilingual mode and license privacy remain functional'
  for(const token of [
   "document.querySelectorAll('[data-jump]')","document.body.dataset.tab=tab",
   "tg?.BackButton?.onClick","language($('langToggle').value)",
-  "document.documentElement.dir=locale==='fa'?'rtl':'ltr'",
+  "document.documentElement.dir=['fa','ar'].includes(locale)?'rtl':'ltr'",
   "state.serialVisible","'/api/auth/telegram/webapp'",
   "'/api/me'","tg?.initData"
  ]) assert.ok(MINI_JS.includes(token),token);
@@ -139,7 +139,7 @@ test('Mini App recovers an authenticated browser session without Telegram initDa
  assert.match(MINI_JS,/await api\('\/api\/auth\/telegram\/webapp',\{init_data:tg\.initData\}\)/);
  assert.match(MINI_JS,/if\(!signedIn\)/);
  assert.match(MINI_JS,/document\.documentElement\.lang=locale/);
- assert.match(MINI_JS,/navigator\.language\?\.toLowerCase\(\)\.startsWith\('fa'\)/);
+ assert.match(MINI_JS,/String\(navigator\.language\|\|'en'\)\.slice\(0,2\)/);
 });
 test('Mini App clears private EA activation material on failed session refresh',()=>{
  assert.match(MINI_JS,/function clearPrivateAccount\(\)/);
@@ -149,7 +149,7 @@ test('Mini App clears private EA activation material on failed session refresh',
  assert.match(MINI_JS,/catch\(error\)\{\s*clearPrivateAccount\(\)/);
  assert.match(MINI_HTML,/id="retrySignIn"[^>]*hidden/);
  assert.match(MINI_JS,/\$\('retrySignIn'\)\.addEventListener\('click',start\)/);
- assert.match(MINI_HTML,/telegram-mini\.js\?v=20261028-mobile-v6/);
+ assert.match(MINI_HTML,/telegram-mini\.js\?v=20261029-sixlangs/);
 });
 test('Persian translation covers account safety, MT5 onboarding, and error states',()=>{
  for(const label of [
