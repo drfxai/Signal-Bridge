@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs><linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#070b14"/><stop offset="1" stop-color="#181d47"/></linearGradient><linearGradient id="bub" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#19304b"/><stop offset="1" stop-color="#202657"/></linearGradient></defs>
+<rect width="1600" height="900" fill="url(#bg3)"/>
+<rect x="82" y="72" width="220" height="44" rx="22" fill="#22285b" stroke="#646cff"/><text x="192" y="101" text-anchor="middle" font-family="Consolas" font-size="18" font-weight="700" fill="#aeb2ff">TELEGRAM ROUTING</text>
+<text x="82" y="200" font-family="Inter,Segoe UI,Arial" font-size="60" font-weight="800" fill="#eef6ff">Clean Telegram signals.</text>
+<text x="82" y="260" font-family="Inter,Segoe UI,Arial" font-size="38" font-weight="800" fill="#8d93ff">Controlled MT5 execution.</text>
+<text x="82" y="326" font-family="Inter,Segoe UI,Arial" font-size="23" fill="#91a5bb">One-time source pairing · deterministic parsing · fail-closed validation</text>
+
+<g transform="translate(82 400)">
+ <rect width="170" height="64" rx="16" fill="#0f1b2b" stroke="#2e4866"/><text x="25" y="41" font-family="Inter" font-size="18" font-weight="800" fill="#55d7f7">EN</text><text x="70" y="41" font-family="Inter" font-size="17" font-weight="700" fill="#eef6ff">English</text>
+ <rect x="188" width="170" height="64" rx="16" fill="#0f1b2b" stroke="#2e4866"/><text x="213" y="41" font-family="Inter" font-size="18" font-weight="800" fill="#55d7f7">فا</text><text x="258" y="41" font-family="Inter" font-size="17" font-weight="700" fill="#eef6ff">فارسی</text>
+ <rect x="376" width="170" height="64" rx="16" fill="#0f1b2b" stroke="#2e4866"/><text x="401" y="41" font-family="Inter" font-size="18" font-weight="800" fill="#55d7f7">عر</text><text x="446" y="41" font-family="Inter" font-size="17" font-weight="700" fill="#eef6ff">العربية</text>
+</g>
+<text x="82" y="535" font-family="Inter" font-size="24" font-weight="800" fill="#eef6ff">No guessing.</text>
+<text x="82" y="575" font-family="Inter" font-size="19" fill="#91a5bb">Unknown symbol → block · Missing SL → reject · Conflicting direction → reject</text>
+<text x="82" y="650" font-family="Inter" font-size="24" font-weight="800" fill="#eef6ff">Authorized sources only.</text>
+<text x="82" y="690" font-family="Inter" font-size="19" fill="#91a5bb">Pair exactly one chat or channel before signals can reach the MT5 route.</text>
+
+<g transform="translate(760 80)">
+ <rect width="760" height="700" rx="28" fill="#0b1422" stroke="#3c4d83" stroke-width="2"/>
+ <rect width="760" height="64" rx="28" fill="#111b31"/><rect y="42" width="760" height="22" fill="#111b31"/>
+ <circle cx="34" cy="32" r="13" fill="#55d7f7"/><text x="58" y="38" font-family="Inter" font-size="19" font-weight="800" fill="#eef6ff">SignalBridge Telegram Hub</text>
+ <rect x="618" y="18" width="118" height="28" rx="14" fill="#123b31" stroke="#2b745a"/><text x="677" y="37" text-anchor="middle" font-family="Consolas" font-size="12" font-weight="700" fill="#64dfad">CONNECTED</text>
+
+ <rect x="30" y="94" width="700" height="98" rx="18" fill="#0f1d30" stroke="#263a58"/>
+ <text x="50" y="121" font-family="Inter" font-size="12" fill="#8ea4bb">AUTHORIZED SOURCE</text>
+ <text x="50" y="153" font-family="Inter" font-size="20" font-weight="800" fill="#eef6ff">Gold Pro Signals</text>
+ <text x="50" y="177" font-family="Consolas" font-size="12" fill="#49d5a1">PAIRED · ENTRY ENABLED · WEBHOOK VERIFIED</text>
+
+ <rect x="30" y="214" width="335" height="308" rx="18" fill="#0f1d30" stroke="#263a58"/>
+ <text x="50" y="245" font-family="Inter" font-size="16" font-weight="800" fill="#eef6ff">Incoming message</text>
+ <rect x="50" y="270" width="295" height="220" rx="16" fill="url(#bub)" stroke="#394c7d"/>
+ <g font-family="Consolas" font-size="17" fill="#eef6ff">
+  <text x="70" y="307">XAUUSD BUY NOW</text><text x="70" y="341">ENTRY 2751.2</text><text x="70" y="375">SL 2738</text><text x="70" y="409">TP1 2762</text><text x="70" y="443">TP2 2771</text><text x="70" y="477">TP3 2784</text>
+ </g>
+
+ <rect x="385" y="214" width="345" height="308" rx="18" fill="#0f1d30" stroke="#263a58"/>
+ <text x="405" y="245" font-family="Inter" font-size="16" font-weight="800" fill="#eef6ff">Parser inspector</text>
+ <g font-family="Consolas" font-size="14">
+  <text x="405" y="290" fill="#8ea4bb">ACTION</text><text x="555" y="290" fill="#49d5a1">OPEN</text>
+  <text x="405" y="326" fill="#8ea4bb">SIDE</text><text x="555" y="326" fill="#55d7f7">BUY</text>
+  <text x="405" y="362" fill="#8ea4bb">SYMBOL</text><text x="555" y="362" fill="#eef6ff">XAUUSD</text>
+  <text x="405" y="398" fill="#8ea4bb">STOP</text><text x="555" y="398" fill="#eef6ff">2738</text>
+  <text x="405" y="434" fill="#8ea4bb">TARGETS</text><text x="555" y="434" fill="#eef6ff">3</text>
+  <text x="405" y="470" fill="#8ea4bb">DECISION</text><text x="555" y="470" fill="#49d5a1">VALID → RISK</text>
+ </g>
+
+ <rect x="30" y="546" width="700" height="118" rx="18" fill="#0f1d30" stroke="#263a58"/>
+ <text x="50" y="576" font-family="Inter" font-size="16" font-weight="800" fill="#eef6ff">Live pipeline</text>
+ <g font-family="Inter" font-size="14" font-weight="700" text-anchor="middle">
+  <rect x="50" y="598" width="125" height="42" rx="12" fill="#17284a" stroke="#5963b8"/><text x="112" y="624" fill="#eef6ff">Telegram</text>
+  <text x="191" y="624" fill="#8d93ff">→</text>
+  <rect x="208" y="598" width="125" height="42" rx="12" fill="#17284a" stroke="#5963b8"/><text x="270" y="624" fill="#eef6ff">Parser</text>
+  <text x="349" y="624" fill="#8d93ff">→</text>
+  <rect x="366" y="598" width="125" height="42" rx="12" fill="#16322c" stroke="#38856d"/><text x="428" y="624" fill="#eef6ff">Risk</text>
+  <text x="507" y="624" fill="#8d93ff">→</text>
+  <rect x="524" y="598" width="125" height="42" rx="12" fill="#16322c" stroke="#38856d"/><text x="586" y="624" fill="#eef6ff">MT5</text>
+ </g>
+</g>
+</svg>
