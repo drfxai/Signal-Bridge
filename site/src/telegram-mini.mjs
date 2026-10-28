@@ -100,12 +100,12 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
   <div class="buttons"><button type="button" id="revealSerial" class="btn primary" data-tr="reveal" disabled>Reveal code</button><button type="button" id="copySerial" class="btn" data-tr="copy" disabled>Copy code</button></div>
  </article>
  <section class="mini-tools" aria-label="SignalBridge account tools"><div class="mini-tools-head"><span>PERSONAL SIGNALBRIDGE</span><strong>Connection & Webhook</strong></div>
- <div class="mini-status-grid"><div><small>EA LICENSE</small><strong id="miniConnectionLicense">Not checked</strong></div><div><small>LAST HANDSHAKE</small><strong id="miniConnectionLast">Not checked</strong></div></div>
- <button type="button" id="miniTestConnection" class="btn primary mini-wide">Test Connection · No Trade</button>
+ <div class="mini-status-grid"><div><small data-tr="licenseStatus">EA LICENSE</small><strong id="miniConnectionLicense">Not checked</strong></div><div><small data-tr="lastHandshake">LAST HANDSHAKE</small><strong id="miniConnectionLast">Not checked</strong></div></div>
+ <button type="button" id="miniTestConnection" class="btn primary mini-wide" data-tr="testConnection">Test Connection · No Trade</button>
  <p class="mini-note" id="miniConnectionInfo" role="status">Reads the last EA handshake. It does not place a market order.</p>
- <h3>My TradingView Webhook</h3><p class="mini-note">Private endpoint for your TradingView alerts, initially Dry Run. Do not share this URL.</p>
+ <h3 data-tr="personalWebhook">My TradingView Webhook</h3><p class="mini-note">Private endpoint for your TradingView alerts, initially Dry Run. Do not share this URL.</p>
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
- <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" disabled>Regenerate</button></div>
+ <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook" data-tr="createWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" data-tr="copyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" data-tr="rotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
  <button type="button" class="btn subtle mini-wide" disabled title="Requires a newer compiled EA">DEMO XAUUSD Buy 0.01 → Close 5s · EA update required</button>
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
@@ -120,9 +120,9 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 <section class="tab-panel" data-panel="plans" id="panel-plans" hidden>
  <p class="tab-kicker" data-tr="plansKicker">DRFX MEMBERSHIP</p><h2 class="section-title" data-tr="advantage">Choose your plan</h2>
  <div class="card">
-  <div class="plan"><div><b>One Month Free</b><small>Free trial and private EA activation</small></div><div class="plan-price">$0</div></div>
-  <div class="plan featured"><div><b>3 Months Premium</b><small>SignalBridge and 52 premium indicators*</small></div><div class="plan-price">$47</div></div>
-  <div class="plan"><div><b>Annual Elite</b><small>All features and personalized options*</small></div><div class="plan-price">$165</div></div>
+  <div class="plan"><div><b data-tr="oneMonth">One Month Free</b><small>Free trial and private EA activation</small></div><div class="plan-price">$0</div></div>
+  <div class="plan featured"><div><b data-tr="threeMonth">3 Months Premium</b><small>SignalBridge and 52 premium indicators*</small></div><div class="plan-price">$47</div></div>
+  <div class="plan"><div><b data-tr="annualElite">Annual Elite</b><small>All features and personalized options*</small></div><div class="plan-price">$165</div></div>
   <p id="paymentStatus" class="meta" role="status">Paid checkout is not configured yet.</p>
   <button id="openPricing" type="button" class="btn primary" style="width:100%;margin-top:15px" data-tr="pricing">View website plans ↗</button>
   <p class="meta" data-tr="premiumNote">* Premium content requires separate authorized release. This Mini App does not collect payments.</p>
@@ -136,10 +136,10 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  </div>
 </section>
 <section class="tab-panel" data-panel="admin" id="panel-admin" hidden>
- <div class="tab-kicker">DRFX / ADMIN</div><h2 class="section-title">Operations Center</h2>
+ <div class="tab-kicker">DRFX / ADMIN</div><h2 class="section-title" data-tr="adminTitle">Operations Center</h2>
  <p class="mini-note">Administrator-only customer accounts, membership controls and EA access management.</p>
  <div class="mini-admin-metrics" id="miniAdminMetrics"></div>
- <div class="mini-admin-directory"><label for="miniAdminSearch">CUSTOMER DIRECTORY</label><div class="mini-admin-search"><input id="miniAdminSearch" autocomplete="off" placeholder="Email, Telegram, user ID"><button type="button" id="miniAdminRefresh" class="btn subtle">Refresh</button></div>
+ <div class="mini-admin-directory"><label for="miniAdminSearch" data-tr="adminSearch">CUSTOMER DIRECTORY</label><div class="mini-admin-search"><input id="miniAdminSearch" autocomplete="off" placeholder="Email, Telegram, user ID"><button type="button" id="miniAdminRefresh" class="btn subtle" data-tr="adminRefresh">Refresh</button></div>
  <div id="miniAdminUsers" class="mini-admin-users"></div></div>
  <p id="miniAdminStatus" class="mini-note" role="status"></p>
  </section>
@@ -150,7 +150,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <button data-tab="license" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span data-tr="navEA">MT5 EA</span></button>
  <button data-tab="plans" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 9 4 4 5-8 5 8 4-4-2 10H5z"/></svg><span data-tr="navPlans">Plans</span></button>
  <button data-tab="help" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a3 3 0 0 1 5.3 1.9c0 2-2.8 2.4-2.8 4.1M12 18h.01"/></svg><span data-tr="navHelp">Help</span></button>
-<button id="miniAdminTab" type="button" data-tab="admin" aria-selected="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5h16v14zM4 10h16M9 5v14"/></svg><span>Admin</span></button>
+<button id="miniAdminTab" type="button" data-tab="admin" aria-selected="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5h16v14zM4 10h16M9 5v14"/></svg><span data-tr="adminLabel">Admin</span></button>
 </nav></body></html>`;
 export const MINI_JS=String.raw`(() => {
  'use strict';
