@@ -67,8 +67,8 @@ test('Telegram bot exposes admin user lookup, grant and suspension operations be
 test('two globe motion placements are lazy, muted, mobile-safe and reduced-motion-aware',()=>{
  const videos=SITE_HTML.match(/<video /g)||[];
  assert.equal(videos.length,2);
- assert.match(SITE_HTML,/data-video-source="\\/assets\\/media\\/48356-globe\\.mp4"/);
- assert.match(SITE_HTML,/data-video-source="\\/assets\\/media\\/48355-connections\\.mp4"/);
+ assert.ok(SITE_HTML.includes('data-video-source="/assets/media/48356-globe.mp4"'));
+ assert.ok(SITE_HTML.includes('data-video-source="/assets/media/48355-connections.mp4"'));
  assert.equal((SITE_HTML.match(/muted loop playsinline preload="none"/g)||[]).length,2);
  assert.match(SITE_JS,/IntersectionObserver/);
  assert.match(SITE_JS,/prefers-reduced-motion/);
