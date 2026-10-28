@@ -271,17 +271,17 @@ async function rotateUserWebhook(req,env,user){
 async function connectionDiagnostic(env,user){
  const row=await env.DB.prepare(
   "SELECT el.status,el.plan,el.activated_at,el.expires_at,el.account_login,el.account_server," +
-  "a.status AS agent_status,a.last_connected_at FROM site_licenses sl " +
+  "a.status AS agent_status,a.last_connected_at AS last_connection_attempt FROM site_licenses sl " +
   "JOIN ea_licenses el ON el.id=sl.license_id JOIN agent_connections a ON a.id=sl.agent_id " +
   "WHERE sl.user_id=? LIMIT 1"
  ).bind(user.id).first();
- if(!row)return {license:'missing',mt5_bound:false,last_handshake:null,live_socket_verified:false,trade_executed:false};
+ if(!row)return {license:'missing',mt5_bound:false,last_connection_attempt:null,live_socket_verified:false,trade_executed:false};
  return {license:row.status,agent_status:row.agent_status,plan:row.plan,
   mt5_bound:!!(row.account_login&&row.account_server),
   mt5_account:row.account_login?{login:row.account_login,server:row.account_server}:null,
-  last_handshake:row.last_connected_at||null,activated_at:row.activated_at||null,
+  last_connection_attempt:row.last_connection_attempt||null,activated_at:row.activated_at||null,
   live_socket_verified:false,trade_executed:false,
-  note:'Database connectivity snapshot only; not a current EA WebSocket ping.'};
+  note:'Last connection ATTEMPT recorded at WebSocket upgrade. This is not a verified live connection, MT5 receipt or executed order.'};
 }
 async function adminUpdate(req,env,admin){
  const b=await readBody(req);if(!ADMIN_ACTIONS.has(b.action)||!/^usr_[0-9a-f]{32}$/.test(b.user_id||''))return fail('INVALID_ACTION');
