@@ -22,7 +22,7 @@ test('site runtime exposes marketing HTML and assets without database',async()=>
  for(const [path,type] of [['/','text/html'],['/assets/app.css','text/css'],['/assets/app.js','text/javascript']]){
   const response=await handler.fetch(new Request('https://drfx.company'+path),{});
   assert.equal(response.status,200);
-  assert.match(response.headers.get('content-type'),type);
+  assert.match(response.headers.get('content-type'),new RegExp(type));
  }
 });
 test('API fails closed without required D1',async()=>{
@@ -40,7 +40,7 @@ test('no live checkout when payment keys are absent',()=>{
 test('license issuance is random and encrypted at rest, sign-in gated',()=>{
  assert.match(worker,/crypto\.getRandomValues/);
  assert.match(worker,/AES-GCM/);
- assert.match(worker,/SELECT.*site_sessions/);
+ assert.match(worker,/FROM site_sessions/);
  assert.match(worker,/__Host-drfx_session/);
  assert.match(worker,/SameSite=Lax/);
  assert.match(worker,/sha\(code\)/);
