@@ -25,6 +25,28 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .page-footer{font-size:11px;color:#777e8d;text-align:center;line-height:1.65;padding:19px 9px 10px}
 nav.bottom{position:fixed;left:0;right:0;bottom:0;width:100%;z-index:50;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:9px max(9px,env(safe-area-inset-left)) calc(9px + env(safe-area-inset-bottom)) max(9px,env(safe-area-inset-right));background:#0d0e13f7;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid #65533390;box-shadow:0 -8px 24px #0007}
 nav.bottom button{border:1px solid transparent;min-width:0;background:transparent;border-radius:10px;color:#b0adb6;padding:8px 3px;display:grid;place-items:center;gap:3px;min-height:58px;font-size:11px;font-weight:750}nav.bottom button svg{display:block;width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8}nav.bottom button[aria-selected=true]{background:#b18a3840;color:#f4d38e;border-color:#bb984d60}nav.bottom button:active{background:#ffffff12}
+body.admin-visible nav.bottom{grid-template-columns:repeat(5,minmax(0,1fr))}
+.mini-tools{background:linear-gradient(135deg,#201b13,#0d151c);border:1px solid #bd9a506e;border-radius:15px;padding:17px;margin:17px 0}
+.mini-tools-head{display:grid;gap:4px}.mini-tools-head span{font-size:10px;color:#e7ca81;font-weight:800;letter-spacing:.08em}
+.mini-tools-head strong{font-size:21px;font-weight:850}
+.mini-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:15px 0}
+.mini-status-grid>div{min-width:0;background:#111a21;border:1px solid #31414d;border-radius:10px;padding:12px}
+.mini-status-grid small{font-size:10px;color:#a2b4c7}.mini-status-grid strong{display:block;margin-top:10px;font-size:13px;color:#f6dcaa;overflow-wrap:anywhere}
+.mini-wide{width:100%}.mini-note{font-size:12px;line-height:1.65;color:#c0c6d2;overflow-wrap:anywhere}
+.mini-tools h3{font-size:17px;margin:20px 0 5px}
+.mini-webhook-url{display:block;overflow-wrap:anywhere;word-break:break-all;background:#050a11;color:#f4d58c;font-size:11px;line-height:1.7;border:1px dashed #89734b;padding:12px;border-radius:9px;margin:12px 0}
+.mini-admin-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:17px 0}
+.mini-admin-metrics>div{border:1px solid #856f4b6b;background:#1b1917;padding:15px;border-radius:12px}
+.mini-admin-metrics span{color:#c3b08b;font-size:11px;text-transform:capitalize}.mini-admin-metrics strong{display:block;color:#ffdfa1;font-size:25px;font-weight:850;margin-top:4px}
+.mini-admin-directory{background:#11151d;padding:15px;border:1px solid #35404e;border-radius:13px}
+.mini-admin-directory>label{font-size:11px;color:#b9c6d2;font-weight:850}
+.mini-admin-search{display:flex;gap:8px;margin:10px 0 15px}.mini-admin-search input{width:100%;min-width:0;color:#fff;background:#060b12;border:1px solid #4c5262;border-radius:9px;padding:12px;font-size:14px}
+.mini-admin-users{display:grid;gap:10px}.mini-admin-user{border:1px solid #3b3e47;border-radius:11px;padding:13px;background:#1b1e25}
+.mini-admin-user-head{display:flex;justify-content:space-between;gap:8px}.mini-admin-user-head strong{overflow-wrap:anywhere;font-size:13px}
+.mini-admin-user-head span{font-size:11px;color:#ecce86}.mini-admin-user-meta{font-size:11px;color:#9caab9;overflow-wrap:anywhere;margin:7px 0}
+.mini-admin-user-actions{display:flex;gap:8px;margin-top:12px}.mini-admin-user-actions select{min-width:0;flex:1;background:#090d13;color:#e2e8f2;border:1px solid #515565;border-radius:8px;padding:9px}
+.mini-admin-user-actions button{flex:0 0 80px;font-size:12px}
+
 body[data-tab=license] .hero,body[data-tab=license] .route-stage,body[data-tab=plans] .hero,body[data-tab=plans] .route-stage,body[data-tab=help] .hero,body[data-tab=help] .route-stage{display:none}
 body[data-tab=license] #statusMessage,body[data-tab=plans] #statusMessage,body[data-tab=help] #statusMessage{margin-top:15px}
 html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .route-steps,html[dir=rtl] nav.bottom,html[dir=rtl] .brand-bar{direction:ltr}html[dir=rtl] .brandname{text-align:left}html[dir=rtl] .list li{padding:13px 34px 13px 0}html[dir=rtl] .list li:before{right:0;left:auto}html[dir=rtl] .action-grid .btn{text-align:right}
@@ -77,7 +99,16 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
   <div class="code" id="serialValue" aria-live="polite">•••• •••• •••• ••••</div>
   <div class="buttons"><button type="button" id="revealSerial" class="btn primary" data-tr="reveal" disabled>Reveal code</button><button type="button" id="copySerial" class="btn" data-tr="copy" disabled>Copy code</button></div>
  </article>
- <div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
+ <section class="mini-tools" aria-label="SignalBridge account tools"><div class="mini-tools-head"><span>PERSONAL SIGNALBRIDGE</span><strong>Connection & Webhook</strong></div>
+ <div class="mini-status-grid"><div><small>EA LICENSE</small><strong id="miniConnectionLicense">Not checked</strong></div><div><small>LAST HANDSHAKE</small><strong id="miniConnectionLast">Not checked</strong></div></div>
+ <button type="button" id="miniTestConnection" class="btn primary mini-wide">Test Connection · No Trade</button>
+ <p class="mini-note" id="miniConnectionInfo" role="status">Reads the last EA handshake. It does not place a market order.</p>
+ <h3>My TradingView Webhook</h3><p class="mini-note">Private endpoint for your TradingView alerts, initially Dry Run. Do not share this URL.</p>
+ <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
+ <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" disabled>Regenerate</button></div>
+ <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
+ <button type="button" class="btn subtle mini-wide" disabled title="Requires a newer compiled EA">DEMO XAUUSD Buy 0.01 → Close 5s · EA update required</button>
+ </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
  <p class="tab-kicker" data-tr="eaKicker">EXPERT ADVISOR</p><h2 class="section-title" data-tr="connect">Connect your <span>MT5 account</span></h2>
@@ -104,6 +135,14 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
   <div class="buttons"><button id="openWebsite" class="btn primary" type="button" data-tr="website">Open DrFX website ↗</button><button id="refreshAccount" class="btn subtle" type="button" data-tr="refresh">Refresh ↻</button></div>
  </div>
 </section>
+<section class="tab-panel" data-panel="admin" id="panel-admin" hidden>
+ <div class="tab-kicker">DRFX / ADMIN</div><h2 class="section-title">Operations Center</h2>
+ <p class="mini-note">Administrator-only customer accounts, membership controls and EA access management.</p>
+ <div class="mini-admin-metrics" id="miniAdminMetrics"></div>
+ <div class="mini-admin-directory"><label for="miniAdminSearch">CUSTOMER DIRECTORY</label><div class="mini-admin-search"><input id="miniAdminSearch" autocomplete="off" placeholder="Email, Telegram, user ID"><button type="button" id="miniAdminRefresh" class="btn subtle">Refresh</button></div>
+ <div id="miniAdminUsers" class="mini-admin-users"></div></div>
+ <p id="miniAdminStatus" class="mini-note" role="status"></p>
+ </section>
 <footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
@@ -111,6 +150,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <button data-tab="license" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span data-tr="navEA">MT5 EA</span></button>
  <button data-tab="plans" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 9 4 4 5-8 5 8 4-4-2 10H5z"/></svg><span data-tr="navPlans">Plans</span></button>
  <button data-tab="help" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a3 3 0 0 1 5.3 1.9c0 2-2.8 2.4-2.8 4.1M12 18h.01"/></svg><span data-tr="navHelp">Help</span></button>
+<button id="miniAdminTab" type="button" data-tab="admin" aria-selected="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5h16v14zM4 10h16M9 5v14"/></svg><span>Admin</span></button>
 </nav></body></html>`;
 export const MINI_JS=String.raw`(() => {
  'use strict';
@@ -172,6 +212,8 @@ export const MINI_JS=String.raw`(() => {
  function message(text,kind='') {const e=$('statusMessage');e.textContent=text;e.className='message '+kind;}
  function clearPrivateAccount(){
   state.user=null;state.serialVisible=false;
+  $('miniAdminTab').hidden=true;document.body.classList.remove('admin-visible');
+  $('miniWebhookUrl').textContent='No webhook created';$('miniCopyWebhook').disabled=true;$('miniRotateWebhook').disabled=true;
   set('memberPlan',ui('Not signed in','وارد نشده'));
   set('memberIdentity',ui('Sign in from the official Telegram bot','از داخل بات رسمی تلگرام وارد شوید'));
   set('licenseBadge',ui('LOCKED','قفل'));$('licenseBadge').dataset.active='false';
@@ -186,7 +228,9 @@ export const MINI_JS=String.raw`(() => {
   set('connection',ui('Sign-in needed','ورود لازم است'));
  }
  function show(tab){
-  if(!['home','license','plans','help'].includes(tab))return;
+  if(!['home','license','plans','help','admin'].includes(tab))return;
+  if(tab==='admin'&&state.user?.role!=='admin')return;
+  if(tab==='admin')loadMiniAdmin();
   document.body.dataset.tab=tab;
   document.querySelectorAll('[data-panel]').forEach(e=>e.hidden=e.dataset.panel!==tab);
   document.querySelectorAll('[data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
@@ -208,9 +252,63 @@ export const MINI_JS=String.raw`(() => {
   let data;try{data=await resp.json();}catch{throw Error('INVALID_SERVER_RESPONSE');}
   if(!resp.ok)throw Error(data.error||'SERVICE_UNAVAILABLE');return data;
  }
+async function refreshMiniConnection(){
+ if(!state.user)return;
+ try{
+  const [c,w]=await Promise.all([api('/api/connection/check'),api('/api/webhook')]);
+  const d=c.diagnostic||{};
+  set('miniConnectionLicense',d.license==='active'?'ACTIVE':'INACTIVE');
+  set('miniConnectionLast',d.last_handshake||'Not seen');
+  set('miniConnectionInfo','Last recorded handshake only, not a live WebSocket ping or order.');
+  displayMiniWebhook(w.webhook);
+ }catch(e){set('miniConnectionInfo','Connection status unavailable: '+e.message);}
+}
+function displayMiniWebhook(w){
+ const available=!!w?.exists;
+ set('miniWebhookUrl',available?w.webhook_url:'No webhook created');
+ $('miniCreateWebhook').disabled=available;
+ $('miniCopyWebhook').disabled=!available;
+ $('miniRotateWebhook').disabled=!available;
+ set('miniWebhookInfo',available?'Dry Run · '+Number(w.received||0)+' alerts received. Keep this URL private.':'Create a personal TradingView webhook to start in Dry Run.');
+}
+$('miniTestConnection').addEventListener('click',refreshMiniConnection);
+$('miniCreateWebhook').addEventListener('click',async()=>{try{const r=await api('/api/webhook/create',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',e.message)}});
+$('miniCopyWebhook').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('miniWebhookUrl').textContent);set('miniWebhookInfo','Copied. Keep the private URL safe.')}catch{set('miniWebhookInfo','Copy not allowed on this device.')}});
+$('miniRotateWebhook').addEventListener('click',async()=>{if(!confirm('Regenerate URL? Your old TradingView alerts will stop reaching SignalBridge.'))return;try{const r=await api('/api/webhook/rotate',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',e.message)}});
+async function loadMiniAdmin(){
+ if(state.user?.role!=='admin')return;
+ try{
+  const [s,users]=await Promise.all([api('/api/admin/stats'),api('/api/admin/users?q='+encodeURIComponent($('miniAdminSearch').value.trim()))]);
+  const stats=$('miniAdminMetrics');stats.replaceChildren();
+  for(const [label,value] of Object.entries(s.stats||{})){
+   const card=document.createElement('div'),caption=document.createElement('span'),num=document.createElement('strong');
+   caption.textContent=label;num.textContent=String(value??0);card.append(caption,num);stats.append(card);
+  }
+  const grid=$('miniAdminUsers');grid.replaceChildren();
+  for(const user of users.users||[]){
+   const card=document.createElement('article');card.className='mini-admin-user';
+   const title=document.createElement('div');title.className='mini-admin-user-head';
+   const identity=document.createElement('strong');identity.textContent=user.email||user.telegram_name||user.telegram_id||'User';
+   const state=document.createElement('span');state.textContent=user.status;title.append(identity,state);
+   const meta=document.createElement('div');meta.className='mini-admin-user-meta';meta.textContent=user.plan+' · '+user.id;
+   const actions=document.createElement('div');actions.className='mini-admin-user-actions';
+   const select=document.createElement('select');for(const op of ['grant_trial','grant_quarterly','grant_annual','suspend','resume','revoke_license']){
+    const option=document.createElement('option');option.value=op;option.textContent=op.replaceAll('_',' ');select.append(option);
+   }
+   const apply=document.createElement('button');apply.className='btn primary';apply.textContent='Apply';
+   apply.addEventListener('click',async()=>{if(!confirm('Apply '+select.value+' to this account?'))return;apply.disabled=true;try{await api('/api/admin/user',{user_id:user.id,action:select.value});set('miniAdminStatus','Account updated.');await loadMiniAdmin()}catch(e){set('miniAdminStatus',e.message)}finally{apply.disabled=false}});
+   actions.append(select,apply);card.append(title,meta,actions);grid.append(card);
+  }
+  set('miniAdminStatus',(users.users||[]).length+' users loaded · Administrator access verified');
+ }catch(e){set('miniAdminStatus','Admin dashboard unavailable: '+e.message);}
+}
+$('miniAdminRefresh').addEventListener('click',loadMiniAdmin);
+$('miniAdminSearch').addEventListener('change',loadMiniAdmin);
  function applyUser(user){
   state.user=user;
   state.serialVisible=false;
+  $('miniAdminTab').hidden=user.role!=='admin';document.body.classList.toggle('admin-visible',user.role==='admin');
+  refreshMiniConnection();
   set('memberPlan',planLabel(user.plan));
   set('memberIdentity',user.email||user.telegram||'Telegram account');
   set('licenseBadge',ui(user.license_status==='active'?'ACTIVE':'INACTIVE',user.license_status==='active'?'فعال':'غیرفعال'));
