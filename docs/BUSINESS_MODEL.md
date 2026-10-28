@@ -1,39 +1,55 @@
-# SignalBridge — Commercial Model (Hypotheses)
-Prices below are preliminary **DrFX product suggestions**, not vendor quotes or measured unit economics.
+# SignalBridge — Business Model
+Version 3 · 2026-10-28
 
-## Packaging hypothesis
-| Plan | Monthly USD | Proposed entitlements |
-| --- | ---: | --- |
-| Demo Free | $0 | 1 demo connection, limited alerts, dry-run |
-| Starter | $12 | 1 MT5 account, TradingView → MT5 |
-| Pro | $29 | Up to 3 accounts, Telegram routes, more risk controls |
-| Business | $69 | Up to 10 accounts, advanced auditing, API |
-| Hosted MT5 | Add-on | Windows hosted terminal(s), metered separately |
+## Pricing
 
-Set fair-use event quotas after real load testing. Regulatory/broker terms and country availability require review.
+SignalBridge uses a deliberately simple global subscription model.
 
-## Differentiation
-- One signal contract for TradingView and Telegram.
-- Evidence-backed command tracking: accepted vs submitted vs broker-confirmed.
-- Granular safeguards and visibility across user-owned terminals.
-- Demo-first onboarding and optional BYO Windows VPS.
-- Permissioned Telegram parsing, with explainable validation rather than black-box AI trade choices.
+| Plan | Price |
+| --- | ---: |
+| First month | **Free** |
+| 3 months | **$47** |
+| 1 year | **$165** |
 
-## Unit economics worksheet
-Contribution margin = subscription net of payment processing − edge/queue/DB/log costs − notifications/LLM parsing − expected support burden − managed terminal costs − refunds. Hosted Windows MT5 should be quoted by measured resources, separate from base software.
+There is currently no paid monthly plan.
 
-## Go-to-market
-1. Invite-only beta with technically experienced MT5/TradingView users.
-2. Document independent interoperability with public Pine Script templates.
-3. Validate funnel: register → pairing → dry-run → broker-confirmed demo trade.
-4. Introduce Telegram source parsing and paid plans only after failure matrix passes.
-5. Expansion: agencies, signal providers with legal consent, team accounts.
+## Product promise
 
-## Decision metrics
-Conversion from onboarding to first demo-trade, active connected accounts, critical errors per 1,000 signals, retention, churn, support cost, incident count, gross margin by tier.
+The first month is a full-product trial intended to remove purchase friction. The product should demonstrate value through:
 
-## Payments
-External web checkout and Telegram Mini App checkout have different platform constraints. Validate the current Telegram Stars rules for digital goods/services sold inside Telegram before implementation.
+- fast setup;
+- direct MT5 EA connection;
+- TradingView webhook automation;
+- Telegram Bot routing;
+- realtime visibility;
+- reliable DEMO execution evidence.
 
-## Competitive research caveat
-PineConnector and @tfwebhook_bot are comparison references, not dependencies or approved partners. Pricing/features change; verify directly before external market-facing claims.
+## Conversion UX
+
+The pricing UI should never hide the free month or create a dense plan matrix.
+
+Primary CTA:
+
+**Start 1 month free**
+
+Secondary plans:
+
+- **3 Months — $47**
+- **1 Year — $165** (best value)
+
+## Positioning
+
+SignalBridge competes globally as a premium TradingView/Telegram → MT5 execution platform.
+
+The product is positioned around:
+
+- simpler installation;
+- premium realtime UX;
+- visible execution path;
+- Telegram-native workflows;
+- direct EA cloud transport;
+- transparent risk and broker receipts.
+
+## Future paid capabilities
+
+Future features may be added without changing the simple base plan structure, including hosted MT5, additional accounts, deeper analytics or MTProto account connectivity. No such future capability should be represented as active until implemented.
