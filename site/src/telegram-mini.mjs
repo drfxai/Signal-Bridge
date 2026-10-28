@@ -89,25 +89,93 @@ nav.bottom button[aria-selected=true]:before{content:"";position:absolute;top:-1
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}html{scroll-behavior:auto}}
 </style><script src="/assets/telegram-mini.js?v=20261028" defer></script></head>
 <body><main class="container">
-<header class="bar"><div class="brand"><span class="mark">⟐</span><span>DrFX <span style="color:var(--gold)">Company</span><small>SIGNALBRIDGE · TELEGRAM</small></span></div><span id="connection" class="chip">SECURE SIGN-IN</span></header>
-<section class="hero"><span class="eyebrow">YOUR PRIVATE TRADING WORKSPACE</span><h1>One account.<br><em>Every connection.</em></h1><p class="desc">Connect your SignalBridge membership, private EA activation and account status in a secure Telegram Mini App.</p></section>
-<p class="message" id="statusMessage" role="status" aria-live="polite">Checking Telegram sign-in…</p>
-<section class="tab-panel" id="panel-home" data-panel="home">
- <div class="card gold"><div class="split"><div><span class="micro">YOUR MEMBERSHIP</span><div class="value" id="memberPlan">Not signed in</div></div><span class="indicator">♛</span></div><div class="goldline"></div><div class="split"><span class="meta" id="memberIdentity">Open this app from your verified DrFX bot</span><span id="licenseBadge" class="status">LOCKED</span></div></div>
- <div class="grid"><div class="small"><span>MT5 LICENSE</span><strong id="mt5Status">Not connected</strong><span id="mt5Server">Binding not yet verified</span></div><div class="small"><span>EA ACTIVATION</span><strong id="activationDate">Not started</strong><span id="expiryStatus">Validity begins on first activation</span></div></div>
- <div class="card"><h2>Your private EA serial</h2><p class="meta">The code is hidden by default. Never share it or publish screenshots containing it.</p><div id="serialValue" class="code">•••• •••• •••• ••••</div><div class="buttons"><button class="btn primary" id="revealSerial" disabled>Reveal serial</button><button class="btn" id="copySerial" disabled>Copy code</button></div></div>
+<div class="statusbar"><span class="edge"><span class="dot"></span> DRFX · SIGNALBRIDGE NETWORK</span><span class="topright">TELEGRAM MINI APP / 01</span></div>
+<header class="bar">
+ <div class="brand"><span class="mark" aria-hidden="true">DFX</span><span class="brandname"><span class="name">DrFX <em>COMPANY</em></span><small>PRECISION IN MOTION</small></span></div>
+ <span id="connection" class="chip">CHECKING IDENTITY</span>
+</header>
+<section class="hero" aria-label="SignalBridge personal command center">
+ <span class="eyebrow">THE DRFX PRIVATE WORKSPACE</span>
+ <h1>Precision.<br><em>In Motion.</em></h1>
+ <p class="desc">Your private trading command center. Secure Telegram identity, SignalBridge membership and MT5 activation — in one experience.</p>
+ <div class="hero-kicker"><span><i></i> ONE PRIVATE ACCOUNT</span><span><i></i> MT5 EXPERT ADVISOR</span></div>
 </section>
-<section class="tab-panel" id="panel-license" data-panel="license" hidden><h2 class="section-title">MT5 Activation</h2><div class="card"><span class="micro">SIGNALBRIDGE / MT5</span><h2 style="margin-top:10px">Activate your EA</h2><ol class="list"><li>Install the DrFX EA on MetaTrader 5 using an authorized EX5 release.</li><li>Allow https://signalbridge.drfx.online in Expert Advisors.</li><li>Enter your private code as the first EA input.</li><li>Check the Experts tab for the validated license status.</li></ol><p class="meta">DEMO account testing only. Live-money execution is disabled until separately certified.</p></div></section>
-<section class="tab-panel" id="panel-plans" data-panel="plans" hidden><h2 class="section-title">Membership Plans</h2><div class="card">
- <div class="plan"><div><b>One Month Free</b><small>Trial membership, private EA code</small></div><div class="plan-price">$0</div></div>
- <div class="plan"><div><b>3 Months Premium</b><small>SignalBridge and 52 premium indicators*</small></div><div class="plan-price">$47</div></div>
- <div class="plan"><div><b>Annual Elite</b><small>All features, personalized options*</small></div><div class="plan-price">$165</div></div>
- <p id="paymentStatus" class="meta">Paid checkout is not configured yet.</p><button id="openPricing" class="btn primary">Open membership website</button>
- <p class="meta">* Premium assets require independent release and authorization. No payment is collected inside this preview.</p>
- </div></section>
-<section class="tab-panel" id="panel-help" data-panel="help" hidden><h2 class="section-title">Support and Security</h2><div class="card"><h2>Account safety</h2><ul class="list"><li>Telegram Mini App identity is verified by the server.</li><li>Existing email accounts are not merged without explicit linking.</li><li>Private activation codes never appear in URLs or logs.</li><li>Sign in to the main website if you need email verification or account management.</li></ul><div class="buttons"><button id="openWebsite" class="btn primary">Open DrFX Company</button><button id="refreshAccount" class="btn">Refresh status</button></div></div></section>
-<footer class="page-footer">DrFXAi © 2026 · Illustrative UI only; no simulated trades or balances are represented as live.</footer></main>
-<nav class="bottom" aria-label="Telegram app navigation"><button data-tab="home" aria-selected="true"><span>⌂</span>Overview</button><button data-tab="license" aria-selected="false"><span>▣</span>MT5 EA</button><button data-tab="plans" aria-selected="false"><span>♛</span>Plans</button><button data-tab="help" aria-selected="false"><span>⚙</span>Help</button></nav>
+<div class="route-stage" aria-label="Illustration of TradingView and Telegram connected through Cloudflare to MT5">
+ <span class="caption">SIGNAL BRIDGE <small>GLOBAL ROUTING ARCHITECTURE</small></span><span class="demo">DESIGN VISUALIZATION</span>
+ <svg viewBox="0 0 520 200" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+  <defs>
+   <radialGradient id="orbGrad" cx=".5" cy=".28" r=".76"><stop stop-color="#3b493e" stop-opacity=".95"/><stop offset=".37" stop-color="#11312b"/><stop offset=".75" stop-color="#09171b"/><stop offset="1" stop-color="#030406"/></radialGradient>
+   <linearGradient id="arcGold" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#10b981"/><stop offset=".45" stop-color="#e1bc61"/><stop offset="1" stop-color="#f7e7b4"/></linearGradient>
+   <linearGradient id="lineFade" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#0f936d"/><stop offset=".55" stop-color="#e2b861"/><stop offset="1" stop-color="#5dbe9a"/></linearGradient>
+   <filter id="nodeGlow"><feGaussianBlur stdDeviation="5"/></filter>
+  </defs>
+  <g transform="translate(258 154)" opacity=".85">
+   <circle r="112" fill="url(#orbGrad)" stroke="#e1bd64" stroke-opacity=".37" stroke-width=".9"/>
+   <circle r="104" fill="none" stroke="#ab944c" stroke-opacity=".26" stroke-width=".7"/>
+   <ellipse rx="112" ry="40" fill="none" stroke="#b79b5b" stroke-opacity=".25"/>
+   <ellipse rx="66" ry="112" fill="none" stroke="#a4b7a4" stroke-opacity=".17"/>
+   <ellipse rx="28" ry="112" fill="none" stroke="#a4b7a4" stroke-opacity=".1"/>
+   <path d="M-104-37H104M-110 0H110M-104 37H104" fill="none" stroke="#d4af37" stroke-opacity=".16" stroke-width=".9"/>
+   <path d="M-56-64L-27-88L-4-72L0-45L23-32L36-13L14 8L20 29L-6 38L-22 17L-44 15L-61-11Z" fill="#6bbf82" fill-opacity=".15" stroke="#6dab81" stroke-opacity=".14"/>
+   <path d="M48-56L71-34L86-13L75 10L52 3L40 23L24 11L34-17L22-39Z" fill="#77bd77" fill-opacity=".18"/>
+   <path d="M-58 40L-35 49L-21 74L-38 103L-59 73Z" fill="#77ba83" fill-opacity=".13"/>
+  </g>
+  <g fill="none" stroke="url(#arcGold)" stroke-width="1.5" stroke-linecap="round">
+   <path class="route" d="M74 138Q152 18 258 116"/>
+   <path class="route alt" d="M152 168Q192 63 258 116"/>
+   <path class="route" d="M258 116Q363 12 451 128"/>
+   <path class="route alt" d="M258 116Q353 74 417 178"/>
+  </g>
+  <g class="halo" style="transform-origin:258px 116px"><circle cx="258" cy="116" r="14" fill="#d4af37" opacity=".24" filter="url(#nodeGlow)"/><circle cx="258" cy="116" r="5" fill="#ffefa9"/><circle cx="258" cy="116" r="10" fill="none" stroke="#e1c46f" stroke-opacity=".6"/></g>
+  <g>
+   <circle cx="74" cy="138" r="4" fill="#5bdcaf"/><circle cx="152" cy="168" r="3.5" fill="#68bfaf"/>
+   <circle cx="451" cy="128" r="4" fill="#f7e7b4"/><circle cx="417" cy="178" r="3.5" fill="#d8ae5c"/>
+   <g fill="#a9b7b5" font-family="monospace" font-size="9" font-weight="700">
+    <text x="54" y="127">TV</text><text x="128" y="160">TG</text><text x="441" y="116">MT5</text><text x="243" y="101" fill="#f2da97">EDGE</text>
+   </g>
+  </g>
+ </svg>
+ <div class="stages"><span>01 / SOURCE<b>TradingView + Telegram</b></span><span>02 / BRIDGE<b>Cloudflare · SignalBridge</b></span><span>03 / EXECUTE<b>MetaTrader 5 EA</b></span></div>
+</div>
+<p class="message" id="statusMessage" role="status" aria-live="polite">Verifying your Telegram identity…</p>
+<section class="tab-panel" id="panel-home" data-panel="home">
+ <div class="subhead"><h2>Command Center</h2><small>PERSONAL / SECURE</small></div>
+ <article class="card gold">
+  <div class="split"><div><span class="micro">YOUR MEMBERSHIP</span><div class="value" id="memberPlan">Not signed in</div></div><span class="indicator" aria-hidden="true">♛</span></div>
+  <div class="goldline"></div>
+  <div class="split"><span class="meta" id="memberIdentity">Verified Telegram login required</span><span id="licenseBadge" class="status">LOCKED</span></div>
+ </article>
+ <div class="grid"><article class="small"><span>MT5 CONNECTION</span><strong id="mt5Status">Not connected</strong><span id="mt5Server">No verified account binding</span></article><article class="small"><span>ACTIVATION STATUS</span><strong id="activationDate">Not started</strong><span id="expiryStatus">Validity begins on EA activation</span></article></div>
+ <article class="card">
+  <div class="split"><h2>Private activation key</h2><span class="micro">AES-GCM / PRIVATE</span></div>
+  <p class="meta">Your unique 43-character serial is protected. Reveal only when setting up your EA — do not share screenshots of it.</p>
+  <div id="serialValue" class="code" aria-live="polite">•••• •••• •••• ••••</div>
+  <div class="buttons"><button type="button" class="btn primary" id="revealSerial" disabled>Reveal serial</button><button type="button" class="btn" id="copySerial" disabled>Copy activation code</button></div>
+ </article>
+ <div class="buttons"><button type="button" class="btn subtle" data-jump="license">MT5 Setup Guide ↗</button><button type="button" class="btn subtle" data-jump="plans">Explore Membership ↗</button></div>
+</section>
+<section class="tab-panel" id="panel-license" data-panel="license" hidden>
+ <p class="tab-kicker">EXPERT ADVISOR / ACTIVATION</p><h2 class="section-title">Connect to <span style="color:var(--gold-light)">MT5.</span></h2>
+ <article class="card gold"><span class="micro">SIGNALBRIDGE · META TRADER 5</span><h2 style="font:500 26px Georgia,serif;letter-spacing:-.035em;margin:12px 0 7px">One EA. One serial.</h2><p class="meta">Activate the same licensed MT5 Expert Advisor associated with your DrFX membership.</p><div class="goldline"></div><ol class="list"><li>Install an authorized compiled DrFX EX5 on MetaTrader 5.</li><li>Allow <strong>https://signalbridge.drfx.online</strong> in MT5 Expert Advisors.</li><li>Use the private code from your Command Center as the <strong>first EA input</strong>.</li><li>Confirm the license status from the <strong>Experts</strong> tab.</li></ol><span class="inline-tag">DEMO ACCOUNT TESTING · LIVE TRADING DISABLED</span></article>
+ <button class="btn primary" type="button" data-jump="home">Back to activation code ↗</button>
+</section>
+<section class="tab-panel" id="panel-plans" data-panel="plans" hidden>
+ <p class="tab-kicker">DRFX COMPANY / MEMBERSHIP</p><h2 class="section-title">Your <span style="color:var(--gold-light)">Advantage.</span></h2>
+ <article class="card">
+  <div class="plan"><div><span class="micro">START HERE</span><b style="display:block;margin-top:5px">One Month Free</b><small>Trial account, private EA license</small></div><div class="plan-price">$0</div></div>
+  <div class="plan featured"><div><span class="micro" style="color:#e4c27d">MOST POPULAR</span><b style="display:block;margin-top:5px">3 Months Premium</b><small>SignalBridge + 52 premium indicators*</small></div><div class="plan-price">$47</div></div>
+  <div class="plan"><div><span class="micro">MAXIMUM VALUE</span><b style="display:block;margin-top:5px">Annual Elite</b><small>Full access, personalized options*</small></div><div class="plan-price">$165</div></div>
+  <div class="goldline"></div><p id="paymentStatus" class="meta" role="status">Paid checkout is not configured yet.</p>
+  <button type="button" id="openPricing" class="btn primary" style="width:100%;margin-top:13px">Explore Plans on DrFX Website ↗</button>
+  <p class="meta" style="margin-top:14px">* Premium assets require separate release and authorization. No payment is taken inside this Mini App.</p>
+ </article>
+</section>
+<section class="tab-panel" id="panel-help" data-panel="help" hidden>
+ <p class="tab-kicker">HELP CENTER / SECURE ACCESS</p><h2 class="section-title">Trust &amp; <span style="color:var(--gold-light)">Support.</span></h2>
+ <article class="card"><span class="micro">PRIVATE ACCOUNT · SECURITY FIRST</span><h2 style="margin-top:13px">Your data stays yours.</h2><ol class="list"><li>Telegram identity is cryptographically verified on the server.</li><li>Email and Telegram accounts are linked only with explicit verification.</li><li>EA activation keys are private and never displayed in website URLs.</li><li>Use the official website for full account administration.</li></ol><div class="buttons"><button type="button" id="openWebsite" class="btn primary">Open DrFX Website ↗</button><button type="button" id="refreshAccount" class="btn subtle">Refresh account ↻</button></div></article>
+</section>
+<footer class="page-footer">© 2026 DrFXAi · PRIVATE SIGNALBRIDGE WORKSPACE<br>Routing illustration is conceptual, not live performance or broker activity.</footer></main>
+<nav class="bottom" aria-label="Telegram Mini App navigation"><button type="button" data-tab="home" aria-selected="true"><span aria-hidden="true">⌂</span>Home</button><button type="button" data-tab="license" aria-selected="false"><span aria-hidden="true">▣</span>MT5 EA</button><button type="button" data-tab="plans" aria-selected="false"><span aria-hidden="true">♛</span>Plans</button><button type="button" data-tab="help" aria-selected="false"><span aria-hidden="true">⚙</span>Help</button></nav>
 </body></html>`;
 export const MINI_JS=String.raw`(() => {
  'use strict';
