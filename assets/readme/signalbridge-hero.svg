@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#060b13"/><stop offset=".62" stop-color="#0b1524"/><stop offset="1" stop-color="#17324b"/></linearGradient>
+ <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#55d7f7"/><stop offset="1" stop-color="#7b84ff"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="24" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="1600" height="900" fill="url(#bg)"/>
+<circle cx="1350" cy="90" r="260" fill="#15304a" opacity=".55"/>
+<text x="88" y="92" font-family="Inter,Segoe UI,Arial" font-size="34" font-weight="800" fill="#eef6ff">SignalBridge</text>
+<rect x="88" y="122" rx="22" width="170" height="44" fill="#133b31" stroke="#49d5a1"/>
+<text x="173" y="151" text-anchor="middle" font-family="Consolas,monospace" font-size="20" font-weight="700" fill="#65e2b3">DEMO BETA</text>
+<text x="88" y="255" font-family="Inter,Segoe UI,Arial" font-size="70" font-weight="800" fill="#f1f6ff">Realtime signal routing</text>
+<text x="88" y="323" font-family="Inter,Segoe UI,Arial" font-size="42" font-weight="800" fill="#55d7f7">TradingView · Telegram · MetaTrader 5</text>
+<text x="88" y="392" font-family="Inter,Segoe UI,Arial" font-size="25" fill="#91a5ba">Persistent WebSocket transport · replay-safe commands · broker reconciliation</text>
+
+<g transform="translate(88 500)">
+ <rect width="520" height="78" rx="18" fill="#0e1a2a" stroke="#29445f"/><circle cx="30" cy="39" r="10" fill="#49d5a1"/>
+ <text x="58" y="34" font-family="Inter,Segoe UI,Arial" font-size="22" font-weight="700" fill="#eef6ff">TradingView → MT5</text><text x="58" y="58" font-family="Inter,Segoe UI,Arial" font-size="16" fill="#8ea4bb">Durable webhook + low-latency dispatch</text>
+</g>
+<g transform="translate(88 594)">
+ <rect width="520" height="78" rx="18" fill="#0e1a2a" stroke="#29445f"/><circle cx="30" cy="39" r="10" fill="#49d5a1"/>
+ <text x="58" y="34" font-family="Inter,Segoe UI,Arial" font-size="22" font-weight="700" fill="#eef6ff">Telegram → MT5</text><text x="58" y="58" font-family="Inter,Segoe UI,Arial" font-size="16" fill="#8ea4bb">Deterministic English · فارسی · العربية parser</text>
+</g>
+<g transform="translate(88 688)">
+ <rect width="520" height="78" rx="18" fill="#0e1a2a" stroke="#29445f"/><circle cx="30" cy="39" r="10" fill="#49d5a1"/>
+ <text x="58" y="34" font-family="Inter,Segoe UI,Arial" font-size="22" font-weight="700" fill="#eef6ff">MT5 safety core</text><text x="58" y="58" font-family="Inter,Segoe UI,Arial" font-size="16" fill="#8ea4bb">Demo-only · broker-side SL · replay-safe receipts</text>
+</g>
+
+<g transform="translate(690 92)" filter="url(#glow)">
+ <rect width="820" height="700" rx="28" fill="#0b1422" stroke="#365572" stroke-width="2"/>
+ <rect width="820" height="62" rx="28" fill="#0e1a2b"/><rect y="42" width="820" height="20" fill="#0e1a2b"/>
+ <text x="28" y="38" font-family="Inter,Segoe UI,Arial" font-size="20" font-weight="700" fill="#edf5ff">MT5 Live Command Center</text>
+ <rect x="626" y="17" width="112" height="28" rx="14" fill="#113c31" stroke="#2a6e57"/><text x="682" y="36" text-anchor="middle" font-family="Consolas" font-size="12" font-weight="700" fill="#60dfad">WS LIVE</text>
+ <rect x="748" y="17" width="54" height="28" rx="14" fill="#10293a" stroke="#2b5572"/><text x="775" y="36" text-anchor="middle" font-family="Consolas" font-size="12" fill="#55d7f7">RTT</text>
+
+ <g transform="translate(24 88)">
+  <g><rect width="144" height="100" rx="15" fill="#101e31" stroke="#223953"/><text x="16" y="25" font-family="Inter" font-size="11" fill="#8ca2ba">BALANCE</text><text x="16" y="64" font-family="Consolas" font-size="26" font-weight="700" fill="#eef6ff">$12,480</text></g>
+  <g transform="translate(158)"><rect width="144" height="100" rx="15" fill="#101e31" stroke="#223953"/><text x="16" y="25" font-family="Inter" font-size="11" fill="#8ca2ba">EQUITY</text><text x="16" y="64" font-family="Consolas" font-size="26" font-weight="700" fill="#eef6ff">$12,617</text></g>
+  <g transform="translate(316)"><rect width="144" height="100" rx="15" fill="#101e31" stroke="#223953"/><text x="16" y="25" font-family="Inter" font-size="11" fill="#8ca2ba">RISK</text><text x="16" y="64" font-family="Consolas" font-size="26" font-weight="700" fill="#f2bd66">1.72%</text></g>
+  <g transform="translate(474)"><rect width="144" height="100" rx="15" fill="#101e31" stroke="#223953"/><text x="16" y="25" font-family="Inter" font-size="11" fill="#8ca2ba">TODAY P/L</text><text x="16" y="64" font-family="Consolas" font-size="26" font-weight="700" fill="#49d5a1">+$286</text></g>
+  <g transform="translate(632)"><rect width="140" height="100" rx="15" fill="#101e31" stroke="#223953"/><text x="16" y="25" font-family="Inter" font-size="11" fill="#8ca2ba">CLOUD RTT</text><text x="16" y="64" font-family="Consolas" font-size="26" font-weight="700" fill="#55d7f7">84ms</text></g>
+ </g>
+
+ <rect x="24" y="210" width="772" height="112" rx="18" fill="#0f1a2b" stroke="#223953"/>
+ <text x="42" y="238" font-family="Inter" font-size="15" font-weight="700" fill="#eef6ff">Live signal path</text>
+ <g font-family="Inter" font-size="13" font-weight="700" text-anchor="middle">
+  <rect x="44" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="109" y="286" fill="#eef6ff">TradingView</text>
+  <text x="192" y="286" fill="#55d7f7">→</text>
+  <rect x="210" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="275" y="286" fill="#eef6ff">Cloudflare</text>
+  <text x="358" y="286" fill="#55d7f7">→</text>
+  <rect x="376" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="441" y="286" fill="#eef6ff">Agent Hub</text>
+  <text x="524" y="286" fill="#55d7f7">→</text>
+  <rect x="542" y="260" width="130" height="42" rx="12" fill="#10263a" stroke="#2f8175"/><text x="607" y="286" fill="#eef6ff">MT5 Agent</text>
+  <text x="690" y="286" fill="#55d7f7">→</text>
+  <rect x="708" y="260" width="68" height="42" rx="12" fill="#123229" stroke="#2f8175"/><text x="742" y="286" fill="#6be6b7">Broker</text>
+ </g>
+
+ <rect x="24" y="342" width="490" height="214" rx="18" fill="#0f1a2b" stroke="#223953"/>
+ <text x="42" y="372" font-family="Inter" font-size="15" font-weight="700" fill="#eef6ff">Equity & execution pulse</text>
+ <g stroke="#1f3147" stroke-width="1" opacity=".85"><path d="M50 414H490M50 456H490M50 498H490"/><path d="M110 398V530M190 398V530M270 398V530M350 398V530M430 398V530"/></g>
+ <path d="M50 504 C115 494 128 506 180 476 S250 486 292 452 S360 456 404 426 S462 438 490 410" fill="none" stroke="url(#accent)" stroke-width="5"/>
+
+ <rect x="534" y="342" width="262" height="214" rx="18" fill="#0f1a2b" stroke="#223953"/>
+ <text x="552" y="372" font-family="Inter" font-size="15" font-weight="700" fill="#eef6ff">Open positions</text>
+ <text x="552" y="408" font-family="Consolas" font-size="13" fill="#49d5a1">BUY  XAUUSD       +1.26R</text><rect x="552" y="424" width="210" height="6" rx="3" fill="#1c3047"/><rect x="608" y="424" width="125" height="6" rx="3" fill="#49d5a1"/>
+ <text x="552" y="462" font-family="Consolas" font-size="13" fill="#ff8792">SELL EURUSD       +0.74R</text><rect x="552" y="478" width="210" height="6" rx="3" fill="#1c3047"/><rect x="630" y="478" width="90" height="6" rx="3" fill="#f2bd66"/>
+ <text x="552" y="516" font-family="Consolas" font-size="13" fill="#49d5a1">BUY  US30         -0.08R</text><rect x="552" y="532" width="210" height="6" rx="3" fill="#1c3047"/><rect x="552" y="532" width="45" height="6" rx="3" fill="#ff7583"/>
+
+ <rect x="24" y="576" width="772" height="100" rx="18" fill="#0f1a2b" stroke="#223953"/>
+ <text x="42" y="606" font-family="Inter" font-size="15" font-weight="700" fill="#eef6ff">Live event stream</text>
+ <text x="42" y="638" font-family="Consolas" font-size="12" fill="#9db2c7">12:42:18  XAUUSD BUY · risk approved · broker receipt confirmed</text>
+ <text x="728" y="638" font-family="Consolas" font-size="12" text-anchor="end" fill="#49d5a1">FILLED</text>
+</g>
+<text x="690" y="830" font-family="Inter,Segoe UI,Arial" font-size="18" font-weight="700" fill="#8fa5ba">Product UI preview · live-account execution disabled in current beta</text>
+</svg>
