@@ -4,6 +4,7 @@ import { createAndDispatch, validateTestSignal } from './command.mjs';
 import { parseTelegramTrade } from './telegram-parser.mjs';
 import { parseGodModeAlert } from './godmode-parser.mjs';
 import { TEST_UI } from './test-ui.mjs';
+import { DASHBOARD_UI } from './dashboard-ui.mjs';
 export { AgentHub } from './agent-hub.mjs';
 
 const MAX_BYTES=16_384;
@@ -12,7 +13,7 @@ const ENCODER=new TextEncoder();
 const headers={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer'};
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{...headers,'content-type':'application/json; charset=utf-8'}});
 const error=(code,status)=>json({error:{code,retryable:status>=500}},status);
-const html=value=>new Response(value,{headers:{...headers,'content-type':'text/html; charset=utf-8'}});
+const html=value=>new Response(value,{headers:{...headers,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' wss: ws:; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",'permissions-policy':'camera=(), microphone=(), geolocation=()'}});
 
 export async function sha256(text){
  const digest=await crypto.subtle.digest('SHA-256',ENCODER.encode(text));
@@ -109,8 +110,34 @@ async function openAgentSocket(request,env){
  if(agent.account_login)h.set('x-sb-account-login',agent.account_login);
  if(agent.account_server)h.set('x-sb-account-server',agent.account_server);
  h.delete('authorization');
+ const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
+ if(protocols.includes('signalbridge-agent-v1'))h.set('sec-websocket-protocol','signalbridge-agent-v1');else h.delete('sec-websocket-protocol');
  await env.DB.prepare('UPDATE agent_connections SET last_connected_at=CURRENT_TIMESTAMP WHERE id=?').bind(agent.id).run();
  return stub.fetch(new Request('https://agent-hub/ws',{method:'GET',headers:h}));
+}
+
+async function openDashboardSocket(request,env){
+ if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return error('UPGRADE_REQUIRED',426);
+ const agent=await authenticateAgent(request,env);if(!agent)return error('UNAUTHORIZED',401);
+ const stub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(agent.id)),h=new Headers(request.headers);
+ h.set('x-sb-agent-id',agent.id);h.set('x-sb-tenant-id',agent.tenant_id);h.delete('authorization');
+ const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
+ if(protocols.includes('signalbridge-dashboard-v1'))h.set('sec-websocket-protocol','signalbridge-dashboard-v1');else h.delete('sec-websocket-protocol');
+ return stub.fetch(new Request('https://agent-hub/observer',{method:'GET',headers:h}));
+}
+
+async function handleDashboardSummary(request,env){
+ const agent=await authenticateAgent(request,env);if(!agent)return error('UNAUTHORIZED',401);
+ const stub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(agent.id));
+ const [cmdRows,commandCount,signalCount,tgCount,snapshotResponse]=await Promise.all([
+  env.DB.prepare('SELECT id,source_type,execution_mode,status,created_at,updated_at,broker_ticket,broker_retcode,last_error FROM commands WHERE agent_id=? ORDER BY created_at DESC LIMIT 30').bind(agent.id).all(),
+  env.DB.prepare('SELECT COUNT(*) AS n FROM commands WHERE agent_id=?').bind(agent.id).first(),
+  env.DB.prepare('SELECT COUNT(*) AS n FROM received_signals s JOIN ingress_connections i ON i.id=s.connection_id WHERE i.agent_id=?').bind(agent.id).first(),
+  env.DB.prepare('SELECT COUNT(*) AS n FROM telegram_updates u JOIN telegram_connections t ON t.id=u.connection_id WHERE t.agent_id=?').bind(agent.id).first(),
+  stub.fetch(new Request('https://agent-hub/snapshot'))
+ ]);
+ const snapshot=await snapshotResponse.json().catch(()=>({connected:0,clients:[]}));
+ return json({agent_id:agent.id,tenant_id:agent.tenant_id,agent:snapshot,counts:{commands:Number(commandCount?.n)||0,signals:Number(signalCount?.n)||0,telegram_updates:Number(tgCount?.n)||0},commands:cmdRows?.results||[]});
 }
 
 async function handleTestSignal(request,env){
@@ -192,7 +219,8 @@ async function handleTelegram(request,env,connectionId){
 
 export async function handleRequest(request,env){
  const url=new URL(request.url);
- if(url.pathname==='/'&&request.method==='GET')return new Response(null,{status:302,headers:{location:'/test'}});
+ if(url.pathname==='/'&&request.method==='GET')return new Response(null,{status:302,headers:{location:'/dashboard'}});
+ if(url.pathname==='/dashboard'&&request.method==='GET')return html(DASHBOARD_UI);
  if(url.pathname==='/test'&&request.method==='GET')return html(TEST_UI);
  if(url.pathname==='/health'&&request.method==='GET')return json({
   service:'signalbridge-ingress',ok:true,deployment_tier:env?.DEPLOYMENT_TIER||'unknown',
@@ -203,6 +231,11 @@ export async function handleRequest(request,env){
   try{return await openAgentSocket(request,env)}catch(e){console.error('agent ws',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}
  }
  if(url.pathname==='/v1/agent/status'&&request.method==='GET')return handleAgentStatus(request,env);
+ if(url.pathname==='/v1/dashboard/summary'&&request.method==='GET')return handleDashboardSummary(request,env);
+ if(url.pathname==='/v1/dashboard/ws'){
+  if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,allow:'GET'}});
+  try{return await openDashboardSocket(request,env)}catch(e){console.error('dashboard ws',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}
+ }
  if(url.pathname==='/v1/test/signal'&&request.method==='POST')return handleTestSignal(request,env);
 
  const commandMatch=url.pathname.match(/^\/v1\/commands\/([0-9a-f-]{36})$/i);
