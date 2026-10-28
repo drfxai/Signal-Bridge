@@ -33,7 +33,8 @@ try{
   commands:[
    {command:'start',description:'Create or open your DrFX account'},
    {command:'app',description:'Open Telegram Mini App'},
-   {command:'login',description:'Create a one-time website login code'},
+   {command:'login',description:'View your permanent website login code'},
+   {command:'resetlogin',description:'Revoke and replace your website login code'},
    {command:'me',description:'View membership status'},
    {command:'code',description:'Retrieve your private EA activation code'},
    {command:'link',description:'Link an already-verified email account'}
