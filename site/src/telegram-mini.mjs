@@ -112,6 +112,19 @@ export const MINI_JS=String.raw`(() => {
  const tg = window.Telegram?.WebApp || null;
  const state = {user:null, serialVisible:false,telegramEnabled:false};
 
+ // Recover readable mobile sizing when a Telegram external/custom tab enforces a desktop-width layout.
+ // Do not apply to tablets, ordinary desktop browsers or correctly sized Telegram WebViews.
+ function normalizeViewport(){
+  const w=window.innerWidth||0,sw=window.screen?.width||0;
+  if(navigator.maxTouchPoints>0&&sw>=270&&sw<=600&&w>sw*1.6){
+   const scale=Math.min(3.5,w/sw);
+   document.documentElement.style.zoom=String(scale);
+   document.documentElement.dataset.mobileViewportFixed='true';
+  }
+ }
+ normalizeViewport();
+
+
  const fa={eyebrow:'محیط اختصاصی معامله‌گری',hero1:'دقت بالا.',hero2:'در هر حرکت.',desc:'مرکز فرمان شخصی شما؛ هویت امن تلگرام، اشتراک سیگنال‌بریج و فعال‌سازی متاتریدر ۵ در یک محیط.',command:'مرکز فرمان',privateKey:'کد فعال‌سازی اختصاصی',connect:'اتصال به متاتریدر ۵',advantage:'اشتراک‌های شما',support:'امنیت و پشتیبانی',reveal:'نمایش کد',hide:'مخفی‌کردن کد',copy:'کپی کد فعال‌سازی',guide:'راهنمای MT5 ←',explore:'اشتراک‌ها ←',back:'بازگشت به کد فعال‌سازی ←',pricing:'مشاهده طرح‌ها در سایت ←',website:'باز کردن سایت DrFX ←',refresh:'به‌روزرسانی حساب ↻',navHome:'خانه',navEA:'اکسپرت',navPlans:'اشتراک',navHelp:'راهنما'};
  const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
  let locale='en';
