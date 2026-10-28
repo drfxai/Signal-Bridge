@@ -73,7 +73,7 @@ The public GET https://drfx.company/api/config returns readiness flags: email, t
 3. From a trusted local terminal with secrets loaded as environment variables, execute:
    node scripts/configure-company-telegram-bot.mjs
    This installs the secret-protected Telegram webhook, private-chat Mini App menu button and user commands without printing credentials.
-4. Send /start, then /app in a private chat. Users can still request /login for website OTPs. Link a verified email account with its unique website-generated /link CODE; never merge accounts based on unverified contact details.
+4. Send /start, then /app in a private chat. Users request /login to view their *reusable* 32-character website password; /resetlogin replaces it and revokes website sessions. Link a verified email account with its unique website-generated /link CODE; never merge accounts based on unverified contact details.
 
 ### 3. Telegram Mini App
 
@@ -84,3 +84,11 @@ After login, GET /api/me displays the same membership, trial period and encrypte
 ### 4. NOWPayments after identity and EA testing
 
 Only after email → Telegram bot → Mini App → first EA DEMO license activation and revocation tests pass, configure encrypted NOWPAYMENTS_API_KEY and NOWPAYMENTS_IPN_SECRET and run independent sandbox IPN checks. Quarterly remains $47, annual $165. Browser success URLs do not grant subscriptions. Do not modify the running signalbridge ingress Worker in this onboarding.
+
+## Permanent Telegram website login (2026-10-28)
+
+Each verified Telegram member has exactly one long-lived, 32-character high-entropy DrFX website sign-in credential (24 random bytes, 192 bits) created via `/login`. Repeat `/login` returns the **same code**, not another one-time OTP. A permanent code does not expire on a timer or after use, but is revoked by `/resetlogin`, administrator suspension, or a future security action. Password hashes (SHA-256 of random high-entropy tokens) are used for lookup and AES-GCM-encrypted copies for authenticated bot redisplay. The underlying EA activation code from `/code` is separate and is never an account password.
+
+`/resetlogin` replaces the credential and invalidates website sessions; users then sign back in with the new code. Treat this code as a password: do not paste it into support chats, screenshots, public logs, git or TradingView alerts. The website browser session cookie expires after 7 days, but this does **not** expire the permanent login code. The initial legacy 16-character OTPs are accepted only until their original 10-minute expiry to support migration.
+
+D1 migration `site/migrations/0009_permanent_telegram_logins.sql` must be applied to the shared production D1 **before** deployment. Only the website Worker changes; SignalBridge EA ingress and existing Telegram webhook must not be replaced. The Telegram bot's command-menu descriptions are updated in `scripts/configure-company-telegram-bot.mjs`; running that script requires the existing secure environment credentials and modifies the menu/webhook, so avoid re-running it unnecessarily.
