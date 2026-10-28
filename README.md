@@ -94,7 +94,7 @@ https://signalbridge.drfx.online/v1/ingress/tradingview/<YOUR_PRIVATE_CONNECTION
 
 That is the standard installation flow.
 
-**No Node.js. No PowerShell. No Start-SignalBridge-Agent.cmd.**
+**No Node.js. No PowerShell. No Windows Agent.**
 
 ## ✈️ Telegram
 
