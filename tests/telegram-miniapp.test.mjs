@@ -148,7 +148,7 @@ test('Mini App clears private EA activation material on failed session refresh',
  assert.match(MINI_JS,/catch\(error\)\{\s*clearPrivateAccount\(\)/);
  assert.match(MINI_HTML,/id="retrySignIn"[^>]*hidden/);
  assert.match(MINI_JS,/\$\('retrySignIn'\)\.addEventListener\('click',start\)/);
- assert.match(MINI_HTML,/telegram-mini\.js\?v=20261028-mobile-v3/);
+ assert.match(MINI_HTML,/telegram-mini\.js\?v=20261028-mobile-v4/);
 });
 test('Persian translation covers account safety, MT5 onboarding, and error states',()=>{
  for(const label of [
@@ -160,5 +160,18 @@ test('Persian translation covers account safety, MT5 onboarding, and error state
  assert.match(MINI_JS,/مینی‌اپ را از داخل بات رسمی/);
  assert.match(MINI_JS,/کد فعال‌سازی/);
  assert.match(MINI_JS,/خطا|دوباره تلاش کنید|ارتباط برقرار نشد/);
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+});
+
+test('external mobile browser offers a verified Telegram bot link instead of pretending to authenticate',()=>{
+ assert.match(MINI_HTML,/id="openBot"[^>]+hidden/);
+ assert.match(MINI_HTML,/id="launchHint"[^>]+hidden/);
+ assert.match(MINI_JS,/const health=await api\('\/api\/telegram\/health'\)/);
+ assert.match(MINI_JS,/https:\/\/t\.me\/['+]/);
+ assert.match(MINI_JS,/if\(typeof username==='string'&&\/\^\[A-Za-z0-9_\]\{5,32\}\$\/\.test\(username\)\)/);
+ assert.match(MINI_JS,/await offerBotLaunch\(\)/);
+ assert.match(MINI_JS,/if\(tg\?\.initData&&state\.telegramEnabled\)/);
+ assert.ok(!MINI_JS.includes('initDataUnsafe'));
+ assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261028-mobile-v4'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });

@@ -17,7 +17,7 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .route-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 13px 4px}.route-head strong{font-size:12px;letter-spacing:.04em}.route-head small{font-size:9px;font-weight:700;color:#b9a47c}
 .route-steps{display:grid;grid-template-columns:1fr 30px 1fr 30px 1fr;align-items:center;gap:2px;padding:12px 9px 14px;text-align:center}.route-node{display:grid;place-items:center;gap:4px;min-width:0}.route-node svg{height:22px;width:22px;stroke:#f1d48f;stroke-width:1.7;fill:none}.route-node:nth-of-type(3) svg{stroke:#6cedb2}.route-node b{font-size:11px;line-height:1.1}.route-node small{font-size:9px;color:#a9a8ac}.route-line{height:1px;position:relative;background:linear-gradient(90deg,#8e815c,#d4af37,#4fc897)}.route-line:after{content:"";height:5px;width:5px;position:absolute;top:-2px;left:0;background:#f4d281;box-shadow:0 0 9px #f4d281;border-radius:50%;animation:routePulse 3s linear infinite}.route-line:nth-of-type(4):after{animation-delay:-1.4s}
 @keyframes routePulse{to{left:100%}}
-.message{display:flex;align-items:flex-start;gap:10px;margin:12px 0 17px;padding:12px;border:1px solid #785c354d;border-radius:11px;background:#272014b3;color:#f3d6a2;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.message:before{content:"i";display:grid;place-items:center;flex:none;width:18px;height:18px;background:#ae863c44;border-radius:50%;color:#f7d490;font-size:12px;font-weight:900}.message.error{border-color:#a34b547a;background:#2a141b;color:#ffc0c4}.message.error:before{content:"!";background:#9b414f55;color:#f5b7bd}.message.success{border-color:#3a986c55;background:#0f2922;color:#c2f8d9}.message.success:before{content:"✓";background:#1a785a;color:#baf7d4}.auth-state{margin-bottom:14px}.auth-state .message{margin-bottom:7px}.retry-auth{width:100%;min-height:43px;text-align:center}
+.message{display:flex;align-items:flex-start;gap:10px;margin:12px 0 17px;padding:12px;border:1px solid #785c354d;border-radius:11px;background:#272014b3;color:#f3d6a2;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.message:before{content:"i";display:grid;place-items:center;flex:none;width:18px;height:18px;background:#ae863c44;border-radius:50%;color:#f7d490;font-size:12px;font-weight:900}.message.error{border-color:#a34b547a;background:#2a141b;color:#ffc0c4}.message.error:before{content:"!";background:#9b414f55;color:#f5b7bd}.message.success{border-color:#3a986c55;background:#0f2922;color:#c2f8d9}.message.success:before{content:"✓";background:#1a785a;color:#baf7d4}.auth-state{margin-bottom:14px}.auth-state .message{margin-bottom:7px}.retry-auth{width:100%;min-height:43px;text-align:center}.bot-launch{display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:8px}.bot-launch[hidden]{display:none}.launch-hint{padding:8px 4px;margin:8px 0;color:#cfc2a7;font-size:13px;line-height:1.65}
 .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 12px}.section-head h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.04em}.section-head small{font-size:11px;color:#b7a983;font-weight:700}.card{position:relative;overflow:hidden;padding:18px;border:1px solid #35343c;border-radius:15px;background:linear-gradient(155deg,#191a20,#111218 80%);box-shadow:inset 0 1px #ffffff08,0 7px 20px #0004;margin:12px 0}.card.gold{border-color:#c9a45675;background:radial-gradient(ellipse at 88% 10%,#78602d49,transparent 51%),linear-gradient(145deg,#231f19,#121316 70%);box-shadow:0 7px 25px #0005,inset 0 1px #e1c7851a}.card h2{font-size:16px;font-weight:800;letter-spacing:-.018em;margin:0 0 8px}.card p{margin:9px 0 0}.micro{color:#b7ae99;font-size:11px;font-weight:750;letter-spacing:.045em;text-transform:uppercase}.value{font-size:25px;line-height:1.1;font-weight:850;letter-spacing:-.04em;margin:9px 0 0;color:#fff}.split{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}.split>div{min-width:0}.indicator{width:48px;height:48px;flex:none;border:1px solid #c4a04a80;background:#d4af371c;display:grid;place-items:center;border-radius:14px;color:#fce4a5;font-size:26px}.status{display:flex;align-items:center;gap:5px;background:#3a302025;border:1px solid #977a4b;border-radius:6px;color:#efd19b;font-size:10px;font-weight:850;padding:6px 8px;white-space:nowrap}.status[data-active=true]{background:#0e3325;border-color:#228859;color:#7aefaf}.meta{color:#adb2bf;font-size:13px;line-height:1.55;overflow-wrap:anywhere}.goldline{height:1px;background:linear-gradient(90deg,#ad854500,#d4af3788,#ad854500);margin:16px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.small{min-width:0;min-height:116px;padding:15px 13px;background:#121920;border:1px solid #293947;border-radius:13px}.small>span:first-child{color:#b7c2ce;font-size:10px;line-height:1.2;font-weight:800;letter-spacing:.03em}.small strong{display:block;margin:15px 0 3px;font-size:15px;font-weight:800;line-height:1.25}.small span:not(:first-child){display:block;font-size:11px;color:#a5b0bc;line-height:1.35;overflow-wrap:anywhere}
 .code{font:650 14px/1.55 ui-monospace,"SFMono-Regular",Consolas,monospace;overflow-wrap:anywhere;word-break:break-all;padding:13px;margin:12px 0 0;background:#08090d;border:1px dashed #bd95529c;color:#f9e6b6;border-radius:10px;letter-spacing:.03em;min-height:50px}
 .btn{border:1px solid #686373;background:#23242b;color:#f0f0f4;min-height:45px;border-radius:10px;padding:11px 12px;font-size:13px;font-weight:750;line-height:1.3;transition:transform .15s,background .15s}.btn.primary{background:linear-gradient(115deg,#e0b663,#f5dd9e,#c99a40);border-color:#f6daa0;color:#21180c;box-shadow:0 3px 12px #d9a44818}.btn.subtle{background:#15171d;border-color:#353944;color:#d7d6db}.btn:active{transform:scale(.97)}.btn:disabled{cursor:not-allowed;opacity:.42;box-shadow:none}.buttons{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0 0}.buttons .btn{flex:1 1 135px}.action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.action-grid .btn{min-height:55px;text-align:left}
@@ -32,7 +32,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 @media(min-width:681px){nav.bottom{padding-inline:max(16px,calc((100% - 660px)/2))}.container{padding-inline:22px}.hero{padding-top:33px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
-<script src="/assets/telegram-mini.js?v=20261028-mobile-v3" defer></script></head>
+<script src="/assets/telegram-mini.js?v=20261028-mobile-v4" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
@@ -54,7 +54,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
   <div class="route-node"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><b>MT5 EA</b><small>Execution</small></div>
  </div>
 </div>
-<div class="auth-state" role="group" aria-label="Account sign-in status"><p class="message" id="statusMessage" role="status" aria-live="polite">Checking your Telegram identity…</p><button id="retrySignIn" class="btn subtle retry-auth" type="button" hidden>Retry connection ↻</button></div>
+<div class="auth-state" role="group" aria-label="Account sign-in status"><p class="message" id="statusMessage" role="status" aria-live="polite">Checking your Telegram identity…</p><button id="retrySignIn" class="btn subtle retry-auth" type="button" hidden>Retry connection ↻</button><a id="openBot" class="btn primary bot-launch" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Signal Bridge bot ↗</a><p id="launchHint" class="launch-hint" hidden>In the Signal Bridge bot, send /start and tap <strong>Open DrFX Mini App</strong> under the bot's message. Do not use Open website.</p></div>
 <section class="tab-panel" data-panel="home" id="panel-home">
  <div class="section-head"><h2 data-tr="command">Your dashboard</h2><small data-tr="privateCaption">PRIVATE ACCOUNT</small></div>
  <article class="card gold">
@@ -145,6 +145,22 @@ export const MINI_JS=String.raw`(() => {
  })[plan]||ui('Membership','اشتراک');}
  $('langToggle').addEventListener('click',()=>{language(locale==='en'?'fa':'en');tg?.HapticFeedback?.selectionChanged?.()});
 
+ async function offerBotLaunch(){
+  $('launchHint').hidden=false;
+  $('launchHint').textContent=ui(
+   'Return to the official Signal Bridge bot, send /start, then tap Open DrFX Mini App — not Open website.',
+   'به بات رسمی Signal Bridge برگردید، /start را ارسال کنید و روی Open DrFX Mini App بزنید؛ نه Open website.'
+  );
+  try{
+   const health=await api('/api/telegram/health');
+   const username=health.bot_username;
+   if(typeof username==='string'&&/^[A-Za-z0-9_]{5,32}$/.test(username)){
+    $('openBot').href='https://t.me/'+username;
+    $('openBot').hidden=false;
+    $('openBot').textContent=ui('Open Signal Bridge bot ↗','باز کردن بات Signal Bridge ←');
+   }
+  }catch{ /* The launch instructions remain visible if bot info is temporarily unavailable. */ }
+ }
  const set = (id,text) => {const el=$(id);if(el)el.textContent=String(text??'');};
  function message(text,kind='') {const e=$('statusMessage');e.textContent=text;e.className='message '+kind;}
  function clearPrivateAccount(){
@@ -209,6 +225,8 @@ export const MINI_JS=String.raw`(() => {
    set('connection',ui('IDENTITY VERIFIED','هویت تأیید شد'));
    $('connection').classList.add('verified');
    $('retrySignIn').hidden=true;
+   $('openBot').hidden=true;
+   $('launchHint').hidden=true;
    message(mode==='telegram'?ui('Your Telegram identity and membership are verified.','هویت تلگرام و وضعیت اشتراک شما تأیید شد.'):ui('Your existing DrFX session is verified.','نشست معتبر حساب DrFX شما تأیید شد.'),'success');
    return true;
   }catch(error){
@@ -251,7 +269,7 @@ export const MINI_JS=String.raw`(() => {
     const signedIn=await refresh('session');
     if(!signedIn){
      if(!state.telegramEnabled)message(ui('Telegram sign-in is currently unavailable.','ورود با تلگرام فعلاً در دسترس نیست.'),'error');
-     else if(!tg?.initData)message(ui('To sign in, open this Mini App directly inside the official Signal Bridge Telegram bot.','برای ورود، این مینی‌اپ را مستقیماً از داخل بات رسمی Signal Bridge باز کنید.'),'error');
+     else if(!tg?.initData){message(ui('This is a browser preview, not an authenticated Telegram Mini App session.','این صفحه پیش‌نمایش مرورگر است و ورود تأییدشده تلگرام ندارد.'),'error');await offerBotLaunch();}
     }
    }
   }catch(error){
@@ -260,6 +278,7 @@ export const MINI_JS=String.raw`(() => {
      ui('Telegram verification expired. Close this page and reopen it from the bot.','اعتبار تأیید تلگرام تمام شده است. صفحه را ببندید و از بات دوباره باز کنید.'):
      ui('Connection unavailable. Retry or reopen the Mini App from the bot.','ارتباط برقرار نشد. دوباره تلاش کنید یا مینی‌اپ را از بات باز کنید.');
    message(reason,'error');$('retrySignIn').hidden=false;
+   if(!tg?.initData||error.message==='INVALID_TELEGRAM_INIT_DATA')await offerBotLaunch();
   }finally{signInRunning=false;$('retrySignIn').disabled=false;}
  }
  $('retrySignIn').addEventListener('click',start);

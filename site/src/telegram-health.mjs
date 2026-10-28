@@ -30,6 +30,8 @@ export async function telegramHealth(env,fetcher=fetch,now=Date.now()){
   ok:true,
   configured,
   bot_token_valid:!!(bot&&bot.is_bot===true),
+  // Public @username only; never expose bot token, webhook secret or user information.
+  bot_username:bot?.is_bot===true&&/^[A-Za-z0-9_]{5,32}$/.test(bot.username||'')?bot.username:null,
   webhook_secret_format_valid:validSecret,
   admin_id_format_valid:validAdminId,
   webhook_registered:typeof hook?.url==='string'&&hook.url.length>0,
