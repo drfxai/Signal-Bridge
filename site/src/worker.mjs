@@ -228,7 +228,7 @@ async function createCheckout(req,env,user){
  })});
  if(!response.ok){await env.DB.prepare("UPDATE site_orders SET status='failed' WHERE id=?").bind(id).run();return fail('PAYMENT_GATEWAY_UNAVAILABLE',502);}
  const data=await response.json().catch(()=>null);
- let url;try{url=new URL(data?.invoice_url||'');if(url.protocol!=='https:'||!url.hostname.endsWith('nowpayments.io'))throw Error('bad');}
+ let url;try{url=new URL(data?.invoice_url||'');if(url.protocol!=='https:'||!(url.hostname==='nowpayments.io'||url.hostname.endsWith('.nowpayments.io')))throw Error('bad');}
  catch{await env.DB.prepare("UPDATE site_orders SET status='failed' WHERE id=?").bind(id).run();return fail('INVALID_GATEWAY_RESPONSE',502);}
  await env.DB.prepare('UPDATE site_orders SET invoice_id=?,invoice_url=? WHERE id=?').bind(String(data.id||''),url.href,id).run();
  return json({ok:true,invoice_url:url.href,order_id:id});
@@ -254,16 +254,19 @@ async function ipnHandler(req,env){
  if(String(body.price_currency||'').toLowerCase()!=='usd'||Number(body.price_amount)!==Number(order.amount_usd)||!paymentId)return fail('PAYMENT_DETAILS_MISMATCH',409);
  const lic=await env.DB.prepare('SELECT agent_id FROM site_licenses WHERE user_id=?').bind(order.user_id).first();
  if(!lic)return fail('LICENSE_MISSING',503);
- // A single transaction grants once, never on invoice creation, mere redirect, or partially_paid.
- const claimed=await env.DB.prepare("UPDATE site_orders SET status='paid',payment_id=?,paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(paymentId,orderId).run();
- if(claimed.meta?.changes!==1)return json({ok:true,duplicate:true});
+ // D1 batch statements execute sequentially in one transaction, including status claim.
+ // The entitlement updates are conditional on the order still being pending.
  const results=await env.DB.batch([
   env.DB.prepare("UPDATE ea_licenses SET plan=?,duration_modifier=?,status='active',"+
-   "expires_at=CASE WHEN activated_at IS NULL THEN NULL ELSE datetime(CASE WHEN expires_at>CURRENT_TIMESTAMP THEN expires_at ELSE CURRENT_TIMESTAMP END, ?) END,updated_at=CURRENT_TIMESTAMP WHERE agent_id=?").bind(order.plan,DURATION[order.plan],DURATION[order.plan],lic.agent_id),
-  env.DB.prepare("UPDATE site_users SET plan=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(order.plan,order.user_id),
-  env.DB.prepare('INSERT INTO site_audit (id,actor_id,action,subject_id,detail) VALUES (?,?,?,?,?)').bind(uid('aud'),null,'nowpayments_paid',order.user_id,orderId)
+   "expires_at=CASE WHEN activated_at IS NULL THEN NULL ELSE datetime(CASE WHEN expires_at>CURRENT_TIMESTAMP THEN expires_at ELSE CURRENT_TIMESTAMP END, ?) END,updated_at=CURRENT_TIMESTAMP "+
+   "WHERE agent_id=? AND EXISTS(SELECT 1 FROM site_orders WHERE id=? AND status='pending')").bind(order.plan,DURATION[order.plan],DURATION[order.plan],lic.agent_id,orderId),
+  env.DB.prepare("UPDATE site_users SET plan=?,updated_at=CURRENT_TIMESTAMP WHERE id=? "+
+   "AND EXISTS(SELECT 1 FROM site_orders WHERE id=? AND status='pending')").bind(order.plan,order.user_id,orderId),
+  env.DB.prepare("INSERT INTO site_audit (id,actor_id,action,subject_id,detail) "+
+   "SELECT ?,NULL,'nowpayments_paid',?,? WHERE EXISTS(SELECT 1 FROM site_orders WHERE id=? AND status='pending')").bind(uid('aud'),order.user_id,orderId,orderId),
+  env.DB.prepare("UPDATE site_orders SET status='paid',payment_id=?,paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(paymentId,orderId)
  ]);
- return json({ok:true,granted:results[0]?.meta?.changes===1});
+ return results[3]?.meta?.changes===1?json({ok:true,granted:true}):json({ok:true,duplicate:true});
 }
 async function botSend(env,chatId,text,keyboard){
  if(!env.TELEGRAM_BOT_TOKEN)return;
