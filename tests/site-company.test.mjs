@@ -68,7 +68,7 @@ test('Telegram bot exposes admin user lookup, grant and suspension operations be
 test('cinematic design matches the approved reference hierarchy',()=>{
  assert.ok(SITE_HTML.includes('Trade Smarter.'));
  assert.ok(SITE_HTML.includes('Go Further.'));
- assert.ok(SITE_HTML.includes('A Complete <em>Trading System</em>'));
+ assert.ok(SITE_HTML.includes('data-i="system-title">A Complete</span> <em data-i="system-sub">Trading System</em>'));
  assert.ok(SITE_HTML.includes('id="globalNetworkCanvas"'));
  assert.ok(SITE_HTML.includes('data-i="network-label"'));
  assert.ok(SITE_HTML.includes('id="plans"'));
@@ -105,4 +105,41 @@ test('preserves account, pricing, MT5 setup and admin experience',()=>{
  for(const route of ['/api/auth/email/start','/api/auth/email/verify','/api/auth/telegram/code','/api/me','/api/checkout'])assert.ok(worker.includes(route),route);
  assert.ok(SITE_HTML.includes('https://signalbridge.drfx.online'));
  assert.ok(SITE_CSS.includes('body[dir=rtl]'));
+});
+
+
+test('JS and CSS assets are cache-safe across production UI deploys',async()=>{
+ const html=await handler.fetch(new Request('https://drfx.company/'),{});
+ assert.equal(html.status,200);
+ assert.match(html.headers.get('cache-control'),/no-store/);
+ const markup=await html.text();
+ assert.match(markup,/\/assets\/app\.css\?v=[0-9a-z-]+/);
+ assert.match(markup,/\/assets\/app\.js\?v=[0-9a-z-]+/);
+ for(const p of ['/assets/app.css','/assets/app.js']){
+  const response=await handler.fetch(new Request('https://drfx.company'+p+'?v=20261028-fix-cache-navigation'),{});
+  assert.equal(response.status,200);
+  assert.match(response.headers.get('cache-control'),/no-cache/);
+ }
+});
+test('mobile navigation is available, accessible, closable and translated',()=>{
+ assert.ok(SITE_HTML.includes('id="mobileNav"'));
+ assert.ok(SITE_HTML.includes('id="menuToggle"'));
+ assert.ok(SITE_HTML.includes('aria-controls="mobileNav"'));
+ assert.ok(SITE_HTML.includes('aria-expanded="false"'));
+ assert.ok(SITE_HTML.includes('href="#plans"'));
+ assert.ok(SITE_HTML.includes('href="#how"'));
+ assert.match(SITE_CSS,/\.lux-menu-toggle/);
+ assert.match(SITE_CSS,/\.lux-mobile-nav:not\(\[hidden\]\)/);
+ assert.match(SITE_JS,/function closeMobileNav/);
+ assert.match(SITE_JS,/mobileNav\.querySelectorAll\('a'\)/);
+ assert.ok(SITE_JS.includes("document.querySelectorAll('[data-i=\"'+key+'\"]')"));
+});
+test('pricing handoff and sign out are guarded against stale auth states',()=>{
+ assert.match(SITE_JS,/state\.plan!=='trial'/);
+ assert.match(SITE_JS,/await checkout\(selected\)/);
+ assert.ok(SITE_JS.includes("url.hostname==='nowpayments.io'||url.hostname.endsWith('.nowpayments.io')"));
+ assert.ok(!SITE_JS.includes("!url.hostname.endsWith('nowpayments.io')"));
+ assert.match(SITE_JS,/Logout request could not be confirmed/);
+ assert.match(SITE_CSS,/font-family:system-ui/);
+ assert.ok(!SITE_CSS.includes('fonts.googleapis.com'));
 });
