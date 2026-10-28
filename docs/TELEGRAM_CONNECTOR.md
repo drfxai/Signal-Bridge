@@ -20,7 +20,7 @@ Telegram `update_id` is durably deduplicated. If persistence succeeds but comman
 ## Parsing pipeline
 Telegram update → verify origin → deduplicate update_id/message_id/edit revision → classify signal/non-signal → deterministic parse → normalized candidate → symbol resolver → ambiguity gate → risk policy → command route.
 
-The current production parser automatically routes a strict OPEN BUY/SELL format with explicit symbol, lot, SL and one to three TPs. Rich MODIFY/PARTIAL_CLOSE/CLOSE parsing and edited-message revisions remain planned and must not be inferred from ambiguous text.
+The production parser automatically routes strict OPEN BUY/SELL signals in English, Persian and Arabic. It normalizes Persian/Arabic digits and a small explicit instrument alias set (for example GOLD/XAU/طلا/ذهب → XAUUSD), but never invents a missing field. Conflicting directions or instruments, duplicate LOT/SL/TP fields, invalid price geometry and ambiguous target sequences fail closed. Rich MODIFY/PARTIAL_CLOSE/CLOSE parsing and edited-message revisions remain planned.
 
 **Examples for tests only**
 - 'BUY GOLD 2500 SL 2490 TP1 2510 TP2 2520 TP3 2530'
