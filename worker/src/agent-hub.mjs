@@ -6,9 +6,14 @@ export function shouldReplayAfterTerminalState(previousReady,currentAttachment){
 const safe=(v,n=160)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').slice(0,n);
 function parseMessage(message){if(typeof message!=='string'||message.length>16384)return null;try{const b=JSON.parse(message);return b&&typeof b==='object'&&!Array.isArray(b)?b:null}catch{return null}}
 function parseEaLine(message){if(typeof message!=='string'||message.length>16384)return null;const p=message.trim().split('|');return p[0]?p:null}
+function eaCorrelationTag(value){
+ const s=String(value||'');let a=2166136261>>>0,b=2246822519>>>0;
+ for(let i=0;i<s.length;i++){const n=s.charCodeAt(i);a=Math.imul(a^n,16777619)>>>0;b=Math.imul(b^(n+i),3266489917)>>>0}
+ return (a.toString(16).padStart(8,'0')+b.toString(16).padStart(8,'0')).slice(0,12);
+}
 function encodeEaCommand(c){
  const o=c.order||{},t=Array.isArray(o.take_profits)?o.take_profits:[],expiry=c.expires_at?Date.parse(c.expires_at):0;
- return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||'',12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0].join('|');
+ return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0].join('|');
 }
 
 export class AgentHub{
