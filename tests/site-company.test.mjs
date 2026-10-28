@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { SITE_HTML, SITE_CSS, SITE_JS } from '../site/src/ui.mjs';
+import { SITE_HTML, SITE_CSS, SITE_JS, DESIGN_JS } from '../site/src/ui.mjs';
 import handler from '../site/src/worker.mjs';
 
 const worker=fs.readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
@@ -65,12 +65,12 @@ test('Telegram bot exposes admin user lookup, grant and suspension operations be
 });
 
 
-test('cinematic design matches the approved reference hierarchy',()=>{
- assert.ok(SITE_HTML.includes('Trade Smarter.'));
- assert.ok(SITE_HTML.includes('Go Further.'));
- assert.ok(SITE_HTML.includes('data-i="system-title">A Complete</span> <em data-i="system-sub">Trading System</em>'));
- assert.ok(SITE_HTML.includes('id="globalNetworkCanvas"'));
- assert.ok(SITE_HTML.includes('data-i="network-label"'));
+test('supplied cinematic design is wired to production actions',()=>{
+ assert.ok(SITE_HTML.includes('Precision.'));
+ assert.ok(SITE_HTML.includes('Without compromise.'));
+ assert.ok(SITE_HTML.includes('id="signalEngineCanvas"'));
+ assert.ok(SITE_HTML.includes('id="globeCanvas"'));
+ assert.ok(SITE_HTML.includes('id="network"'));
  assert.ok(SITE_HTML.includes('id="plans"'));
  assert.ok(SITE_HTML.includes('data-plan="trial"'));
  assert.ok(SITE_HTML.includes('data-plan="quarterly"'));
@@ -78,10 +78,11 @@ test('cinematic design matches the approved reference hierarchy',()=>{
  assert.ok(SITE_HTML.includes('$0'));
  assert.ok(SITE_HTML.includes('$47'));
  assert.ok(SITE_HTML.includes('$165'));
- assert.ok(SITE_CSS.includes('.lux-hero-visual'));
- assert.ok(SITE_CSS.includes('.lux-ecosystem'));
- assert.ok(SITE_CSS.includes('.lux-membership'));
- assert.ok(SITE_CSS.includes('@media(max-width:520px)'));
+ assert.ok(SITE_HTML.includes('cinema-card'));
+ assert.ok(SITE_CSS.includes('.overlay'));
+ assert.ok(!SITE_HTML.includes('completeDemoLogin'));
+ assert.ok(!SITE_HTML.includes('regenerateSerialKey'));
+ assert.doesNotThrow(()=>new Function(DESIGN_JS));
 });
 test('first animation removed and second reimplemented at native display resolution',async()=>{
  assert.equal((SITE_HTML.match(/<video /g)||[]).length,0);
@@ -128,8 +129,8 @@ test('mobile navigation is available, accessible, closable and translated',()=>{
  assert.ok(SITE_HTML.includes('aria-expanded="false"'));
  assert.ok(SITE_HTML.includes('href="#plans"'));
  assert.ok(SITE_HTML.includes('href="#how"'));
- assert.match(SITE_CSS,/\.lux-menu-toggle/);
- assert.match(SITE_CSS,/\.lux-mobile-nav:not\(\[hidden\]\)/);
+ assert.match(SITE_CSS,/\.overlay\.hidden/);
+ assert.match(SITE_CSS,/\[hidden\]/);
  assert.match(SITE_JS,/function closeMobileNav/);
  assert.match(SITE_JS,/mobileNav\.querySelectorAll\('a'\)/);
  assert.ok(SITE_JS.includes("document.querySelectorAll('[data-i=\"'+key+'\"]')"));
@@ -140,6 +141,7 @@ test('pricing handoff and sign out are guarded against stale auth states',()=>{
  assert.ok(SITE_JS.includes("url.hostname==='nowpayments.io'||url.hostname.endsWith('.nowpayments.io')"));
  assert.ok(!SITE_JS.includes("!url.hostname.endsWith('nowpayments.io')"));
  assert.match(SITE_JS,/Logout request could not be confirmed/);
- assert.match(SITE_CSS,/font-family:system-ui/);
+ assert.match(SITE_HTML,/Instrument Serif/);
  assert.ok(!SITE_CSS.includes('fonts.googleapis.com'));
 });
+
