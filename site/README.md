@@ -45,13 +45,12 @@ Cloudflare Email Sending to arbitrary recipients requires Workers Paid as of Oct
 ## Deployment and account verification
 The Worker `drfx-company-site` has been deployed to Cloudflare with a D1 binding, and the D1 schema migrations are applied. Email delivery, Telegram BotFather credentials, payment merchant secrets, published EX5 and downloadable indicator packages remain external release gates. Do not send test real-money orders; canonical EA is DEMO-only.
 
-## Two original globe animations (2026-10-28)
-User-supplied clips `48356.mp4` and `48355.mp4` are placed at (1) landing hero and (2) global signal connectivity section respectively. The site uses muted/loop/playsinline, IntersectionObserver lazy playback, save-data and reduced-motion controls, with CSS motion fallbacks while the binaries are unavailable. Source videos contain unrelated promotional text, therefore serve only reviewed edited/cropped versions. The two optimized MP4 binaries are now embedded in `site/src/media.mjs` (base64 encoded) and served directly by the site Cloudflare Worker; no R2 subscription is required. This is a lightweight compatibility fallback until binary static assets are available. Production will serve them from `/assets/media/48356-globe.mp4` and `/assets/media/48355-connections.mp4` once CDN objects are uploaded and route/bindings verified. Never claim the MP4s play until GET checks return status 200 with `video/mp4` content type. Optimized media assets prepared locally for authorized hosting.
+## Cinematic website redesign — approved visual reference (2026-10-28)
 
-### Video hosting verification (2026-10-28)
-- Original uploaded sources are `48356.mp4` and `48355.mp4`; production edits are muted/cropped transcodes of 24,859 and 8,858 bytes (both H.264 MP4).
-- `site/src/media.mjs` retains the optimized video content with fixed SHA-256 digests and total lengths, and the Worker exposes the paths `/assets/media/48356-globe.mp4` and `/assets/media/48355-connections.mp4`.
-- HTTP supports GET/HEAD, byte-range (206), invalid-range (416), ETag, Cache-Control, and content-type `video/mp4`.
-- Browser playback is lazy and disabled for save-data and prefers-reduced-motion. When media is not available the CSS animations remain as fallback.
-- To deploy through Cloudflare API module upload, include **three** Worker modules: `worker.mjs`, `ui.mjs`, and `media.mjs`. Avoid replacing the Worker without `keep_bindings:['secret_text']` or existing licensing secrets may be lost.
-- R2 is not currently enabled on the user's Cloudflare account, so this is the zero-additional-cost Worker-hosted asset implementation; do not claim R2 upload. Verify public HTTP independently after deployment.
+- Site uses the approved DrFX luxury mockup structure: high-contrast midnight black/deep navy background, static trading-terminal hero, SignalBridge/MT5/license feature cards, a single animated cinematic world connection panel, and three pricing cards ($0 / $47 / $165).
+- The **first hero animation is removed**. The old low-resolution MP4 assets and Worker media routes were removed, and `site/src/media.mjs` was deleted. There are no videos or large remote image dependencies.
+- The remaining global network visual is an original, high-DPI 2D Canvas renderer with projected geographic silhouettes, city lights, luminous routing arcs, atmospheric rim and sunrise. It sizes to devicePixelRatio (capped at 2), uses ResizeObserver and IntersectionObserver, pauses when hidden, respects `prefers-reduced-motion` and Save-Data, and runs without external API keys.
+- Hero market quotes and network paths are **illustrations**, not live data, confirmed broker execution statistics or a guarantee of trading performance. Never add fabricated uptime or user-count claims.
+- English and Persian website translations are included; customer/administrator dialogs and existing email/Telegram flows remain connected to the existing D1-backed API.
+- Cloudflare deployment requires **two** Worker modules: `worker.mjs` and `ui.mjs`. Preserve all existing D1 and secret bindings; never rotate `LICENSE_VAULT_KEY`.
+- This design deployment does not imply email, Telegram, NOWPayments, live trading, EA EX5 delivery or indicator releases have completed their separate operational gates.
