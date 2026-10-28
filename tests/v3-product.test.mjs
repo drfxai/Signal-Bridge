@@ -55,7 +55,7 @@ test('direct EA endpoint and line protocol exist alongside legacy rollback trans
  assert.match(hub,/signalbridge-ea-v1/);
  assert.match(hub,/encodeEaCommand/);
  assert.match(hub,/HELLO\|/);
- assert.match(hub,/RCPT/);
+ assert.match(hub,/p\\[0\\]===\'RCPT\'/);
  assert.match(command,/correlation_tag/);
  assert.match(command,/correlationTag/);
 });
