@@ -14,7 +14,7 @@ export async function authenticateEaLicense(request, env) {
  const hash = await sha256Hex(code);
  return env.DB.prepare(
   "SELECT l.id AS license_id, l.agent_id AS id, a.tenant_id, " +
-  "l.account_login, l.account_server, l.plan, l.expires_at " +
+  "l.account_login, l.account_server, l.plan, l.expires_at, l.token_sha256 AS license_token_sha256 " +
   "FROM ea_licenses l JOIN agent_connections a ON a.id=l.agent_id " +
   "WHERE l.token_sha256=? AND l.status='active' AND a.status='active' " +
   "AND (l.expires_at IS NULL OR l.expires_at>CURRENT_TIMESTAMP) LIMIT 1"

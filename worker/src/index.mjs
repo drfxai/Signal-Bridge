@@ -129,6 +129,7 @@ async function openEaSocket(request,env){
  h.set('x-sb-tenant-id',license.tenant_id);
  h.set('x-sb-client-role','ea');
  h.set('x-sb-license-id',license.license_id);
+ h.set('x-sb-license-hash',license.license_token_sha256);
  if(license.account_login)h.set('x-sb-account-login',license.account_login);
  if(license.account_server)h.set('x-sb-account-server',license.account_server);
  h.delete('authorization');
