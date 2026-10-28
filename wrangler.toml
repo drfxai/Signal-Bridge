@@ -24,4 +24,4 @@ storage = "sqlite"
 # https://signalbridge.drfx.online
 #
 # Free launch: no Queues on the critical path.
-# Agent transport uses a hibernatable Durable Object WebSocket.
+# Direct MT5 EA transport uses a hibernatable Durable Object WebSocket.\n# /v1/agent/ws remains a temporary rollback path during V3 validation.
