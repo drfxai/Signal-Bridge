@@ -5,8 +5,8 @@
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
 #property strict
-#property version   "0.25"
-#property description "SignalBridge MT5 EA. Direct TLS/WebSocket connection to SignalBridge Cloud."
+#property version   "0.251"
+#property description "SignalBridge EA v0.25.1: clearer connection and license diagnostics."
 #property description "DEMO execution only. Live accounts are always refused."
 #property description "Enter your private activation code in the first EA input. No compilation required for EX5 users."
 
@@ -42,7 +42,7 @@ input int InpPanelX=16;
 input int InpPanelY=22;
 input int InpPanelWidth=390;
 
-#define SBP "SB24_"
+#define SBP "SB251_"
 #define MAX_PENDING 32
 #define MAX_RECEIPTS 64
 CTrade trade;
@@ -52,9 +52,10 @@ bool g_licenseActive=false;
 string g_licenseExpires="";
 uchar g_frameBuf[];
 string g_lastSignal="WAITING",g_lastExecution="NO COMMAND",g_lastTicket="-";
-ulong g_lastConnectTry=0,g_lastHb=0,g_lastReconcile=0,g_lastPing=0,g_pingStarted=0;
+ulong g_lastConnectTry=0,g_lastHb=0,g_lastReconcile=0,g_lastPing=0,g_pingStarted=0,g_lastUiUpdate=0;
 double g_cloudRttMs=0;
 bool g_compact=false;
+string g_connStage="ACTIVATION CODE REQUIRED";
 string g_pendingTag[MAX_PENDING],g_pendingId[MAX_PENDING];
 string g_receiptId[MAX_RECEIPTS],g_receiptStatus[MAX_RECEIPTS],g_receiptTicket[MAX_RECEIPTS],g_receiptRetcode[MAX_RECEIPTS],g_receiptDetail[MAX_RECEIPTS];
 color C_BG=C'9,15,25',C_BG2=C'15,25,42',C_BORDER=C'43,65,93',C_TEXT=C'234,245,255',C_MUTED=C'139,160,184',C_CYAN=C'82,215,255',C_GREEN=C'69,213,161',C_AMBER=C'243,189,98',C_RED=C'255,111,125';
@@ -76,6 +77,14 @@ void Rect(string id,int x,int y,int w,int h,color bg,color border){string n=SBP+
 void Label(string id,int x,int y,string text,int size,color col,string font="Segoe UI"){string n=SBP+id;if(ObjectFind(0,n)<0)ObjectCreate(0,n,OBJ_LABEL,0,0,0);ObjectSetInteger(0,n,OBJPROP_CORNER,InpCorner);ObjectSetInteger(0,n,OBJPROP_XDISTANCE,x);ObjectSetInteger(0,n,OBJPROP_YDISTANCE,y);ObjectSetInteger(0,n,OBJPROP_FONTSIZE,size);ObjectSetInteger(0,n,OBJPROP_COLOR,col);ObjectSetInteger(0,n,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);ObjectSetInteger(0,n,OBJPROP_SELECTABLE,false);ObjectSetInteger(0,n,OBJPROP_HIDDEN,true);ObjectSetString(0,n,OBJPROP_FONT,font);ObjectSetString(0,n,OBJPROP_TEXT,text);}
 void Button(string id,int x,int y,int w,int h,string text){string n=SBP+id;if(ObjectFind(0,n)<0)ObjectCreate(0,n,OBJ_BUTTON,0,0,0);ObjectSetInteger(0,n,OBJPROP_CORNER,InpCorner);ObjectSetInteger(0,n,OBJPROP_XDISTANCE,x);ObjectSetInteger(0,n,OBJPROP_YDISTANCE,y);ObjectSetInteger(0,n,OBJPROP_XSIZE,w);ObjectSetInteger(0,n,OBJPROP_YSIZE,h);ObjectSetInteger(0,n,OBJPROP_BGCOLOR,C_BG);ObjectSetInteger(0,n,OBJPROP_COLOR,C_MUTED);ObjectSetInteger(0,n,OBJPROP_BORDER_COLOR,C_BORDER);ObjectSetInteger(0,n,OBJPROP_FONTSIZE,8);ObjectSetString(0,n,OBJPROP_TEXT,text);ObjectSetString(0,n,OBJPROP_FONT,"Segoe UI");}
 
+bool ValidActivationCode(string code){
+ if(StringLen(code)!=43)return false;
+ for(int i=0;i<43;i++){
+  int v=(int)StringGetCharacter(code,i);
+  if(!((v>=48&&v<=57)||(v>=65&&v<=90)||(v>=97&&v<=122)||v==45||v==95))return false;
+ }
+ return true;
+}
 bool CloudConnected(){return g_socket!=INVALID_HANDLE&&g_wsReady&&SocketIsConnected(g_socket);}
 void AppendBytes(uchar &dst[],const uchar &src[],int count){
  if(count<=0)return;int old=ArraySize(dst);ArrayResize(dst,old+count);ArrayCopy(dst,src,old,0,count);
@@ -107,14 +116,14 @@ void DisconnectCloud(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_sock
 bool WsHandshake(){
  uchar nonce[];ArrayResize(nonce,16);for(int i=0;i<16;i++)nonce[i]=(uchar)(MathRand()&255);
  string key=Base64(nonce,16);
- string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.24\r\n\r\n";
+ string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.25.1\r\n\r\n";
  if(!TlsSendString(req))return false;
  uchar pending[];ulong until=GetTickCount64()+5000;
  while(GetTickCount64()<until&&!IsStopped()){
   uchar chunk[];int got=SocketTlsReadAvailable(g_socket,chunk,32768);if(got<0)return false;if(got>0){AppendBytes(pending,chunk,got);int e=HeaderEnd(pending);if(e>0){
     string h=CharArrayToString(pending,0,e,CP_UTF8);
     string lines[];int count=StringSplit(h,10,lines);
-    if(count<4||StringFind(lines[0]," 101 ")<0)return false;
+    if(count<4||StringFind(lines[0]," 101 ")<0){string responseCode=count>0?lines[0]:"EMPTY RESPONSE";g_connStage="WEBSOCKET REFUSED (HTTP)";Print("SignalBridge: WebSocket upgrade refused: ",responseCode,". Check the activation status in drfx.company and live Cloudflare EA licensing.");return false;}
     string selected="",accept="",upgrade="",connection="";
     for(int j=1;j<count;j++){string header=lines[j];StringTrimLeft(header);StringTrimRight(header);int colon=StringFind(header,":");if(colon<=0)continue;
      string name=StringSubstr(header,0,colon),value=StringSubstr(header,colon+1);StringToLower(name);StringTrimLeft(value);StringTrimRight(value);
@@ -130,9 +139,9 @@ bool WsHandshake(){
     if(challengeLen<=0)return false;ArrayResize(shaSource,challengeLen);
     if(CryptEncode(CRYPT_HASH_SHA1,shaSource,emptyKey,shaOut)!=20)return false;
     string expectedAccept=Base64(shaOut,20);
-    if(selected!="signalbridge-ea-v1"||upgrade!="websocket"||StringFind(connection,"upgrade")<0||accept!=expectedAccept)return false;
+    if(selected!="signalbridge-ea-v1"||upgrade!="websocket"||StringFind(connection,"upgrade")<0||accept!=expectedAccept){g_connStage="INVALID WEBSOCKET RESPONSE";Print("SignalBridge: handshake validation failed (no credentials logged).");return false;}
     int rest=ArraySize(pending)-e;if(rest>0){uchar tail[];ArrayResize(tail,rest);ArrayCopy(tail,pending,0,e,rest);AppendBytes(g_frameBuf,tail,rest);}
-    g_wsReady=true;return true;
+    g_wsReady=true;g_connStage="CONNECTED - WAITING FOR LICENSE";return true;
    }}
   Sleep(10);
  }
@@ -142,10 +151,10 @@ void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Sa
 void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)))g_lastHb=GetTickCount64();}
 void EnsureCloud(){
  if(CloudConnected())return;ulong now=GetTickCount64();int retry=InpReconnectMs;if(retry<250)retry=250;if(retry>10000)retry=10000;if(now-g_lastConnectTry<(ulong)retry)return;g_lastConnectTry=now;DisconnectCloud();
- if(StringLen(InpActivationCode)!=43)return;
- g_socket=SocketCreate(SOCKET_DEFAULT);if(g_socket==INVALID_HANDLE)return;SocketTimeouts(g_socket,2000,2000);
- if(!SocketConnect(g_socket,InpCloudHost,(uint)InpCloudPort,3000)){DisconnectCloud();return;}
- if(!WsHandshake()){DisconnectCloud();return;}SendHello();
+ if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";return;}
+ g_connStage="CONNECTING TO SIGNALBRIDGE";ResetLastError();g_socket=SocketCreate(SOCKET_DEFAULT);if(g_socket==INVALID_HANDLE){g_connStage="SOCKET CREATE FAILED";PrintFormat("SignalBridge: SocketCreate failed (%d). Check MT5 network permissions.",GetLastError());return;}SocketTimeouts(g_socket,2000,2000);
+ ResetLastError();if(!SocketConnect(g_socket,InpCloudHost,(uint)InpCloudPort,3000)){int err=GetLastError();g_connStage="CANNOT CONNECT TO CLOUD";PrintFormat("SignalBridge: cannot connect to %s:%d (MT5 error %d). Allow https://%s in MT5 Tools > Options > Expert Advisors.",InpCloudHost,InpCloudPort,err,InpCloudHost);DisconnectCloud();return;}
+ if(!WsHandshake()){Print("SignalBridge: Cloud TLS/WebSocket handshake failed; state: ",g_connStage);DisconnectCloud();return;}SendHello();
 }
 
 
@@ -296,8 +305,8 @@ void HandleCommand(string &parts[]){
 }
 void ProcessLine(string line){
  string p[];ushort sep=StringGetCharacter("|",0);int n=StringSplit(line,sep,p);if(n<=0)return;
- if(p[0]=="HELLO_ACK"&&n>=3){g_licenseActive=true;g_licenseExpires=p[2];return;}
- if(p[0]=="ERR"){g_licenseActive=false;g_lastExecution="ACTIVATION: "+(n>=2?p[1]:"DENIED");DisconnectCloud();return;}
+ if(p[0]=="HELLO_ACK"&&n>=3){g_licenseActive=true;g_licenseExpires=p[2];g_connStage="LICENSE ACTIVE";Print("SignalBridge: EA license verified for DEMO testing.");return;}
+ if(p[0]=="ERR"){g_licenseActive=false;g_connStage="ACTIVATION REJECTED";g_lastExecution="ACTIVATION: "+(n>=2?p[1]:"DENIED");Print("SignalBridge: activation rejected: ",n>=2?p[1]:"DENIED");DisconnectCloud();return;}
  if(p[0]=="CMD"){HandleCommand(p);return;}
  if(p[0]=="RACK"&&n>=4){if(p[3]=="1"){ClearReceipt(p[1],p[2]);if(FinalReceiptAckClearsPending(p[2]))ClearPendingById(p[1]);}return;}
  if(p[0]=="PONG"&&n>=2){ulong sent=(ulong)StringToInteger(p[1]);ulong now=GetTickCount64();if(sent>0&&now>=sent)g_cloudRttMs=(double)(now-sent);return;}
@@ -317,12 +326,12 @@ void PumpCloud(){
  if(!CloudConnected())return;for(int k=0;k<4;k++){uchar chunk[];int got=SocketTlsReadAvailable(g_socket,chunk,32768);if(got<0){DisconnectCloud();return;}if(got==0)break;AppendBytes(g_frameBuf,chunk,got);}ParseFrames();
 }
 
-void RenderPanel(){if(!InpShowPanel){DeletePanel();return;}int x=InpPanelX,y=InpPanelY,w=MathMax(370,InpPanelWidth),h=g_compact?132:300;Rect("root",x,y,w,h,C_BG,C_BORDER);Rect("head",x+1,y+1,w-2,44,C_BG2,C_BORDER);Label("title",x+12,y+8,"SignalBridge EA v0.25 · "+_Symbol,10,C_TEXT);Label("acct",x+12,y+25,AccountInfoString(ACCOUNT_SERVER)+" · #"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+" · "+MarginMode(),7,C_MUTED,"Consolas");Label("conn",x+w-124,y+9,g_licenseActive?"● LICENSE ACTIVE":"● LOCKED / OFFLINE",8,g_licenseActive?C_GREEN:C_RED,"Consolas");Button("compact",x+w-102,y+24,88,17,g_compact?"EXPAND":"COMPACT");if(g_compact){Label("c1",x+12,y+58,"Equity  "+F2(AccountInfoDouble(ACCOUNT_EQUITY)),9,C_TEXT,"Consolas");Label("c2",x+12,y+80,"Last  "+g_lastSignal,8,C_CYAN,"Consolas");Label("c3",x+12,y+102,"Exec  "+g_lastExecution,8,C_MUTED,"Consolas");ChartRedraw(0);return;}int yy=y+58;Label("k1",x+12,yy,"BALANCE",7,C_MUTED,"Consolas");Label("v1",x+12,yy+16,F2(AccountInfoDouble(ACCOUNT_BALANCE)),11,C_TEXT,"Consolas");Label("k2",x+110,yy,"EQUITY",7,C_MUTED,"Consolas");Label("v2",x+110,yy+16,F2(AccountInfoDouble(ACCOUNT_EQUITY)),11,C_TEXT,"Consolas");Label("k3",x+205,yy,"FLOAT",7,C_MUTED,"Consolas");Label("v3",x+205,yy+16,F2(AccountInfoDouble(ACCOUNT_PROFIT)),11,AccountInfoDouble(ACCOUNT_PROFIT)>=0?C_GREEN:C_RED,"Consolas");Label("k4",x+298,yy,"OPEN",7,C_MUTED,"Consolas");Label("v4",x+298,yy+16,IntegerToString(CountMyPositions()),11,C_CYAN,"Consolas");yy+=68;Label("l1",x+14,yy,"Latest signal",8,C_MUTED);Label("r1",x+130,yy,g_lastSignal,8,C_CYAN,"Consolas");Label("l2",x+14,yy+23,"Execution",8,C_MUTED);Label("r2",x+130,yy+23,g_lastExecution,8,C_TEXT,"Consolas");Label("l3",x+14,yy+46,"Ticket",8,C_MUTED);Label("r3",x+130,yy+46,g_lastTicket,8,C_TEXT,"Consolas");Label("l4",x+14,yy+69,"Account",8,C_MUTED);Label("r4",x+130,yy+69,AccountMode()+" · "+MarginMode(),8,AccountMode()=="DEMO"?C_GREEN:C_AMBER,"Consolas");Label("l5",x+14,yy+92,"Demo execution",8,C_MUTED);Label("r5",x+130,yy+92,InpEnableDemoExecution?"ENABLED":"LOCKED",8,InpEnableDemoExecution?C_AMBER:C_GREEN,"Consolas");Rect("foot",x+12,y+h-42,w-24,28,C_BG2,C_BORDER);Label("foot_t",x+22,y+h-34,g_licenseActive?"LICENSE ACTIVE · expires "+g_licenseExpires:"ENTER PERSONAL ACTIVATION CODE / CHECK CLOUD",7,g_licenseActive?C_GREEN:C_AMBER,"Consolas");ChartRedraw(0);}
+void RenderPanel(){if(!InpShowPanel){DeletePanel();return;}int x=InpPanelX,y=InpPanelY,w=MathMax(370,InpPanelWidth),h=g_compact?132:300;Rect("root",x,y,w,h,C_BG,C_BORDER);Rect("head",x+1,y+1,w-2,44,C_BG2,C_BORDER);Label("title",x+12,y+8,"SignalBridge EA v0.25.1 · "+_Symbol,10,C_TEXT);Label("acct",x+12,y+25,AccountInfoString(ACCOUNT_SERVER)+" · #"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+" · "+MarginMode(),7,C_MUTED,"Consolas");Label("conn",x+w-124,y+9,g_licenseActive?"● LICENSE ACTIVE":"● LOCKED / OFFLINE",8,g_licenseActive?C_GREEN:C_RED,"Consolas");Button("compact",x+w-102,y+24,88,17,g_compact?"EXPAND":"COMPACT");if(g_compact){Label("c1",x+12,y+58,"Equity  "+F2(AccountInfoDouble(ACCOUNT_EQUITY)),9,C_TEXT,"Consolas");Label("c2",x+12,y+80,"Last  "+g_lastSignal,8,C_CYAN,"Consolas");Label("c3",x+12,y+102,"Exec  "+g_lastExecution,8,C_MUTED,"Consolas");ChartRedraw(0);return;}int yy=y+58;Label("k1",x+12,yy,"BALANCE",7,C_MUTED,"Consolas");Label("v1",x+12,yy+16,F2(AccountInfoDouble(ACCOUNT_BALANCE)),11,C_TEXT,"Consolas");Label("k2",x+110,yy,"EQUITY",7,C_MUTED,"Consolas");Label("v2",x+110,yy+16,F2(AccountInfoDouble(ACCOUNT_EQUITY)),11,C_TEXT,"Consolas");Label("k3",x+205,yy,"FLOAT",7,C_MUTED,"Consolas");Label("v3",x+205,yy+16,F2(AccountInfoDouble(ACCOUNT_PROFIT)),11,AccountInfoDouble(ACCOUNT_PROFIT)>=0?C_GREEN:C_RED,"Consolas");Label("k4",x+298,yy,"OPEN",7,C_MUTED,"Consolas");Label("v4",x+298,yy+16,IntegerToString(CountMyPositions()),11,C_CYAN,"Consolas");yy+=68;Label("l1",x+14,yy,"Latest signal",8,C_MUTED);Label("r1",x+130,yy,g_lastSignal,8,C_CYAN,"Consolas");Label("l2",x+14,yy+23,"Execution",8,C_MUTED);Label("r2",x+130,yy+23,g_lastExecution,8,C_TEXT,"Consolas");Label("l3",x+14,yy+46,"Ticket",8,C_MUTED);Label("r3",x+130,yy+46,g_lastTicket,8,C_TEXT,"Consolas");Label("l4",x+14,yy+69,"Account",8,C_MUTED);Label("r4",x+130,yy+69,AccountMode()+" · "+MarginMode(),8,AccountMode()=="DEMO"?C_GREEN:C_AMBER,"Consolas");Label("l5",x+14,yy+92,"Demo execution",8,C_MUTED);Label("r5",x+130,yy+92,InpEnableDemoExecution?"ENABLED":"LOCKED",8,InpEnableDemoExecution?C_AMBER:C_GREEN,"Consolas");Rect("foot",x+12,y+h-42,w-24,28,C_BG2,C_BORDER);Label("foot_t",x+22,y+h-34,g_licenseActive?"LICENSE ACTIVE · expires "+g_licenseExpires:g_connStage,7,g_licenseActive?C_GREEN:C_AMBER,"Consolas");ChartRedraw(0);}
 
-int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));g_compact=InpCompact;PendingLoad();ReceiptLoad();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;EventSetMillisecondTimer(ms);EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.25.1 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Trade execution will remain BLOCKED.");g_compact=InpCompact;PendingLoad();ReceiptLoad();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
 void OnDeinit(const int reason){EventKillTimer();DisconnectCloud();DeletePanel();ChartRedraw(0);}
 void OnTick(){}
-void OnTimer(){EnsureCloud();PumpCloud();ulong now=GetTickCount64();if(CloudConnected()&&now-g_lastHb>30000)SendHeartbeat();if(CloudConnected()&&now-g_lastPing>60000){g_lastPing=now;g_pingStarted=now;SendLine("PING|"+N64((long)now));}if(CloudConnected()&&now-g_lastReconcile>2000){g_lastReconcile=now;FlushReceipts();if(HasPending())ReconcilePending();}RenderPanel();}
+void OnTimer(){EnsureCloud();PumpCloud();ulong now=GetTickCount64();if(CloudConnected()&&now-g_lastHb>30000)SendHeartbeat();if(CloudConnected()&&now-g_lastPing>60000){g_lastPing=now;g_pingStarted=now;SendLine("PING|"+N64((long)now));}if(CloudConnected()&&now-g_lastReconcile>2000){g_lastReconcile=now;FlushReceipts();if(HasPending())ReconcilePending();}if(now-g_lastUiUpdate>=750){g_lastUiUpdate=now;RenderPanel();}}
 void OnTradeTransaction(const MqlTradeTransaction &trans,const MqlTradeRequest &request,const MqlTradeResult &result){
  if(trans.type!=TRADE_TRANSACTION_DEAL_ADD||trans.deal==0)return;if(!HistoryDealSelect(trans.deal))return;if((long)HistoryDealGetInteger(trans.deal,DEAL_MAGIC)!=InpMagic)return;
  string comment=HistoryDealGetString(trans.deal,DEAL_COMMENT);if(StringFind(comment,"SB:")!=0&&StringFind(request.comment,"SB:")==0)comment=request.comment;if(StringFind(comment,"SB:")!=0)return;
