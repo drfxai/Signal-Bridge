@@ -1,5 +1,5 @@
 # MT5 Execution Agent
-Current release source: `mt5/DrFX_SignalBridge_EA_v0.22.mq5`
+Current release source: `mt5/DrFX_SignalBridge_EA_v0.23.mq5`
 Canonical source: `mt5/DrFX_SignalBridge_EA.mq5`
 
 ## Current runtime
@@ -21,7 +21,7 @@ This keeps Cloudflare request usage low and avoids synchronous internet `WebRequ
 
 ## Replay and restart safety
 
-EA v0.22 writes the pending correlation tag → command ID mapping to terminal common-file storage before broker submission.
+EA v0.23 writes the pending correlation tag → command ID mapping to terminal common-file storage before broker submission.
 
 On restart it:
 
@@ -45,7 +45,7 @@ ENTRY uses risk-based or fixed-lot sizing depending on the normalized command.
 
 TP3, SL and CLOSE close the correlated position.
 
-TP1/TP2 partial management is currently implemented for hedging accounts. Netting-account partial semantics remain a release gate and must be implemented/tested before claiming full netting support.
+TP1/TP2 partial management supports both hedging and netting/exchange account modes. Hedging uses `PositionClosePartial`. Netting reduces the existing position with an opposite market deal to an absolute remaining-volume target, preserving replay idempotency. To prevent ownership ambiguity, a new SignalBridge OPEN on a netting symbol is rejected whenever **any** position already exists on that symbol.
 
 ## Native panel
 
@@ -61,7 +61,7 @@ The chart panel displays real terminal/account information, Agent connection sta
 - invalid symbol suffixes, volume steps and stops;
 - market closed, spread spikes and stale quotes;
 - partial fills and broker rejection;
-- netting TP1/TP2 behavior;
+- hedging and netting TP1/TP2 behavior;
 - multiple charts/EA duplicate-instance protection if required.
 
 Live-money mode is outside the current release boundary.
