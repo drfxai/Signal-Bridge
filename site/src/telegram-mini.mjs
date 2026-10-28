@@ -78,9 +78,20 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;background-im
 .list{padding:0;list-style:none;color:#c0c9d5;font-size:12px;line-height:1.65;counter-reset:steps}.list li{position:relative;counter-increment:steps;padding:12px 0 13px 39px;border-bottom:1px solid #ffffff13}.list li:before{content:counter(steps,decimal-leading-zero);position:absolute;left:0;top:12px;color:var(--gold);font:700 12px ui-monospace,Consolas,monospace}.list li:last-child{border-bottom:0}
 .inline-tag{display:inline-flex;color:#a8e3c8;border:1px solid #26775b;background:#061e15;border-radius:5px;padding:6px 9px;font:650 9px ui-monospace,monospace}
 .tab-kicker{font:700 9px ui-monospace,Consolas,monospace;letter-spacing:.14em;color:var(--gold);margin:20px 0 4px}
+body[data-tab="license"] .hero,body[data-tab="license"] .route-stage,body[data-tab="plans"] .hero,body[data-tab="plans"] .route-stage,body[data-tab="help"] .hero,body[data-tab="help"] .route-stage{display:none}
+body[data-tab="license"] #statusMessage,body[data-tab="plans"] #statusMessage,body[data-tab="help"] #statusMessage{margin-top:22px}
+nav.bottom button{touch-action:manipulation}
+.lang-toggle{border:1px solid #7c693d66;background:#18140c;color:#f7e7b4;border-radius:7px;padding:9px 7px;font:700 9px ui-monospace,Consolas,monospace;letter-spacing:.02em}
+.bar-actions{display:flex;align-items:center;gap:6px}
+html[dir="rtl"] .container,html[dir="rtl"] .bar,html[dir="rtl"] .hero{text-align:right}
+html[dir="rtl"] .brand,html[dir="rtl"] .statusbar,html[dir="rtl"] .hero-kicker,html[dir="rtl"] nav.bottom{direction:ltr}
+html[dir="rtl"] .route-stage{direction:ltr}
+html[dir="rtl"] .list li{padding:12px 39px 13px 0}
+html[dir="rtl"] .list li:before{left:auto;right:0}
+html[dir="rtl"] .brandname{text-align:left}
 nav.bottom{position:fixed;z-index:20;bottom:0;left:0;right:0;padding:9px 14px calc(11px + env(safe-area-inset-bottom));background:rgba(3,4,6,.94);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid #bda05b50;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;box-shadow:0 -10px 35px #0008}
 nav.bottom button{position:relative;padding:9px 3px 8px;border:1px solid transparent;border-radius:9px;color:#93a0b2;background:transparent;font:650 10px ui-monospace,Consolas,monospace;letter-spacing:.01em;transition:background .2s,color .2s}
-nav.bottom button span{display:block;font-size:20px;line-height:23px;margin-bottom:5px;font-family:system-ui}
+nav.bottom button>span:first-child{display:block;font-size:20px;line-height:23px;margin-bottom:5px;font-family:system-ui}nav.bottom button>span:last-child{display:block;font-size:10px;line-height:14px}
 nav.bottom button[aria-selected=true]{background:linear-gradient(150deg,#3e2d1266,#12110d);border-color:#d4af373c;color:var(--gold-light)}
 nav.bottom button[aria-selected=true]:before{content:"";position:absolute;top:-10px;left:28%;right:28%;height:2px;background:var(--gold);box-shadow:0 0 11px var(--gold)}
 .page-footer{text-align:center;color:#677788;font:500 9px/1.8 ui-monospace,Consolas,monospace;letter-spacing:.035em;padding:18px 8px 5px}
@@ -92,12 +103,12 @@ nav.bottom button[aria-selected=true]:before{content:"";position:absolute;top:-1
 <div class="statusbar"><span class="edge"><span class="dot"></span> DRFX · SIGNALBRIDGE NETWORK</span><span class="topright">TELEGRAM MINI APP / 01</span></div>
 <header class="bar">
  <div class="brand"><span class="mark" aria-hidden="true">DFX</span><span class="brandname"><span class="name">DrFX <em>COMPANY</em></span><small>PRECISION IN MOTION</small></span></div>
- <span id="connection" class="chip">CHECKING IDENTITY</span>
+ <div class="bar-actions"><button type="button" id="langToggle" class="lang-toggle" aria-label="Change language" aria-pressed="false">FA / EN</button><span id="connection" class="chip">CHECKING IDENTITY</span></div>
 </header>
 <section class="hero" aria-label="SignalBridge personal command center">
- <span class="eyebrow">THE DRFX PRIVATE WORKSPACE</span>
- <h1>Precision.<br><em>In Motion.</em></h1>
- <p class="desc">Your private trading command center. Secure Telegram identity, SignalBridge membership and MT5 activation — in one experience.</p>
+ <span class="eyebrow" data-tr="eyebrow">THE DRFX PRIVATE WORKSPACE</span>
+ <h1><span data-tr="hero1">Precision.</span><br><em data-tr="hero2">In Motion.</em></h1>
+ <p class="desc" data-tr="desc">Your private trading command center. Secure Telegram identity, SignalBridge membership and MT5 activation — in one experience.</p>
  <div class="hero-kicker"><span><i></i> ONE PRIVATE ACCOUNT</span><span><i></i> MT5 EXPERT ADVISOR</span></div>
 </section>
 <div class="route-stage" aria-label="Illustration of TradingView and Telegram connected through Cloudflare to MT5">
@@ -139,7 +150,7 @@ nav.bottom button[aria-selected=true]:before{content:"";position:absolute;top:-1
 </div>
 <p class="message" id="statusMessage" role="status" aria-live="polite">Verifying your Telegram identity…</p>
 <section class="tab-panel" id="panel-home" data-panel="home">
- <div class="subhead"><h2>Command Center</h2><small>PERSONAL / SECURE</small></div>
+ <div class="subhead"><h2 data-tr="command">Command Center</h2><small>PERSONAL / SECURE</small></div>
  <article class="card gold">
   <div class="split"><div><span class="micro">YOUR MEMBERSHIP</span><div class="value" id="memberPlan">Not signed in</div></div><span class="indicator" aria-hidden="true">♛</span></div>
   <div class="goldline"></div>
@@ -147,35 +158,35 @@ nav.bottom button[aria-selected=true]:before{content:"";position:absolute;top:-1
  </article>
  <div class="grid"><article class="small"><span>MT5 CONNECTION</span><strong id="mt5Status">Not connected</strong><span id="mt5Server">No verified account binding</span></article><article class="small"><span>ACTIVATION STATUS</span><strong id="activationDate">Not started</strong><span id="expiryStatus">Validity begins on EA activation</span></article></div>
  <article class="card">
-  <div class="split"><h2>Private activation key</h2><span class="micro">AES-GCM / PRIVATE</span></div>
+  <div class="split"><h2 data-tr="privateKey">Private activation key</h2><span class="micro">AES-GCM / PRIVATE</span></div>
   <p class="meta">Your unique 43-character serial is protected. Reveal only when setting up your EA — do not share screenshots of it.</p>
   <div id="serialValue" class="code" aria-live="polite">•••• •••• •••• ••••</div>
-  <div class="buttons"><button type="button" class="btn primary" id="revealSerial" disabled>Reveal serial</button><button type="button" class="btn" id="copySerial" disabled>Copy activation code</button></div>
+  <div class="buttons"><button type="button" class="btn primary" id="revealSerial" data-tr="reveal" disabled>Reveal serial</button><button type="button" class="btn" id="copySerial" data-tr="copy" disabled>Copy activation code</button></div>
  </article>
- <div class="buttons"><button type="button" class="btn subtle" data-jump="license">MT5 Setup Guide ↗</button><button type="button" class="btn subtle" data-jump="plans">Explore Membership ↗</button></div>
+ <div class="buttons"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 Setup Guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore Membership ↗</button></div>
 </section>
 <section class="tab-panel" id="panel-license" data-panel="license" hidden>
- <p class="tab-kicker">EXPERT ADVISOR / ACTIVATION</p><h2 class="section-title">Connect to <span style="color:var(--gold-light)">MT5.</span></h2>
+ <p class="tab-kicker">EXPERT ADVISOR / ACTIVATION</p><h2 class="section-title" data-tr="connect">Connect to MT5.</h2>
  <article class="card gold"><span class="micro">SIGNALBRIDGE · META TRADER 5</span><h2 style="font:500 26px Georgia,serif;letter-spacing:-.035em;margin:12px 0 7px">One EA. One serial.</h2><p class="meta">Activate the same licensed MT5 Expert Advisor associated with your DrFX membership.</p><div class="goldline"></div><ol class="list"><li>Install an authorized compiled DrFX EX5 on MetaTrader 5.</li><li>Allow <strong>https://signalbridge.drfx.online</strong> in MT5 Expert Advisors.</li><li>Use the private code from your Command Center as the <strong>first EA input</strong>.</li><li>Confirm the license status from the <strong>Experts</strong> tab.</li></ol><span class="inline-tag">DEMO ACCOUNT TESTING · LIVE TRADING DISABLED</span></article>
- <button class="btn primary" type="button" data-jump="home">Back to activation code ↗</button>
+ <button class="btn primary" type="button" data-jump="home" data-tr="back">Back to activation code ↗</button>
 </section>
 <section class="tab-panel" id="panel-plans" data-panel="plans" hidden>
- <p class="tab-kicker">DRFX COMPANY / MEMBERSHIP</p><h2 class="section-title">Your <span style="color:var(--gold-light)">Advantage.</span></h2>
+ <p class="tab-kicker">DRFX COMPANY / MEMBERSHIP</p><h2 class="section-title" data-tr="advantage">Your Advantage.</h2>
  <article class="card">
   <div class="plan"><div><span class="micro">START HERE</span><b style="display:block;margin-top:5px">One Month Free</b><small>Trial account, private EA license</small></div><div class="plan-price">$0</div></div>
   <div class="plan featured"><div><span class="micro" style="color:#e4c27d">MOST POPULAR</span><b style="display:block;margin-top:5px">3 Months Premium</b><small>SignalBridge + 52 premium indicators*</small></div><div class="plan-price">$47</div></div>
   <div class="plan"><div><span class="micro">MAXIMUM VALUE</span><b style="display:block;margin-top:5px">Annual Elite</b><small>Full access, personalized options*</small></div><div class="plan-price">$165</div></div>
   <div class="goldline"></div><p id="paymentStatus" class="meta" role="status">Paid checkout is not configured yet.</p>
-  <button type="button" id="openPricing" class="btn primary" style="width:100%;margin-top:13px">Explore Plans on DrFX Website ↗</button>
+  <button type="button" id="openPricing" class="btn primary" style="width:100%;margin-top:13px" data-tr="pricing">Explore Plans on DrFX Website ↗</button>
   <p class="meta" style="margin-top:14px">* Premium assets require separate release and authorization. No payment is taken inside this Mini App.</p>
  </article>
 </section>
 <section class="tab-panel" id="panel-help" data-panel="help" hidden>
- <p class="tab-kicker">HELP CENTER / SECURE ACCESS</p><h2 class="section-title">Trust &amp; <span style="color:var(--gold-light)">Support.</span></h2>
- <article class="card"><span class="micro">PRIVATE ACCOUNT · SECURITY FIRST</span><h2 style="margin-top:13px">Your data stays yours.</h2><ol class="list"><li>Telegram identity is cryptographically verified on the server.</li><li>Email and Telegram accounts are linked only with explicit verification.</li><li>EA activation keys are private and never displayed in website URLs.</li><li>Use the official website for full account administration.</li></ol><div class="buttons"><button type="button" id="openWebsite" class="btn primary">Open DrFX Website ↗</button><button type="button" id="refreshAccount" class="btn subtle">Refresh account ↻</button></div></article>
+ <p class="tab-kicker">HELP CENTER / SECURE ACCESS</p><h2 class="section-title" data-tr="support">Trust &amp; Support.</h2>
+ <article class="card"><span class="micro">PRIVATE ACCOUNT · SECURITY FIRST</span><h2 style="margin-top:13px">Your data stays yours.</h2><ol class="list"><li>Telegram identity is cryptographically verified on the server.</li><li>Email and Telegram accounts are linked only with explicit verification.</li><li>EA activation keys are private and never displayed in website URLs.</li><li>Use the official website for full account administration.</li></ol><div class="buttons"><button type="button" id="openWebsite" class="btn primary" data-tr="website">Open DrFX Website ↗</button><button type="button" id="refreshAccount" class="btn subtle" data-tr="refresh">Refresh account ↻</button></div></article>
 </section>
 <footer class="page-footer">© 2026 DrFXAi · PRIVATE SIGNALBRIDGE WORKSPACE<br>Routing illustration is conceptual, not live performance or broker activity.</footer></main>
-<nav class="bottom" aria-label="Telegram Mini App navigation"><button type="button" data-tab="home" aria-selected="true"><span aria-hidden="true">⌂</span>Home</button><button type="button" data-tab="license" aria-selected="false"><span aria-hidden="true">▣</span>MT5 EA</button><button type="button" data-tab="plans" aria-selected="false"><span aria-hidden="true">♛</span>Plans</button><button type="button" data-tab="help" aria-selected="false"><span aria-hidden="true">⚙</span>Help</button></nav>
+<nav class="bottom" aria-label="Telegram Mini App navigation"><button type="button" data-tab="home" aria-selected="true"><span aria-hidden="true">⌂</span><span data-tr="navHome">Home</span></button><button type="button" data-tab="license" aria-selected="false"><span aria-hidden="true">▣</span><span data-tr="navEA">MT5 EA</span></button><button type="button" data-tab="plans" aria-selected="false"><span aria-hidden="true">♛</span><span data-tr="navPlans">Plans</span></button><button type="button" data-tab="help" aria-selected="false"><span aria-hidden="true">⚙</span><span data-tr="navHelp">Help</span></button></nav>
 </body></html>`;
 export const MINI_JS=String.raw`(() => {
  'use strict';
