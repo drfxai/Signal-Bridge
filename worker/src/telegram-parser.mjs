@@ -15,7 +15,7 @@ function normalize(raw){
 function tokenRe(source,flags='i'){return new RegExp('(?:^|[^'+WORD_EDGE+'])(?:'+source+')(?=$|[^'+WORD_EDGE+'])',flags)}
 function hasToken(text,source){return tokenRe(source,'i').test(text)}
 function valuesAfter(text,labelSource){
- const re=new RegExp('(?:^|[\\n;,|])\\s*(?:'+labelSource+')\\s*[:=]?\\s*('+NUM+')(?=$|[\\s,;|])','gim');
+ const re=new RegExp('(?:^|[\\s;,|])(?:'+labelSource+')\\s*[:=]?\\s*('+NUM+')(?=$|[\\s,;|])','gim');
  return [...text.matchAll(re)].map(m=>Number(m[1]));
 }
 function oneField(text,labelSource,{required=false,code='INVALID_FIELD'}={}){
