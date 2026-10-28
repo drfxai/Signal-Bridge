@@ -5,6 +5,7 @@ import { parseTelegramTrade } from './telegram-parser.mjs';
 import { parseGodModeAlert } from './godmode-parser.mjs';
 import { TEST_UI } from './test-ui.mjs';
 import { DASHBOARD_UI } from './dashboard-ui.mjs';
+import { EXPERIENCE_HTML, EXPERIENCE_CSS, EXPERIENCE_JS, TELEGRAM_APP_PREVIEW_HTML, TELEGRAM_BOT_PREVIEW_HTML } from './experience-ui.mjs';
 export { AgentHub } from './agent-hub.mjs';
 
 const MAX_BYTES=16_384;
@@ -236,6 +237,12 @@ async function handleTelegram(request,env,connectionId){
 export async function handleRequest(request,env){
  const url=new URL(request.url);
  if(url.pathname==='/'&&request.method==='GET')return new Response(null,{status:302,headers:{location:'/dashboard'}});
+ if(request.method==='GET'&&url.pathname==='/experience')return new Response(null,{status:302,headers:{location:'/experience/'}});
+ if(request.method==='GET'&&url.pathname==='/experience/')return html(EXPERIENCE_HTML);
+ if(request.method==='GET'&&url.pathname==='/experience/styles.css')return new Response(EXPERIENCE_CSS,{headers:{...headers,'content-type':'text/css; charset=utf-8'}});
+ if(request.method==='GET'&&url.pathname==='/experience/app.js')return new Response(EXPERIENCE_JS,{headers:{...headers,'content-type':'text/javascript; charset=utf-8'}});
+ if(request.method==='GET'&&url.pathname==='/experience/telegram-webapp.html')return html(TELEGRAM_APP_PREVIEW_HTML);
+ if(request.method==='GET'&&url.pathname==='/experience/telegram-bot-flow.html')return html(TELEGRAM_BOT_PREVIEW_HTML);
  if(url.pathname==='/dashboard'&&request.method==='GET')return html(DASHBOARD_UI);
  if(url.pathname==='/test'&&request.method==='GET')return html(TEST_UI);
  if(url.pathname==='/health'&&request.method==='GET')return json({

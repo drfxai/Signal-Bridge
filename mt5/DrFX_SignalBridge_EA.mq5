@@ -107,7 +107,25 @@ bool WsHandshake(){
  uchar pending[];ulong until=GetTickCount64()+5000;
  while(GetTickCount64()<until&&!IsStopped()){
   uchar chunk[];int got=SocketTlsReadAvailable(g_socket,chunk,32768);if(got<0)return false;if(got>0){AppendBytes(pending,chunk,got);int e=HeaderEnd(pending);if(e>0){
-    string h=CharArrayToString(pending,0,e,CP_UTF8);if(StringFind(h," 101 ")<0||StringFind(h,"signalbridge-ea-v1")<0)return false;
+    string h=CharArrayToString(pending,0,e,CP_UTF8);
+    string lines[];int count=StringSplit(h,10,lines);
+    if(count<4||StringFind(lines[0]," 101 ")<0)return false;
+    string selected="",accept="",upgrade="",connection="";
+    for(int j=1;j<count;j++){string header=lines[j];StringTrimLeft(header);StringTrimRight(header);int colon=StringFind(header,":");if(colon<=0)continue;
+     string name=StringSubstr(header,0,colon),value=StringSubstr(header,colon+1);StringToLower(name);StringTrimLeft(value);StringTrimRight(value);
+     if(name=="sec-websocket-protocol")selected=value;
+     if(name=="sec-websocket-accept")accept=value;
+     if(name=="upgrade")upgrade=value;
+     if(name=="connection")connection=value;
+    }
+    StringToLower(upgrade);StringToLower(connection);
+    uchar shaSource[],emptyKey[],shaOut[];
+    string challenge=key+"258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+    int challengeLen=StringToCharArray(challenge,shaSource,0,WHOLE_ARRAY,CP_UTF8)-1;
+    if(challengeLen<=0)return false;ArrayResize(shaSource,challengeLen);
+    if(CryptEncode(CRYPT_HASH_SHA1,shaSource,emptyKey,shaOut)!=20)return false;
+    string expectedAccept=Base64(shaOut,20);
+    if(selected!="signalbridge-ea-v1"||upgrade!="websocket"||StringFind(connection,"upgrade")<0||accept!=expectedAccept)return false;
     int rest=ArraySize(pending)-e;if(rest>0){uchar tail[];ArrayResize(tail,rest);ArrayCopy(tail,pending,0,e,rest);AppendBytes(g_frameBuf,tail,rest);}
     g_wsReady=true;return true;
    }}
@@ -273,7 +291,7 @@ void HandleCommand(string &parts[]){
 void ProcessLine(string line){
  string p[];ushort sep=StringGetCharacter("|",0);int n=StringSplit(line,sep,p);if(n<=0)return;
  if(p[0]=="CMD"){HandleCommand(p);return;}
- if(p[0]=="RACK"&&n>=4){bool accepted=(p[3]=="1")||(n>=5&&p[4]=="INVALID_TRANSITION");if(accepted){ClearReceipt(p[1],p[2]);if(FinalReceiptAckClearsPending(p[2]))ClearPendingById(p[1]);}return;}
+ if(p[0]=="RACK"&&n>=4){if(p[3]=="1"){ClearReceipt(p[1],p[2]);if(FinalReceiptAckClearsPending(p[2]))ClearPendingById(p[1]);}return;}
  if(p[0]=="PONG"&&n>=2){ulong sent=(ulong)StringToInteger(p[1]);ulong now=GetTickCount64();if(sent>0&&now>=sent)g_cloudRttMs=(double)(now-sent);return;}
 }
 void ParseFrames(){

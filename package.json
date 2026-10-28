@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "python3 -m http.server 4173 --directory design",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check design/app.js && node --check design/engine.mjs && node --check worker/src/index.mjs && node --check worker/src/validate.mjs && node --check worker/src/agent-auth.mjs && node --check worker/src/agent-hub.mjs && node --check worker/src/command.mjs && node --check worker/src/telegram-parser.mjs && node --check worker/src/godmode-parser.mjs && node --check worker/src/test-ui.mjs && node --check worker/src/dashboard-ui.mjs && node --check agent-windows/receipt-outbox.mjs && node --check agent-windows/agent.mjs && node --check scripts/generate-tv-connection.mjs && node --check scripts/generate-agent-connection.mjs && node --check scripts/generate-ea-connection.mjs && node --check scripts/load-model.mjs && npm test",
+    "check": "node --check design/app.js && node --check design/engine.mjs && node --check worker/src/index.mjs && node --check worker/src/validate.mjs && node --check worker/src/agent-auth.mjs && node --check worker/src/agent-hub.mjs && node --check worker/src/command.mjs && node --check worker/src/telegram-parser.mjs && node --check worker/src/godmode-parser.mjs && node --check worker/src/test-ui.mjs && node --check worker/src/dashboard-ui.mjs && node --check worker/src/experience-ui.mjs && node --check agent-windows/receipt-outbox.mjs && node --check agent-windows/agent.mjs && node --check scripts/generate-tv-connection.mjs && node --check scripts/generate-agent-connection.mjs && node --check scripts/generate-ea-connection.mjs && node --check scripts/load-model.mjs && npm test",
     "capacity": "node scripts/load-model.mjs",
     "generate:ea": "node scripts/generate-ea-connection.mjs"
   }
