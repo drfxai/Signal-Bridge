@@ -20,7 +20,7 @@ test('repository home references only committed promotional assets',()=>{
 });
 
 test('quickstart links the real installer, dashboard and test panel',()=>{
- assert.equal(readme.includes('install\\\\Install-SignalBridge.ps1'),true);
+ assert.equal(readme.includes('install\\Install-SignalBridge.ps1'),true);
  assert.equal(readme.includes('https://signalbridge.drfx.online/dashboard'),true);
  assert.equal(readme.includes('https://signalbridge.drfx.online/test'),true);
  assert.match(installer,/Start-SignalBridge-Agent\.cmd/);
