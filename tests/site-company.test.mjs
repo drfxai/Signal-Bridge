@@ -190,11 +190,11 @@ test('cinematic render loops reuse canvas pixel buffers rather than reallocating
 });
 
 
-test('website explicitly distinguishes one-time Telegram login and EA activation serial',async()=>{
+test('website distinguishes reusable Telegram sign-in password and EA activation serial',async()=>{
  const {DESIGN_HTML}=await import('../site/src/design.mjs');
  assert.ok(DESIGN_HTML.includes('Sign in with your existing Signal Bridge account'));
- assert.ok(DESIGN_HTML.includes('Send <code>/login</code> — not <code>/code</code>'));
- assert.ok(DESIGN_HTML.includes('16-character'));
+ assert.ok(DESIGN_HTML.includes('Send <code>/login</code> to retrieve your personal, reusable website code.'));
+ assert.ok(DESIGN_HTML.includes('32-character permanent'));
  assert.ok(DESIGN_HTML.includes('43-character EA activation code'));
  assert.ok(DESIGN_HTML.includes('id="openLoginBot"'));
  assert.ok(DESIGN_HTML.includes('id="tgCodeHint"'));
@@ -203,7 +203,7 @@ test('website explicitly distinguishes one-time Telegram login and EA activation
  assert.ok(SITE_CSS.includes('font-size:16px;min-height:48px'));
  assert.ok(SITE_JS.includes('function validateWebsiteLoginCode()'));
  assert.ok(SITE_JS.includes('code.length===43'));
- assert.ok(SITE_JS.includes('code.length!==16'));
+ assert.ok(SITE_JS.includes('code.length===32'));
  assert.ok(SITE_JS.includes("switchAuthTab('telegram')"));
  assert.ok(SITE_JS.includes('loadTelegramBotLink()'));
  assert.ok(SITE_JS.includes("'/api/telegram/health'"));
@@ -227,9 +227,9 @@ test('Telegram website login refuses a 43-character EA serial before querying lo
  assert.deepEqual(await response.json(),{ok:false,error:'EA_CODE_NOT_LOGIN_CODE'});
  assert.equal(queries.filter(x=>x.includes('site_login_codes')).length,0);
 });
-test('Telegram website sign-in bot issues dedicated random 16-character OTP distinct from EA serial',()=>{
+test('Telegram /login reuses a separate encrypted 32-character credential and /resetlogin rotates it',()=>{
  assert.ok(worker.includes('const code=b64u(rand(12))'));
- assert.ok(worker.includes('16-character code, one time, 10 minutes'));
+ assert.ok(worker.includes('permanent 32-character website login code'));
  assert.ok(worker.includes('EA_CODE_NOT_LOGIN_CODE'));
  assert.ok(worker.includes('INVALID_LOGIN_CODE_FORMAT'));
  assert.ok(worker.includes("purpose='telegram'"));
@@ -283,4 +283,37 @@ test('connection check never claims active socket or silently creates a demo tra
  const p=new Request('https://drfx.company/api/connection/test-demo',{method:'POST',headers:{origin:'https://drfx.company'}});
  const r=await handler.fetch(p,{});
  assert.equal(r.status,503); // no D1 => endpoint cannot trade or authenticate
+});
+
+test('website account password does not expire after one use but can be revoked by Telegram user',()=>{
+ assert.ok(worker.includes('async function telegramWebsiteCredential(env,user,rotate=false)'));
+ assert.ok(worker.includes('b64u(rand(24))'));
+ assert.ok(worker.includes('site_permanent_logins'));
+ assert.ok(worker.includes("JOIN site_users u ON u.id=c.user_id"));
+ assert.ok(worker.includes("u.status='active'"));
+ assert.ok(worker.includes("UPDATE site_permanent_logins SET last_used_at=CURRENT_TIMESTAMP"));
+ assert.ok(worker.includes("if(command==='/login'||command==='/resetlogin')"));
+ assert.ok(worker.includes("command==='/resetlogin'"));
+ assert.ok(worker.includes('await encryptCode(env,code)'));
+ assert.ok(worker.includes('decryptCode(env,stored.encrypted_code,stored.nonce)'));
+ assert.ok(!worker.includes("const code=await issueCode(env,'telegram',telegramId,user.id,10)"));
+ assert.ok(SITE_HTML.includes('type="password"'));
+ assert.ok(SITE_HTML.includes('/resetlogin'));
+ assert.ok(SITE_JS.includes('permanent=code.length===32'));
+});
+
+test('unknown reusable credentials are denied without an account login',async()=>{
+ const queries=[];
+ const DB={prepare(sql){
+  queries.push(sql);
+  return {bind(){return this},async run(){return {success:true}},async first(){return sql.includes('site_rate_limits')?{requests:1}:null}};
+ }};
+ const res=await handler.fetch(new Request('https://drfx.company/api/auth/telegram/code',{
+  method:'POST',headers:{origin:'https://drfx.company','content-type':'application/json'},
+  body:JSON.stringify({code:'A'.repeat(32)})
+ }),{DB});
+ assert.equal(res.status,401);
+ assert.equal((await res.json()).error,'INVALID_LOGIN_CREDENTIAL');
+ assert.ok(queries.some(q=>q.includes('site_permanent_logins')));
+ assert.ok(!queries.some(q=>q.includes('site_sessions')));
 });
