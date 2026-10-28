@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA_v0.22.mq5',import.meta.url),'utf8');
+const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA_v0.23.mq5',import.meta.url),'utf8');
 const agent=fs.readFileSync(new URL('../agent-windows/agent.mjs',import.meta.url),'utf8');
 const ui=fs.readFileSync(new URL('../worker/src/test-ui.mjs',import.meta.url),'utf8');
 
@@ -34,7 +34,7 @@ test('live test UI exposes preview and demo execution modes',()=>{
 });
 
 
-test('Windows Agent command frame matches MT5 v0.22 replay-safe 16-field protocol',()=>{
+test('Windows Agent command frame matches MT5 v0.23 replay-safe 16-field protocol',()=>{
   assert.match(agent,/volume\?\.mode\|\|'FIXED_LOTS'/);
   assert.match(agent,/reference_price/);
   assert.match(ea,/ArraySize\(parts\)<16/);
@@ -42,4 +42,6 @@ test('Windows Agent command frame matches MT5 v0.22 replay-safe 16-field protoco
   assert.match(ea,/referencePrice=StringToDouble\(parts\[10\]\)/);
   assert.match(ea,/PendingSave\(\)/);
   assert.match(ea,/automatic replay blocked/);
+  assert.match(ea,/ACCOUNT_MARGIN_MODE_RETAIL_NETTING/);
+  assert.match(ea,/DEAL_POSITION_ID/);
 });
