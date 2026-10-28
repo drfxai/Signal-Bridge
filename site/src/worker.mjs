@@ -131,11 +131,13 @@ async function telegramWebsiteCredential(env,user,rotate=false){
  }
  const code=b64u(rand(24)),encrypted=await encryptCode(env,code),hash=await sha(code);
  if(rotate){
-  const updated=await env.DB.prepare("UPDATE site_permanent_logins SET code_hash=?,encrypted_code=?,nonce=?,rotated_at=CURRENT_TIMESTAMP WHERE user_id=?")
-   .bind(hash,encrypted.cipher,encrypted.iv,user.id).run();
-  if(updated.meta?.changes!==1)throw Error('CREDENTIAL_NOT_PROVISIONED');
-  // All existing sessions remain valid; only the stable login credential is rotated.
-  await audit(env,user.id,'website_login_credential_rotated',user.id);
+  const result=await env.DB.batch([
+   env.DB.prepare("UPDATE site_permanent_logins SET code_hash=?,encrypted_code=?,nonce=?,rotated_at=CURRENT_TIMESTAMP WHERE user_id=?").bind(hash,encrypted.cipher,encrypted.iv,user.id),
+   // An old compromised credential may have been used to create sessions; revoke them.
+   env.DB.prepare("DELETE FROM site_sessions WHERE user_id=?").bind(user.id)
+  ]);
+  if(result[0]?.meta?.changes!==1)throw Error('CREDENTIAL_NOT_PROVISIONED');
+  await audit(env,user.id,'website_login_credential_rotated',user.id,'all_website_sessions_revoked');
   return code;
  }
  await env.DB.prepare("INSERT OR IGNORE INTO site_permanent_logins(user_id,code_hash,encrypted_code,nonce) VALUES (?,?,?,?)")
