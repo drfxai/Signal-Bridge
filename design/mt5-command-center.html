@@ -47,7 +47,7 @@ button,input,select{font:inherit}.shell{display:grid;grid-template-columns:232px
     <div><div class="nav-title">Operations</div><nav class="nav">
       <a href="#"><span class="ico">◈</span>Signal Routes</a><a href="#"><span class="ico">⊙</span>Risk Engine</a><a href="#"><span class="ico">≡</span>Execution Log</a>
     </nav></div>
-    <div class="side-foot"><div class="account-chip"><div class="row"><span class="dot"></span><b>Agent online</b></div><small>Pepperstone-MT5-Live02<br>#78425139 · Hedging · EA 2.0</small></div></div>
+    <div class="side-foot"><div class="account-chip"><div class="row"><span class="dot"></span><b>MT5 EA online</b></div><small>Pepperstone-MT5-Live02<br>#78425139 · Hedging · EA 2.0</small></div></div>
   </aside>
   <main class="main"><div class="top"><div class="crumb">SignalBridge / <b id="crumb">Live Dashboard</b></div><div class="top-right"><span class="status-pill">● WEBSOCKET LIVE</span><span class="status-pill cyan">84 ms</span><span class="status-pill demo">DESIGN PROTOTYPE</span><div class="avatar">DFX</div></div></div><div id="view"></div></main>
 </div>
@@ -65,7 +65,7 @@ function dashboard(){crumb.textContent='Live Dashboard';return head('REALTIME EX
  <div class="metric"><div class="lab">Execution latency</div><div class="val cyan">84ms</div><div class="sub">p50 agent round-trip</div></div>
 </div>
 <div class="card" style="margin-bottom:13px"><div class="card-h"><b>Live signal path</b><small>Event-driven · no terminal polling</small></div><div class="card-body"><div class="pipeline">
- <div class="node live"><div class="n">TradingView</div><div class="s">WEBHOOK OK</div></div><div class="node live"><div class="n">Cloudflare</div><div class="s">VALIDATED 22ms</div></div><div class="node live"><div class="n">Agent Hub</div><div class="s">WS CONNECTED</div></div><div class="node live"><div class="n">MT5 Agent</div><div class="s">ACCOUNT VERIFIED</div></div><div class="node live"><div class="n">Broker</div><div class="s">PEPPERSTONE LIVE</div></div>
+ <div class="node live"><div class="n">TradingView</div><div class="s">WEBHOOK OK</div></div><div class="node live"><div class="n">Cloudflare</div><div class="s">VALIDATED 22ms</div></div><div class="node live"><div class="n">EA Hub</div><div class="s">WS CONNECTED</div></div><div class="node live"><div class="n">MT5 EA</div><div class="s">ACCOUNT VERIFIED</div></div><div class="node live"><div class="n">Broker</div><div class="s">PEPPERSTONE LIVE</div></div>
 </div></div></div>
 <div class="split">
  <section class="card"><div class="card-h"><b>Equity & execution pulse</b><small>Last 3 hours</small></div><div class="card-body"><div class="chart"><span class="tag">LIVE ACCOUNT</span><svg viewBox="0 0 700 180" preserveAspectRatio="none"><g stroke="#1c2d46" stroke-width="1"><path d="M0 35H700M0 75H700M0 115H700M0 155H700"/><path d="M90 0V180M190 0V180M290 0V180M390 0V180M490 0V180M590 0V180"/></g><path d="M0 134 C60 126 75 141 125 121 S205 98 247 111 S322 77 356 86 S430 60 470 72 S546 43 587 56 S650 31 700 39" fill="none" stroke="#52d7ff" stroke-width="3"/><path d="M0 134 C60 126 75 141 125 121 S205 98 247 111 S322 77 356 86 S430 60 470 72 S546 43 587 56 S650 31 700 39 L700 180 L0 180Z" fill="url(#g)" opacity=".18"/><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#52d7ff"/><stop offset="1" stop-color="#52d7ff" stop-opacity="0"/></linearGradient></defs></svg></div></div></section>
@@ -84,9 +84,9 @@ function dashboard(){crumb.textContent='Live Dashboard';return head('REALTIME EX
  <section class="card"><div class="card-h"><b>Safety core</b><small>EA-side hard limits</small></div><div class="card-body"><div class="kv"><div><div class="k">Max risk / trade</div><div class="v">1.00%</div></div><div><div class="k">Max open trades</div><div class="v">4</div></div><div><div class="k">Daily loss gate</div><div class="v green">-3.0%</div></div><div><div class="k">Account mode</div><div class="v green">HEDGING</div></div></div><div class="warnbox">Broker-side SL is mandatory. Unknown execution state blocks blind retry and starts reconciliation.</div></div></section></div>`}
 function settings(){crumb.textContent='MT5 Settings';return head('TERMINAL CONFIGURATION','MT5 Connection & Risk Settings','A professional control surface based on the proven DrFXQuant EA model, upgraded for SignalBridge realtime transport.','<button class="btn">Export config</button><button class="btn primary">Save & validate</button>')+`
 <div class="section-grid">
- <section class="card setting-card"><h3>Connection & account binding</h3><p>Keys are scoped to this Agent. Account identity is verified before any command can execute.</p><div class="form-grid">
-  <div class="field"><label>Cloud endpoint</label><div class="input"><span>wss://agent.signalbridge.workers.dev</span><span class="tag-ok">LIVE</span></div></div>
-  <div class="field"><label>Agent key</label><div class="input"><span>sb_ag_7f3a•••••••••81cd</span><span>SHOW</span></div></div>
+ <section class="card setting-card"><h3>Connection & account binding</h3><p>Keys are scoped to this EA. Account identity is verified before any command can execute.</p><div class="form-grid">
+  <div class="field"><label>Cloud endpoint</label><div class="input"><span>wss://signalbridge.drfx.online/v1/ea/ws</span><span class="tag-ok">LIVE</span></div></div>
+  <div class="field"><label>SignalBridge key</label><div class="input"><span>sb_ag_7f3a•••••••••81cd</span><span>SHOW</span></div></div>
   <div class="field"><label>Broker</label><div class="input"><span>Pepperstone Group Ltd</span></div></div>
   <div class="field"><label>Server</label><div class="input"><span>Pepperstone-MT5-Live02</span></div></div>
   <div class="field"><label>Account</label><div class="input"><span>#78425139 · LIVE</span><span class="tag-ok">BOUND</span></div></div>
@@ -94,7 +94,7 @@ function settings(){crumb.textContent='MT5 Settings';return head('TERMINAL CONFI
  </div><div class="warnbox">A second EA instance on the same account is refused. A Live slot and Demo slot are bound independently, following the DrFXQuant protection model.</div></section>
  <section class="card setting-card"><h3>Execution controls</h3><p>Risk is recomputed locally from the broker contract specification before sending an order.</p>
   <div class="toggle-row"><div><b>Enable automated trading</b><small>Off = dry-run logs only</small></div><div class="switch on"></div></div>
-  <div class="toggle-row"><div><b>Attach broker-side final TP</b><small>TP3 remains active if Agent disconnects</small></div><div class="switch on"></div></div>
+  <div class="toggle-row"><div><b>Attach broker-side final TP</b><small>TP3 remains active if cloud disconnects</small></div><div class="switch on"></div></div>
   <div class="toggle-row"><div><b>TP2 partial + break-even</b><small>Bank half remaining volume and move SL to cost</small></div><div class="switch on"></div></div>
   <div class="toggle-row"><div><b>Minimum-lot fallback</b><small>Allowed only under configured risk ceiling</small></div><div class="switch on"></div></div>
  </section>

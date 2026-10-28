@@ -4,6 +4,17 @@ const MODES=new Set(['dry_run','demo_execute']);
 
 export function normalizeExecutionMode(value){return MODES.has(value)?value:'dry_run';}
 
+export function correlationTag(value){
+ const s=String(value||'');
+ let a=2166136261>>>0,b=2246822519>>>0;
+ for(let i=0;i<s.length;i++){
+  const n=s.charCodeAt(i);
+  a=Math.imul(a^n,16777619)>>>0;
+  b=Math.imul(b^(n+i),3266489917)>>>0;
+ }
+ return (a.toString(16).padStart(8,'0')+b.toString(16).padStart(8,'0')).slice(0,12);
+}
+
 export function validateTestSignal(body,nowMs=Date.now()){
  if(!body||typeof body!=='object'||Array.isArray(body))throw new Error('INVALID_TEST_SIGNAL');
  const side=String(body.side||'').toUpperCase(),symbol=String(body.symbol||'').toUpperCase();
@@ -24,6 +35,7 @@ export function makeCommand({tenantId,agentId,sourceType,sourceRef,signal,mode,c
  return {protocol:'signalbridge-command/1',command_id:commandId,tenant_id:tenantId,agent_id:agentId,
   source:{type:sourceType,ref:sourceRef||null},
   correlation_id:String(signal.correlation_id||signal.external_signal_id||commandId),
+  correlation_tag:correlationTag(signal.correlation_id||signal.external_signal_id||commandId),
   execution_mode:normalizeExecutionMode(mode),action:signal.action,
   management_event:signal.management_event||null,side:signal.side||null,symbol:signal.symbol||null,order:signal.order||null,
   occurred_at:signal.occurred_at||new Date().toISOString(),expires_at:signal.expires_at||null};

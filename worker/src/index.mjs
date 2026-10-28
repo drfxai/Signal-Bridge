@@ -116,6 +116,22 @@ async function openAgentSocket(request,env){
  return stub.fetch(new Request('https://agent-hub/ws',{method:'GET',headers:h}));
 }
 
+async function openEaSocket(request,env){
+ if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return error('UPGRADE_REQUIRED',426);
+ const agent=await authenticateAgent(request,env);
+ if(!agent)return error('UNAUTHORIZED',401);
+ const stub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(agent.id));
+ const h=new Headers(request.headers);
+ h.set('x-sb-agent-id',agent.id);h.set('x-sb-tenant-id',agent.tenant_id);h.set('x-sb-client-role','ea');
+ if(agent.account_login)h.set('x-sb-account-login',agent.account_login);
+ if(agent.account_server)h.set('x-sb-account-server',agent.account_server);
+ h.delete('authorization');
+ const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
+ if(protocols.includes('signalbridge-ea-v1'))h.set('sec-websocket-protocol','signalbridge-ea-v1');else h.delete('sec-websocket-protocol');
+ await env.DB.prepare('UPDATE agent_connections SET last_connected_at=CURRENT_TIMESTAMP WHERE id=?').bind(agent.id).run();
+ return stub.fetch(new Request('https://agent-hub/ws',{method:'GET',headers:h}));
+}
+
 async function openDashboardSocket(request,env){
  if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return error('UPGRADE_REQUIRED',426);
  const agent=await authenticateAgent(request,env);if(!agent)return error('UNAUTHORIZED',401);
@@ -224,8 +240,12 @@ export async function handleRequest(request,env){
  if(url.pathname==='/test'&&request.method==='GET')return html(TEST_UI);
  if(url.pathname==='/health'&&request.method==='GET')return json({
   service:'signalbridge-ingress',ok:true,deployment_tier:env?.DEPLOYMENT_TIER||'unknown',
-  d1:!!env?.DB,agent_hub:!!env?.AGENT_HUB,websocket_agent_transport:true,execution_enabled:false,demo_execution_supported:true
+  d1:!!env?.DB,agent_hub:!!env?.AGENT_HUB,direct_ea_websocket:true,legacy_agent_transport:true,execution_enabled:false,demo_execution_supported:true
  });
+ if(url.pathname==='/v1/ea/ws'){
+  if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,allow:'GET'}});
+  try{return await openEaSocket(request,env)}catch(e){console.error('ea ws',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}
+ }
  if(url.pathname==='/v1/agent/ws'){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,allow:'GET'}});
   try{return await openAgentSocket(request,env)}catch(e){console.error('agent ws',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}

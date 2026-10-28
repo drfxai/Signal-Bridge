@@ -5,11 +5,57 @@ export function terminalReadyAttachment(a){return !!(a&&a.terminalOnline===true&
 export function shouldReplayAfterTerminalState(previousReady,currentAttachment){return previousReady!==true&&terminalReadyAttachment(currentAttachment)}
 const safe=(v,n=160)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').slice(0,n);
 function parseMessage(message){if(typeof message!=='string'||message.length>16384)return null;try{const b=JSON.parse(message);return b&&typeof b==='object'&&!Array.isArray(b)?b:null}catch{return null}}
+function parseEaLine(message){if(typeof message!=='string'||message.length>16384)return null;const p=message.trim().split('|');return p[0]?p:null}
+function eaCorrelationTag(value){
+ const s=String(value||'');let a=2166136261>>>0,b=2246822519>>>0;
+ for(let i=0;i<s.length;i++){const n=s.charCodeAt(i);a=Math.imul(a^n,16777619)>>>0;b=Math.imul(b^(n+i),3266489917)>>>0}
+ return (a.toString(16).padStart(8,'0')+b.toString(16).padStart(8,'0')).slice(0,12);
+}
+function encodeEaCommand(c){
+ const o=c.order||{},t=Array.isArray(o.take_profits)?o.take_profits:[],expiry=c.expires_at?Date.parse(c.expires_at):0;
+ return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0].join('|');
+}
 
 export class AgentHub{
  constructor(ctx,env){this.ctx=ctx;this.env=env}
  broadcast(event){for(const ws of this.ctx.getWebSockets()){const a=ws.deserializeAttachment()||{};if(a.role==='observer'&&ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(event))}catch{}}}}
- currentAgentSockets(){return this.ctx.getWebSockets().filter(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='agent'&&ws.readyState===WebSocket.OPEN})}
+ currentExecutionSockets(){return this.ctx.getWebSockets().filter(ws=>{const a=ws.deserializeAttachment()||{};return (a.role==='agent'||a.role==='ea')&&ws.readyState===WebSocket.OPEN})}
+ currentAgentSockets(){return this.currentExecutionSockets()}
+ sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}))}
+ async bindEaAccount(a,account,ws){
+  if(a.expectedLogin&&a.expectedLogin!==account.login){ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false}
+  if(a.expectedServer&&a.expectedServer!==account.server){ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false}
+  if(!a.expectedLogin||!a.expectedServer){
+   const result=await this.env.DB.prepare(`UPDATE agent_connections SET account_login=COALESCE(account_login,?),account_server=COALESCE(account_server,?) WHERE id=? AND status='active' AND (account_login IS NULL OR account_login=?) AND (account_server IS NULL OR account_server=?)`).bind(account.login,account.server,a.agentId,account.login,account.server).run();
+   if(!result?.success||result.meta?.changes!==1){ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account binding rejected');return false}
+   a.expectedLogin=account.login;a.expectedServer=account.server;
+  }
+  return true;
+ }
+ async handleEaMessage(ws,message,a){
+  const p=parseEaLine(message);if(!p){ws.send('ERR|INVALID_MESSAGE');return}
+  a.lastSeenAt=new Date().toISOString();
+  if(p[0]==='HELLO'||p[0]==='HB'){
+   if(p.length<7){ws.send('ERR|INVALID_TERMINAL_STATE');return}
+   const account={login:safe(p[1],64),server:safe(p[2],120),mode:safe(p[3],32),balance:Number.isFinite(Number(p[4]))?Number(p[4]):null,equity:Number.isFinite(Number(p[5]))?Number(p[5]):null,positions:Number.isFinite(Number(p[6]))?Number(p[6]):null,cloud_rtt_ms:Number.isFinite(Number(p[7]))?Math.max(0,Math.min(60000,Number(p[7]))):null};
+   if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
+   const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;ws.serializeAttachment(a);
+   this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
+   if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));
+   ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now());return;
+  }
+  if(p[0]==='PING'){ws.send('PONG|'+safe(p[1],32)+'|'+Date.now());return}
+  if(p[0]==='RCPT'){
+   const commandId=safe(p[1],64),status=safe(p[2],32);if(!commandId||!RECEIPT_STATES.has(status)){ws.send('ERR|INVALID_RECEIPT');return}
+   const ticket=safe(p[3],64)||null,retcode=Number.isFinite(Number(p[4]))?Number(p[4]):null,detail=safe(p.slice(5).join('|'),300)||null;
+   const current=await this.env.DB.prepare('SELECT status FROM commands WHERE id=? AND agent_id=? LIMIT 1').bind(commandId,a.agentId).first();
+   if(!current){ws.send('RACK|'+commandId+'|'+status+'|0|COMMAND_NOT_FOUND');return}
+   if(!receiptTransitionAllowed(current.status,status)){ws.send('RACK|'+commandId+'|'+status+'|0|INVALID_TRANSITION');return}
+   const result=await this.env.DB.prepare(`UPDATE commands SET status=?,broker_ticket=COALESCE(?,broker_ticket),broker_retcode=COALESCE(?,broker_retcode),last_error=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND agent_id=? AND status=?`).bind(status,ticket,retcode,(status==='REJECTED'||status==='BROKER_REJECTED'||status==='ERROR'||status==='ACCOUNT_MISMATCH')?detail:null,commandId,a.agentId,current.status).run();
+   const stored=result?.meta?.changes===1;ws.serializeAttachment(a);if(stored)this.broadcast({type:'receipt',command_id:commandId,status,broker_ticket:ticket,broker_retcode:retcode,detail,server_time:new Date().toISOString()});ws.send('RACK|'+commandId+'|'+status+'|'+(stored?'1':'0'));return;
+  }
+  ws.send('ERR|UNSUPPORTED_MESSAGE');
+ }
  async replay(agentId,ws){
   const attachment=ws.deserializeAttachment()||{};if(!terminalReadyAttachment(attachment))return;
   const q=await this.env.DB.prepare("SELECT id,payload_json FROM commands WHERE agent_id=? AND status IN ('PENDING','DELIVERED') ORDER BY CASE WHEN status='PENDING' THEN 0 ELSE 1 END, created_at ASC LIMIT 200").bind(agentId).all();
@@ -21,7 +67,7 @@ export class AgentHub{
     continue;
    }
    if(ws.readyState===WebSocket.OPEN){
-    ws.send(JSON.stringify({type:'command',...cmd,replay:true}));
+    this.sendCommand(ws,cmd,true);
     await this.env.DB.prepare("UPDATE commands SET status='DELIVERED',delivered_at=COALESCE(delivered_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('PENDING','DELIVERED')").bind(row.id).run();
    }
   }
@@ -30,13 +76,13 @@ export class AgentHub{
   const url=new URL(request.url);
   if(url.pathname==='/ws'){
    if((request.headers.get('upgrade')||'').toLowerCase()!=='websocket')return json({error:'UPGRADE_REQUIRED'},426);
-   const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'';if(!agentId||!tenantId)return json({error:'UNAUTHORIZED'},401);
-   for(const old of this.currentAgentSockets()){try{old.close(4001,'superseded by newer agent connection')}catch{}}
+   const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'',role=request.headers.get('x-sb-client-role')==='ea'?'ea':'agent';if(!agentId||!tenantId)return json({error:'UNAUTHORIZED'},401);
+   for(const old of this.currentExecutionSockets()){try{old.close(4001,'superseded by newer execution connection')}catch{}}
    const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
-   server.serializeAttachment({role:'agent',agentId,tenantId,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
-   server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
+   server.serializeAttachment({role,agentId,tenantId,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
+   if(role==='ea')server.send('READY|signalbridge-ea/1|demo_only');else server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
-   const selected=protocols.includes('signalbridge-agent-v1')?'signalbridge-agent-v1':null;
+   const wanted=role==='ea'?'signalbridge-ea-v1':'signalbridge-agent-v1',selected=protocols.includes(wanted)?wanted:null;
    return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
   }
   if(url.pathname==='/observer'){
@@ -44,7 +90,7 @@ export class AgentHub{
    const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'';if(!agentId||!tenantId)return json({error:'UNAUTHORIZED'},401);
    const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
    server.serializeAttachment({role:'observer',agentId,tenantId,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString()});
-   const agents=this.currentAgentSockets(),a=agents[0]?.deserializeAttachment?.()||{};
+   const agents=this.currentExecutionSockets(),a=agents[0]?.deserializeAttachment?.()||{};
    server.send(JSON.stringify({type:'dashboard_snapshot',agent_online:agents.length>0,terminal_online:terminalReadyAttachment(a),account:a.account||null,server_time:new Date().toISOString()}));
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
    const selected=protocols.includes('signalbridge-dashboard-v1')?'signalbridge-dashboard-v1':null;
@@ -52,20 +98,21 @@ export class AgentHub{
   }
   if(url.pathname==='/dispatch'&&request.method==='POST'){
    const body=await request.json().catch(()=>null);if(!body||body.protocol!=='signalbridge-command/1'||!body.command_id)return json({error:'BAD_COMMAND'},400);
-   const sockets=this.currentAgentSockets();if(!sockets.length)return json({ok:true,delivered:0,reason:'AGENT_OFFLINE'});
+   const sockets=this.currentExecutionSockets();if(!sockets.length)return json({ok:true,delivered:0,reason:'EA_OFFLINE'});
    const socket=sockets.find(ws=>terminalReadyAttachment(ws.deserializeAttachment()||{}));
    if(!socket)return json({ok:true,delivered:0,reason:'TERMINAL_OFFLINE'});
-   socket.send(JSON.stringify({type:'command',...body}));this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
+   this.sendCommand(socket,body,false);this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
   }
   if(url.pathname==='/snapshot'&&request.method==='GET'){
-   const clients=this.currentAgentSockets().map(ws=>{const a=ws.deserializeAttachment()||{};return {agent_id:a.agentId||null,connected_at:a.connectedAt||null,last_seen_at:a.lastSeenAt||null,terminal_online:a.terminalOnline===true,account:a.account||null}});
+   const clients=this.currentExecutionSockets().map(ws=>{const a=ws.deserializeAttachment()||{};return {agent_id:a.agentId||null,client_type:a.role||null,connected_at:a.connectedAt||null,last_seen_at:a.lastSeenAt||null,terminal_online:a.terminalOnline===true,account:a.account||null}});
    return json({connected:clients.length,clients});
   }
   return json({error:'NOT_FOUND'},404);
  }
  async webSocketMessage(ws,message){
-  const body=parseMessage(message);if(!body){ws.send(JSON.stringify({type:'error',code:'INVALID_MESSAGE'}));return}
   const a=ws.deserializeAttachment()||{};a.lastSeenAt=new Date().toISOString();
+  if(a.role==='ea'){await this.handleEaMessage(ws,message,a);return}
+  const body=parseMessage(message);if(!body){ws.send(JSON.stringify({type:'error',code:'INVALID_MESSAGE'}));return}
   if(a.role==='observer'){if(body.type==='ping')ws.send(JSON.stringify({type:'pong',server_time:new Date().toISOString()}));else ws.send(JSON.stringify({type:'error',code:'OBSERVER_READ_ONLY'}));return}
   if(a.role!=='agent'){ws.send(JSON.stringify({type:'error',code:'UNAUTHORIZED_SOCKET'}));return}
   if(body.type==='terminal_state'){
