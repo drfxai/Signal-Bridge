@@ -35,6 +35,9 @@ test('no live checkout when payment keys are absent',()=>{
  assert.match(worker,/x-nowpayments-sig/);
  assert.match(worker,/HMAC/);
  assert.match(worker,/payment_status!=='finished'/);
+ assert.match(worker,/site_orders WHERE id=\? AND status='pending'/);
+ assert.match(worker,/env.DB.batch/);
+ assert.match(worker,/url.hostname===\x27nowpayments.io\x27/);
  assert.match(worker,/API_ORIGIN\+'\/api\/payments\/ipn'/);
 });
 test('license issuance is random and encrypted at rest, sign-in gated',()=>{
@@ -53,4 +56,10 @@ test('admin operations are role gated and email sign-in verifies code',()=>{
  assert.match(worker,/consumeCode\(env,'email'/);
  assert.match(worker,/ADMIN_EMAIL/);
  assert.match(worker,/telegramWebhook/);
+});
+
+test('Telegram bot exposes admin user lookup, grant and suspension operations behind admin gate',()=>{
+ for(const cmd of ['/users','/detail','/grant','/suspend','/resume','/revoke']) assert.ok(worker.includes("command==='"+cmd+"'")||worker.includes("'/"+cmd.slice(1)+"'"),cmd);
+ assert.match(worker,/user.role==='admin'/);
+ assert.match(worker,/botSend/);
 });
