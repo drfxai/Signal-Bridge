@@ -2,6 +2,7 @@ const json=(value,status=200)=>new Response(JSON.stringify(value),{status,header
 const RECEIPT_STATES=new Set(['PREVIEWED','SUBMITTED','FILLED','BROKER_REJECTED','REJECTED','ACCOUNT_MISMATCH','EXPIRED','ERROR','DUPLICATE']);
 export function receiptTransitionAllowed(from,to){if(from===to)return true;if(from==='PENDING'||from==='DELIVERED')return RECEIPT_STATES.has(to);if(from==='SUBMITTED')return ['FILLED','BROKER_REJECTED','ERROR','DUPLICATE'].includes(to);return false}
 export function terminalReadyAttachment(a){return !!(a&&a.terminalOnline===true&&a.account&&a.account.login&&a.account.server)}
+export function shouldReplayAfterTerminalState(previousReady,currentAttachment){return previousReady!==true&&terminalReadyAttachment(currentAttachment)}
 const safe=(v,n=160)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').slice(0,n);
 function parseMessage(message){if(typeof message!=='string'||message.length>16384)return null;try{const b=JSON.parse(message);return b&&typeof b==='object'&&!Array.isArray(b)?b:null}catch{return null}}
 
@@ -10,6 +11,7 @@ export class AgentHub{
  broadcast(event){for(const ws of this.ctx.getWebSockets()){const a=ws.deserializeAttachment()||{};if(a.role==='observer'&&ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(event))}catch{}}}}
  currentAgentSockets(){return this.ctx.getWebSockets().filter(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='agent'&&ws.readyState===WebSocket.OPEN})}
  async replay(agentId,ws){
+  const attachment=ws.deserializeAttachment()||{};if(!terminalReadyAttachment(attachment))return;
   const q=await this.env.DB.prepare("SELECT id,payload_json FROM commands WHERE agent_id=? AND status IN ('PENDING','DELIVERED') ORDER BY CASE WHEN status='PENDING' THEN 0 ELSE 1 END, created_at ASC LIMIT 200").bind(agentId).all();
   for(const row of q?.results||[]){
    let cmd;try{cmd=JSON.parse(row.payload_json)}catch{continue}
@@ -33,7 +35,6 @@ export class AgentHub{
    const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
    server.serializeAttachment({role:'agent',agentId,tenantId,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
    server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
-   this.ctx.waitUntil(this.replay(agentId,server));
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
    const selected=protocols.includes('signalbridge-agent-v1')?'signalbridge-agent-v1':null;
    return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
@@ -68,6 +69,7 @@ export class AgentHub{
   if(a.role==='observer'){if(body.type==='ping')ws.send(JSON.stringify({type:'pong',server_time:new Date().toISOString()}));else ws.send(JSON.stringify({type:'error',code:'OBSERVER_READ_ONLY'}));return}
   if(a.role!=='agent'){ws.send(JSON.stringify({type:'error',code:'UNAUTHORIZED_SOCKET'}));return}
   if(body.type==='terminal_state'){
+   const wasReady=terminalReadyAttachment(a);
    if(body.online===false){a.terminalOnline=false;a.account=null;ws.serializeAttachment(a);this.broadcast({type:'terminal_state',agent_online:true,terminal_online:false,account:null,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'terminal_state_ack',online:false}));return}
    if(body.online!==true||!body.account||typeof body.account!=='object'){ws.send(JSON.stringify({type:'error',code:'INVALID_TERMINAL_STATE'}));return}
    const account={login:safe(body.account.login,64),server:safe(body.account.server,120),mode:safe(body.account.mode,32),balance:Number.isFinite(Number(body.account.balance))?Number(body.account.balance):null,equity:Number.isFinite(Number(body.account.equity))?Number(body.account.equity):null,positions:Number.isFinite(Number(body.account.positions))?Number(body.account.positions):null,cloud_rtt_ms:Number.isFinite(Number(body.account.cloud_rtt_ms))?Math.max(0,Math.min(60000,Number(body.account.cloud_rtt_ms))):null};
@@ -79,7 +81,7 @@ export class AgentHub{
     if(!result?.success||result.meta?.changes!==1){ws.send(JSON.stringify({type:'error',code:'ACCOUNT_MISMATCH'}));ws.close(1008,'account binding rejected');return}
     a.expectedLogin=account.login;a.expectedServer=account.server;
    }
-   a.account=account;a.terminalOnline=true;a.lastSeenAt=new Date().toISOString();ws.serializeAttachment(a);this.broadcast({type:'terminal_state',agent_online:true,terminal_online:true,account,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'terminal_state_ack',online:true}));return;
+   a.account=account;a.terminalOnline=true;a.lastSeenAt=new Date().toISOString();ws.serializeAttachment(a);this.broadcast({type:'terminal_state',agent_online:true,terminal_online:true,account,server_time:new Date().toISOString()});if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));ws.send(JSON.stringify({type:'terminal_state_ack',online:true}));return;
   }
   if(body.type==='latency_report'){
    const rtt=Number(body.cloud_rtt_ms);if(!Number.isFinite(rtt)||rtt<0||rtt>60000){ws.send(JSON.stringify({type:'error',code:'INVALID_LATENCY_REPORT'}));return}
@@ -87,6 +89,7 @@ export class AgentHub{
    this.broadcast({type:'latency',cloud_rtt_ms:Math.round(rtt),server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'latency_ack',cloud_rtt_ms:Math.round(rtt)}));return;
   }
   if(body.type==='heartbeat'){
+   const wasReady=terminalReadyAttachment(a);
    const account=body.account&&typeof body.account==='object'?{login:safe(body.account.login,64),server:safe(body.account.server,120),mode:safe(body.account.mode,32),balance:Number.isFinite(Number(body.account.balance))?Number(body.account.balance):null,equity:Number.isFinite(Number(body.account.equity))?Number(body.account.equity):null,positions:Number.isFinite(Number(body.account.positions))?Number(body.account.positions):null,cloud_rtt_ms:Number.isFinite(Number(body.account.cloud_rtt_ms))?Math.max(0,Math.min(60000,Number(body.account.cloud_rtt_ms))):null}:null;
    if(account){
     if(a.expectedLogin&&a.expectedLogin!==account.login){ws.send(JSON.stringify({type:'error',code:'ACCOUNT_MISMATCH'}));ws.close(1008,'account mismatch');return}
@@ -97,17 +100,17 @@ export class AgentHub{
      a.expectedLogin=account.login;a.expectedServer=account.server;
     }a.account=account;a.terminalOnline=true;
    }
-   ws.serializeAttachment(a);if(account)this.broadcast({type:'account_telemetry',agent_online:true,terminal_online:true,account,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'heartbeat_ack',server_time:new Date().toISOString()}));return;
+   ws.serializeAttachment(a);if(account){this.broadcast({type:'account_telemetry',agent_online:true,terminal_online:true,account,server_time:new Date().toISOString()});if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));}ws.send(JSON.stringify({type:'heartbeat_ack',server_time:new Date().toISOString()}));return;
   }
   if(body.type==='receipt'){
    const commandId=safe(body.command_id,64),status=safe(body.status,32);if(!commandId||!RECEIPT_STATES.has(status)){ws.send(JSON.stringify({type:'error',code:'INVALID_RECEIPT'}));return}
    const ticket=safe(body.broker_ticket,64)||null,retcode=Number.isFinite(Number(body.broker_retcode))?Number(body.broker_retcode):null,detail=safe(body.detail,300)||null;
    const current=await this.env.DB.prepare('SELECT status FROM commands WHERE id=? AND agent_id=? LIMIT 1').bind(commandId,a.agentId).first();
-   if(!current){ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,stored:false,code:'COMMAND_NOT_FOUND'}));return}
-   if(!receiptTransitionAllowed(current.status,status)){ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,stored:false,code:'INVALID_TRANSITION',from:current.status,to:status}));return}
+   if(!current){ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,status,stored:false,code:'COMMAND_NOT_FOUND'}));return}
+   if(!receiptTransitionAllowed(current.status,status)){ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,status,stored:false,code:'INVALID_TRANSITION',from:current.status,to:status}));return}
    const result=await this.env.DB.prepare(`UPDATE commands SET status=?,broker_ticket=COALESCE(?,broker_ticket),broker_retcode=COALESCE(?,broker_retcode),last_error=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND agent_id=? AND status=?`)
     .bind(status,ticket,retcode,(status==='REJECTED'||status==='BROKER_REJECTED'||status==='ERROR'||status==='ACCOUNT_MISMATCH')?detail:null,commandId,a.agentId,current.status).run();
-   const stored=result?.meta?.changes===1;ws.serializeAttachment(a);if(stored)this.broadcast({type:'receipt',command_id:commandId,status,broker_ticket:ticket,broker_retcode:retcode,detail,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,stored}));return;
+   const stored=result?.meta?.changes===1;ws.serializeAttachment(a);if(stored)this.broadcast({type:'receipt',command_id:commandId,status,broker_ticket:ticket,broker_retcode:retcode,detail,server_time:new Date().toISOString()});ws.send(JSON.stringify({type:'receipt_ack',command_id:commandId,status,stored}));return;
   }
   ws.send(JSON.stringify({type:'error',code:'UNSUPPORTED_MESSAGE'}));
  }
