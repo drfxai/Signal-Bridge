@@ -8,7 +8,7 @@ const API_ORIGIN='https://drfx.company';
 const encoder=new TextEncoder();
 const json=(data,status=200,extra={})=>new Response(JSON.stringify(data),{status,headers:{...HEAD,'content-type':'application/json; charset=utf-8',...extra}});
 const fail=(code,status=400)=>json({ok:false,error:code},status);
-const asset=(body,type)=>new Response(body,{headers:{...HEAD,'content-type':type,'cache-control':'public,max-age=3600','content-security-policy':"default-src 'none'; style-src 'self'; script-src 'self'"}});
+const asset=(body,type)=>new Response(body,{headers:{...HEAD,'content-type':type,'cache-control':'no-cache, must-revalidate','content-security-policy':"default-src 'none'; style-src 'self'; script-src 'self'"}});
 const uid=prefix=>prefix+'_'+crypto.randomUUID().replaceAll('-','');
 const rand=(size=32)=>{const a=new Uint8Array(size);crypto.getRandomValues(a);return a;};
 const b64=a=>btoa(String.fromCharCode(...a));
