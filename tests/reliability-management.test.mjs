@@ -19,7 +19,7 @@ test('agent/EA wire protocol includes management event and deterministic trade t
 });
 test('AgentHub enforces one socket and replays pending commands',()=>{
  const hub=fs.readFileSync(new URL('../worker/src/agent-hub.mjs',import.meta.url),'utf8');
- assert.match(hub,/superseded by newer agent connection/);assert.match(hub,/status IN \('PENDING','DELIVERED'\)/);assert.match(hub,/replay:true/);
+ assert.match(hub,/superseded by newer execution connection/);assert.match(hub,/status IN \('PENDING','DELIVERED'\)/);assert.match(hub,/replay:true/);
 });
 test('Telegram requires explicit pairing before chat binding',()=>{
  const index=fs.readFileSync(new URL('../worker/src/index.mjs',import.meta.url),'utf8');
