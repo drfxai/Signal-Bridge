@@ -15,7 +15,7 @@ SignalBridge is a low-latency, replay-safe signal bridge built around Cloudflare
 - Account-scoped Durable Object WebSocket transport.
 - Read-only realtime dashboard observer WebSocket that does not replace the execution Agent.
 - Windows SignalBridge Agent using persistent Cloudflare WebSocket + localhost TCP to MT5.
-- MT5 EA v0.22 with:
+- MT5 EA v0.23 with:
   - DEMO-only execution gate;
   - broker-side SL/TP/spread/lot checks;
   - risk-percent sizing from real broker contract values;
@@ -53,11 +53,11 @@ The dashboard uses authenticated API reads plus a separate read-only observer We
 
 ## Remaining release gates
 
-- Compile/QA EA v0.22 in real MetaEditor/MT5 and confirm zero compile errors.
-- Run real DEMO end-to-end tests for TradingView and Telegram.
+- Compile/QA EA v0.23 in real MetaEditor/MT5 and confirm zero compile errors.
+- Run real DEMO end-to-end tests for TradingView and Telegram, including hedging and netting accounts.
 - Complete netting-account TP1/TP2 management behavior.
-- Add/verify Cloudflare zone rate limiting and quota monitoring.
-- Run reconnect/chaos and 100 → 250 → 500 session/load tests.
+- Cloudflare dashboard/test rate limiting is active; add quota/usage alerting from measured analytics.
+- Run reconnect/chaos tests and validate the offline 100 → 250 → 500 capacity model against measured Cloudflare analytics.
 - Add production owner/session authentication before multi-user dashboard rollout.
 - Independent security review before any live-money mode is considered.
 
@@ -67,7 +67,7 @@ The dashboard uses authenticated API reads plus a separate read-only observer We
 npm run check
 ```
 
-The canonical EA is `mt5/DrFX_SignalBridge_EA.mq5`; versioned release source is currently `mt5/DrFX_SignalBridge_EA_v0.22.mq5`.
+The canonical EA is `mt5/DrFX_SignalBridge_EA.mq5`; versioned release source is currently `mt5/DrFX_SignalBridge_EA_v0.23.mq5`.
 
 ## Attribution
 
