@@ -22,7 +22,7 @@ Files `v0.20`, `v0.21` and `v0.22` are retained only as source history. Do not i
 - persistent command→trade reconciliation across terminal restart;
 - broker `DEAL_POSITION_ID` / `POSITION_IDENTIFIER` tracking independent of comments;
 - hedging TP1/TP2 partial close;
-- netting TP1/TP2 reduction via opposite deal to an absolute target volume;
+- retail-netting TP1/TP2 reduction via opposite deal to an absolute target volume;
 - fail-closed block if a netting symbol already has any open position;
 - broker-history duplicate detection;
 - local risk, spread, symbol, lot, SL/TP and DEMO checks;
