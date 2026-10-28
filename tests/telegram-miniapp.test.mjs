@@ -148,7 +148,7 @@ test('Mini App clears private EA activation material on failed session refresh',
  assert.match(MINI_JS,/catch\(error\)\{\s*clearPrivateAccount\(\)/);
  assert.match(MINI_HTML,/id="retrySignIn"[^>]*hidden/);
  assert.match(MINI_JS,/\$\('retrySignIn'\)\.addEventListener\('click',start\)/);
- assert.match(MINI_HTML,/telegram-mini\.js\?v=20261028-mobile-v3/);
+ assert.match(MINI_HTML,/telegram-mini\.js\?v=20261028-mobile-v4/);
 });
 test('Persian translation covers account safety, MT5 onboarding, and error states',()=>{
  for(const label of [
