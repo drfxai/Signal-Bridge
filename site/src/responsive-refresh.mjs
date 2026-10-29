@@ -1,5 +1,19 @@
 // Consistent dimensions for the marketing site, member workspace and Mini App.
 export const RESPONSIVE_REFRESH=String.raw`
+/* Intrinsic showcase badge: never stretch to the heading height. */
+#product-gallery{padding:64px 32px}#product-gallery>div{max-width:1216px;margin-inline:auto}
+#product-gallery .drfx-gallery-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:28px}
+#product-gallery .drfx-gallery-head>div{min-width:0;max-width:760px}
+#product-gallery .drfx-gallery-badge{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;align-self:flex-end;width:max-content;max-width:100%;height:auto;min-height:0;padding:9px 12px;border:1px solid #38db9e40;border-radius:999px;background:#38db9e0a;color:#81dec0;font:500 11px/1.3 "JetBrains Mono",monospace;letter-spacing:.04em;white-space:nowrap}
+#product-gallery .drfx-gallery-badge i{display:block;flex:none;width:6px;height:6px;border-radius:50%;background:#38db9e;box-shadow:0 0 10px #38db9e40}
+#product-gallery .drfx-gallery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+#product-gallery figure{margin:0;min-width:0;border:1px solid #d4af3733;border-radius:16px;background:#0c1119;overflow:hidden;transition:border-color .25s,box-shadow .25s}
+#product-gallery figure:hover{border-color:#d4af3770;box-shadow:0 8px 28px #0004}
+#product-gallery figure img{display:block;width:100%;height:auto;aspect-ratio:12/7;object-fit:contain}
+#product-gallery figcaption{padding:16px 18px;font-size:15px;line-height:1.5;font-weight:600;border-top:1px solid #ffffff0a}
+#product-gallery [data-i18n=gallery_note]{margin-top:16px;font-size:12px;line-height:1.6;color:#8897aa}
+@media(max-width:900px){#product-gallery .drfx-gallery-head{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:24px}#product-gallery .drfx-gallery-badge{align-self:flex-start}#product-gallery .drfx-gallery-grid{grid-template-columns:1fr;gap:16px}#product-gallery figure{max-width:640px;width:100%;justify-self:center}}
+
 #preloader{display:none!important}html{scroll-padding-top:90px}body{font-size:16px;line-height:1.6}body[dir=rtl]{font-family:Vazirmatn,system-ui,sans-serif}
 body>section{scroll-margin-top:90px}#scalper img,#suite img,#product-gallery img{max-width:100%;height:auto;object-fit:contain}.sx-shot-wrap img{aspect-ratio:16/10;object-fit:contain}
 .sx-sp-card{overflow-wrap:anywhere}.sx-sp-hero p,.sx-sp-hint,.sx-sp-msg,.sx-sp-guide li{font-size:14px;line-height:1.7}.sx-sp-buy label,.sx-sp-card h5{font-size:12px;line-height:1.5}.sx-sp-plans button small{font-size:12px}.sx-sp-guide{gap:12px}

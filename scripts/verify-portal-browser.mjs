@@ -32,6 +32,12 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   await page.locator('#preloader').waitFor({state:'hidden'});
   await page.evaluate(async()=>{for(let y=0;y<document.documentElement.scrollHeight;y+=innerHeight*.8){scrollTo({top:y,behavior:'instant'});await new Promise(r=>setTimeout(r,90))}scrollTo({top:0,behavior:'instant'})});
   await page.waitForFunction(()=>[...document.querySelectorAll('.sx-reveal.sx-in,.reveal-cinema.active')].every(e=>Number(getComputedStyle(e).opacity)>.99));
+  const badgeBox=await page.locator('.drfx-gallery-badge').boundingBox();
+  if(!badgeBox||badgeBox.height>40||badgeBox.width>300)throw Error('Showcase badge must stay compact');
+  const headBox=await page.locator('.drfx-gallery-head').boundingBox();
+  const gridBox=await page.locator('.drfx-gallery-grid').boundingBox();
+  if(headBox.y+headBox.height>gridBox.y+1)throw Error('Showcase heading overlaps previews');
+  await page.locator('#product-gallery').screenshot({path:dir+'/'+label+'-showcase.png'});
   await page.screenshot({path:dir+'/'+label+'-landing.png',fullPage:true});
  }
  if(url==='/')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
