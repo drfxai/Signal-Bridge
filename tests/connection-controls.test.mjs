@@ -89,3 +89,17 @@ test('license heartbeat refreshes expiry and rejects corrupted expiry dates',asy
  f.db.prepare("UPDATE ea_licenses SET expires_at='2099-02-01 00:00:00'").run();assert.equal(await hub.licenseIsValid(a),true);assert.equal(a.licenseExpires,'2099-02-01 00:00:00');
  f.db.prepare("UPDATE ea_licenses SET expires_at='invalid'").run();assert.equal(await hub.licenseIsValid(a),false);f.db.close();
 });
+
+test('failed preflight does not consume the test rate-limit budget',async()=>{
+ const f=fixture();f.snapshot.capabilities=[];
+ assert.equal((await f.request('/api/connection/test-demo',{confirm:true})).status,409);
+ assert.equal(f.db.prepare('SELECT count(*) AS n FROM site_rate_limits').get().n,0);
+ f.snapshot.capabilities=['timed-test-v1'];
+ assert.equal((await f.request('/api/connection/test-demo',{confirm:true})).status,202);f.db.close();
+});
+test('missing site-to-ingress hub binding is reported explicitly without dispatch',async()=>{
+ const f=fixture();delete f.env.AGENT_HUB;
+ const response=await f.request('/api/connection/test-demo',{confirm:true});assert.equal(response.status,503);
+ assert.equal((await response.json()).error,'EA_HUB_NOT_CONFIGURED');assert.equal(f.calls.length,0);
+ const config=await (await f.request('/api/config')).json();assert.equal(config.ea_hub,false);assert.equal(config.release,'signalbridge-connectivity-20261029.1');f.db.close();
+});

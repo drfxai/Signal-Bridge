@@ -291,7 +291,8 @@ export const MINI_JS=String.raw`(() => {
 async function refreshMiniConnection(){
  if(!state.user)return;
  try{
-  const [c,w]=await Promise.all([api('/api/connection/check'),api('/api/webhook')]);
+  const c=await api('/api/connection/check');
+  const w=await api('/api/webhook').catch(()=>({webhook:null}));
   const d=c.diagnostic||{};
   set('miniConnectionLicense',d.license==='active'?'ACTIVE':'INACTIVE');
   set('miniConnectionLast',d.live_snapshot_available?(d.terminal_online?'● MT5 ONLINE':d.live_socket_verified?'● EA CONNECTED':'● EA OFFLINE'):(d.last_handshake||'Live status unknown'));
