@@ -59,3 +59,10 @@ export const ACCOUNT_LAYOUT_CSS = String.raw`
 #portalOverlay .portal-serial h3,#portalOverlay .portal-guide h3,#portalOverlay .portal-checkout h3{font-size:18px}
 @media(max-width:700px){#portalOverlay .portal-cards{grid-template-columns:1fr}#portalOverlay .serial-control{min-width:0;width:100%}#portalOverlay .portal-card{min-height:0}#portalOverlay .portal-serial{gap:12px}#portalOverlay .serial{max-width:100%;font-size:12px}#portalOverlay .portal-bridge-tools{padding:14px}}
 `;
+
+export const REPAIR_CSS=String.raw`
+.sb-console,.portal-content{min-width:0}.sb-mobile-tabs{transform:none!important;filter:none!important}
+@media(max-width:700px){.sx-sp-grid{grid-template-columns:minmax(0,1fr)}.sx-sp-hero{grid-template-columns:auto minmax(0,1fr)}.sx-sp-card{padding:16px}.sx-sp-guide{grid-template-columns:1fr}.sx-sp-plans{gap:8px}.sx-sp-input input{font-size:16px}#portalOverlay .sb-top nav{display:none!important}}
+.sx-reveal{animation:repairVisible 0s 4s forwards}@keyframes repairVisible{to{opacity:1;transform:none;visibility:visible}}
+@media(prefers-reduced-motion:reduce){.sx-reveal{opacity:1!important;transform:none!important}}
+`;

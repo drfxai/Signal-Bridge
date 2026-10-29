@@ -72,7 +72,7 @@ export async function scalperOverview(env,h,user){
  for(const r of rows)keys.push({id:r.id,account_login:r.account_login,plan:r.plan,days:r.days,created_at:r.created_at,key:await h.decryptCode(env,r.encrypted_key,r.nonce)});
  const orders=(await env.DB.prepare('SELECT id,plan,amount_usd,account_login,status,invoice_url,created_at,paid_at FROM scalper_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 30').bind(user.id).all()).results||[];
  return {ok:true,configured:!!env.SCALPER_LICENSE_SECRET,payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),
-  trial_days:SCALPER_TRIAL_DAYS,download_url:env.SCALPER_DOWNLOAD_URL||null,
+  trial_days:SCALPER_TRIAL_DAYS,download_url:env.SCALPER_DOWNLOAD_URL||'https://drfx.company/downloads/DrFX_Scalper_Pro.ex5',
   plans:Object.entries(SCALPER_PLANS).map(([id,p])=>({id,usd:p.usd,days:p.days,label:p.label})),keys,orders};
 }
 

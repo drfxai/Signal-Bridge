@@ -302,7 +302,7 @@ body.sx-portal-open .sx-mobile-cta{display:none}
 #portalOverlay .sx-sp.sx-enter{animation:sxPane .55s cubic-bezier(.22,1,.36,1) both}
 .sx-sbtab-new{margin-left:6px;padding:2px 5px;border-radius:4px;background:#38db9e;color:#03130c;font:700 8px/1 "JetBrains Mono",monospace;letter-spacing:.05em;vertical-align:middle}
 @media(max-width:760px){#portalOverlay .sb-mobile-tabs{grid-template-columns:repeat(5,1fr)!important}#portalOverlay .sb-mobile-tabs button span{font-size:10px}#portalOverlay .sb-mobile-tabs .sx-sbtab-new{display:none}#portalOverlay .sb-mobile-tabs button[data-sb-tab=scalper]{color:#f3d98b}}
-@keyframes sxPane{from{opacity:0;transform:translateY(14px)}}
+@keyframes sxPane{from{opacity:0}to{opacity:1}}
 .sx-sp{display:grid;gap:16px;margin:0 0 22px}
 .sx-sp-hero{position:relative;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;padding:22px;border-radius:16px;border:1px solid #d4af3755;background:radial-gradient(ellipse at 0 50%,#d4af3720,transparent 55%),linear-gradient(160deg,#141109,#0a1019);overflow:hidden}
 .sx-sp-hero h3{margin:4px 0;color:#fff;font-size:24px;letter-spacing:-.02em}
@@ -388,6 +388,7 @@ function count(el){const end=+el.dataset.sxCount,suf=el.dataset.sxSuffix||'',sep
  const fmt=v=>(sep?Math.round(v).toLocaleString('en-US'):Math.round(v))+suf;
  (function step(t){const p=Math.min(1,(t-t0)/d),e=1-Math.pow(1-p,4);el.textContent=fmt(end*e);if(p<1)requestAnimationFrame(step)})(t0);}
 const io='IntersectionObserver' in window?new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){e.target.classList.add('sx-in');qa('[data-sx-count]',e.target).forEach(count);io.unobserve(e.target)}},{threshold:.14,rootMargin:'0px 0px -6% 0px'}):null;
+setTimeout(()=>qa('.sx-reveal').forEach(el=>el.classList.add('sx-in')),3500);
 qa('.sx-reveal').forEach((el,i)=>{el.style.transitionDelay=(i%4)*90+'ms';if(io)io.observe(el);else{el.classList.add('sx-in');qa('[data-sx-count]',el).forEach(count)}});
 /* tilt */
 if(!reduced&&matchMedia('(hover: hover)').matches)qa('[data-sx-tilt]').forEach(el=>{

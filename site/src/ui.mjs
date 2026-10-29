@@ -1,6 +1,6 @@
 import { EXECUTION_HTML, EXECUTION_JS } from './portal-execution.mjs';
 import { DESIGN_HTML, DESIGN_JS } from './design.mjs';
-import {IDENTITY_LAYOUT_CSS,ACCOUNT_LAYOUT_CSS} from './portal-layout.mjs';
+import {IDENTITY_LAYOUT_CSS,ACCOUNT_LAYOUT_CSS,REPAIR_CSS} from './portal-layout.mjs';
 import {SX_ANNOUNCE_HTML,SX_SUITE_HTML,SX_SCALPER_HTML,SX_MOBILE_CTA_HTML,SX_PORTAL_SCALPER_HTML,SX_CSS,SX_JS} from './scalper-ui.mjs';
 const NAV_LINK='<a href="#scalper" onmouseenter="playTickSound(780)" class="hover:text-gold-light transition-colors sx-nav-new">Scalper Pro</a>\n        ';
 const HERO_DESC='Connect TradingView alerts and Telegram signals to MetaTrader 5 in milliseconds with SignalBridge, and let the new Scalper Pro find the gold setups worth taking. Your EA licences, private webhook and keys, all in one secure command center.';

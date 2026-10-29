@@ -29,7 +29,7 @@ export const SXM_PANEL_HTML = String.raw`<section class="tab-panel" data-panel="
   <p class="meta">You pay in your website portal with crypto. Your key appears there, in this tab and in a bot message as soon as the payment confirms.</p>
  </div>
  <div class="card">
-  <h2>Install in four steps</h2>
+  <h2>Install in four steps</h2><a class="btn primary" href="https://drfx.company/downloads/DrFX_Scalper_Pro.ex5" download>Download Scalper Pro · EX5 ↓</a>
   <ol class="list sxm-steps">
    <li><b>Download</b> the EA from the Scalper Pro tab of your website portal.</li>
    <li><b>Copy</b> it to MT5 → File → Open Data Folder → MQL5/Experts, then Refresh.</li>
