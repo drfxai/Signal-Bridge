@@ -60,7 +60,7 @@ export class AgentHub{
   a.expectedLogin=row.account_login;a.expectedServer=row.account_server;a.licenseExpires=row.expires_at;
   return true;
  }
- sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(cmd.action==='TEST'&&(a.role!=='ea'||!(a.capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c))))return false;if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}))}
+ sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(cmd.action==='OPEN'&&cmd.exit_policy&&(a.role!=='ea'||!(a.capabilities||[]).includes('exit-policy-v1')))return false;if(cmd.action==='TEST'&&(a.role!=='ea'||!(a.capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c))))return false;if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}));return true}
  async bindEaAccount(a,account,ws){
   if(a.role==='ea')return this.bindEaLicense(a,account,ws);
   if(a.expectedLogin&&a.expectedLogin!==account.login){ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false}
@@ -133,7 +133,7 @@ export class AgentHub{
    if(cmd.action==='TEST'&&!(attachment.capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c)))continue;
    if(ws.readyState===WebSocket.OPEN){
     if(!await this.licenseIsValid(ws.deserializeAttachment()||{}))return;
-    this.sendCommand(ws,cmd,true);
+    if(this.sendCommand(ws,cmd,true)===false)continue;
     await this.env.DB.prepare("UPDATE commands SET status='DELIVERED',delivered_at=COALESCE(delivered_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('PENDING','DELIVERED')").bind(row.id).run();
    }
   }
@@ -192,7 +192,7 @@ export class AgentHub{
     return json({ok:true,delivered:0,reason:'LICENSE_INACTIVE'});
    }
    if(body.action==='TEST'&&!((socket.deserializeAttachment()||{}).capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c)))return json({ok:true,delivered:0,reason:'EA_UPDATE_REQUIRED'});
-   this.sendCommand(socket,body,false);this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
+   if(this.sendCommand(socket,body,false)===false)return json({ok:true,delivered:0,reason:'EA_UPDATE_REQUIRED'});this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
   }
   if(url.pathname==='/snapshot'&&request.method==='GET'){
    const clients=this.currentExecutionSockets().map(ws=>{const a=ws.deserializeAttachment()||{};return {agent_id:a.agentId||null,client_type:a.role||null,connected_at:a.connectedAt||null,last_seen_at:a.lastSeenAt||null,terminal_online:a.terminalOnline===true,account:a.account||null,capabilities:a.capabilities||[]}});

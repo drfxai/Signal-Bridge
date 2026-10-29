@@ -84,3 +84,22 @@ Tests use in-memory SQLite and mocked Telegram/MT5/browser traffic, including ro
 ownership, duplicate suppression, uncertain delivery, policy validation, report-reset
 isolation, target ACKs and eight responsive DEMO/LIVE/HIT scenarios. MetaEditor
 builds the actual EX5; broker E2E target management needs user-run DEMO validation.
+
+TradingView labeled-text alerts require a stable `ID: event-123` line; simple JSON
+requires `id` or `external_signal_id`. Retries preserve identity and cannot extend
+the original command expiry. For example:
+
+```text
+ID: strategy-symbol-bar-time
+BUY GOLD
+LOT: 0.01
+SL: 2300
+TP1: 2350
+TP2: 2360
+```
+
+These are illustrative format values, not current market prices or a trade recommendation.
+A profile saved from the new portal cannot execute on an EA lacking exit-policy-v1;
+install the new EA first. Activation/membership, language selection and administrator
+access remain reachable from Settings; the existing Mini App account pages retain
+their original navigation when opened.

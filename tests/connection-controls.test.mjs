@@ -1,3 +1,4 @@
+import {handleRequest as ingressHandle} from '../worker/src/index.mjs';
 import {routeTelegramSignal,relayTradingView} from '../site/src/signal-routing.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -195,4 +196,11 @@ test('TradingView Telegram outbox sends only authorized persisted signals, dedup
  f.env.TELEGRAM_BOT_TOKEN='fixture-not-a-secret';let sends=0,uncertain=false;const original=globalThis.fetch;globalThis.fetch=async(url,options)=>{sends++;assert.match(url,/api.telegram.org/);assert.equal(JSON.parse(options.body).chat_id,'123');if(uncertain)throw Error('simulated dropped reply');return Response.json({ok:true,result:{message_id:42}})};
  const request=(id,key=token)=>new Request('https://member/internal/signal-relay',{method:'POST',headers:{authorization:'Bearer '+key},body:JSON.stringify({signal_id:id})});
  try{await relayTradingView(request('relay_s1','d'.repeat(43)),f.env);assert.equal(sends,0);await relayTradingView(request('relay_s1'),f.env);await relayTradingView(request('relay_s1'),f.env);assert.equal(sends,1);assert.equal(f.db.prepare("SELECT status FROM telegram_signal_outbox WHERE signal_id='relay_s1'").get().status,'SENT');uncertain=true;await relayTradingView(request('relay_s2'),f.env);await relayTradingView(request('relay_s2'),f.env);assert.equal(sends,2);assert.equal(f.db.prepare("SELECT status FROM telegram_signal_outbox WHERE signal_id='relay_s2'").get().status,'UNKNOWN');assert.equal(f.calls.length,0);}finally{globalThis.fetch=original;f.db.close();}
+});
+test('TradingView labeled text and simple JSON require stable IDs and deduplicate actual command creation',async()=>{
+ const f=fixture();const {webhook}=await (await f.request('/api/webhook/create',{})).json();
+ const send=(body,type='text/plain')=>ingressHandle(new Request(webhook.webhook_url,{method:'POST',headers:{'content-type':type},body}),f.env);
+ const text='ID: text-test-1\nBUY GOLD\nSL: 2300\nTP1: 2350\nTP2: 2360';assert.equal((await send(text)).status,202);assert.equal(f.calls.length,1);assert.equal((await send(text)).status,200);assert.equal(f.calls.length,1);
+ assert.equal((await send(text.replace('ID: text-test-1\n',''))).status,422);assert.equal(f.calls.length,1);
+ assert.equal((await send(JSON.stringify({id:'json-test-2',side:'BUY',symbol:'GOLD',sl:2300,tp:[2350,2360]}),'application/json')).status,202);assert.equal(f.calls.length,2);f.db.close();
 });

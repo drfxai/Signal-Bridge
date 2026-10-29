@@ -25,3 +25,9 @@ test('native target snapshots precede broker entry, preserve protection and sepa
  const ea=readFileSync('mt5/DrFX_SignalBridge_EA.mq5','utf8'),open=ea.slice(ea.indexOf('void HandleOpen('),ea.indexOf('void HandleManage('));assert.ok(open.indexOf('SavePositionPolicy(')<open.indexOf('trade.Buy('));assert.match(open,/PolicyClosePrice/);assert.match(ea,/trade.PositionModify\(ticket,wanted,tp\)/);assert.match(ea,/SYMBOL_TRADE_FREEZE_LEVEL/);assert.match(ea,/Partial submission uncertain/);assert.match(ea,/ACCOUNT_MARGIN_MODE_RETAIL_HEDGING/);
  const reset=ea.slice(ea.indexOf('void ResetReport('),ea.indexOf('string ReportSeries('));assert.doesNotMatch(reset,/g_riskHit\s*=|g_riskBase\s*=|PositionClose|OrderDelete/);
 });
+test('configured volume fallback never overrides an explicitly invalid volume label',()=>{
+ for(const lot of ['banana','-1','0','NaN'])assert.equal(parseSignalMessage('BUY GOLD\nLOT: '+lot+'\nSL: 2300\nTP1: 2350\nTP2: 2360',Date.now(),{defaultLots:0.01}).ok,false);
+});
+test('simple JSON preserves explicit signal ID while invalid IDs are rejected',()=>{
+ const signal={id:'test:source:123',action:'BUY',symbol:'GOLD',sl:2300,tp:[2350,2360]};assert.equal(parseSignalMessage(JSON.stringify(signal),Date.now(),{defaultLots:0.01}).signal.external_signal_id,'test:source:123');assert.equal(parseSignalMessage(JSON.stringify({...signal,id:'bad id'}),Date.now(),{defaultLots:0.01}).ok,false);
+});

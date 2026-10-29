@@ -49,7 +49,7 @@ export function parseTelegramTrade(text,nowMs=Date.now(),options={}){
  let raw=normalize(text).replace(/[,;|](?=[A-Za-z])/g,' ' );
  if(/\b(?:BUY|SELL)\s+(?:LIMIT|STOP)\b/i.test(raw))return {ok:false,reason:'PENDING_ORDER_REQUIRES_REVIEW'};
  if(/(?:ENTRY|ZONE|ورود)\s*[:=@]?\s*\d+(?:\.\d+)?\s*[-–]\s*\d/i.test(raw))return {ok:false,reason:'ENTRY_RANGE_REQUIRES_REVIEW'};
- if(!/(?:^|\s)(?:LOT|LOTS|VOLUME|لات|حجم)\s*[:=]?\s*\d/i.test(raw)&&Number.isFinite(options.defaultLots)&&options.defaultLots>0)raw+='\nLOT: '+options.defaultLots;
+ if(!/(?:^|\s)(?:LOT|LOTS|VOLUME|لات|حجم)(?=$|[\s:=])/i.test(raw)&&Number.isFinite(options.defaultLots)&&options.defaultLots>0)raw+='\nLOT: '+options.defaultLots;
  const list=raw.match(/(?:^|\n)\s*(?:TP|TARGETS?|اهداف)\s*[:=]\s*([0-9.\s,\/]+)(?=$|\n)/i);
  if(list){const values=list[1].trim().split(/[\s,\/]+/).filter(Boolean);if(values.length>3)return {ok:false,reason:'TOO_MANY_TARGETS_REQUIRES_REVIEW'};raw=raw.replace(list[0],'\n'+values.map((v,i)=>'TP'+(i+1)+': '+v).join('\n'));}
  if(!raw||raw.length>4096)return {ok:false,reason:'EMPTY_OR_TOO_LONG'};

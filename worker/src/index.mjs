@@ -60,11 +60,13 @@ async function acceptTradingView(request,env,token,ctx){
 
  if(/^application\/json(?:\s*;|\s*$)/i.test(contentType)){
   let incoming;try{incoming=await readJson(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
-  try{signal=validateTradingView(incoming)}catch(e){return error(e instanceof ValidationError?e.code:'INVALID_SIGNAL_SCHEMA',422)}
+  if(incoming&&!incoming.schema_version&&typeof incoming==='object'&&'sl' in incoming){const settings=await env.DB.prepare('SELECT default_lots FROM member_signal_settings WHERE user_id=?').bind(conn.tenant_id).first();const parsed=parseSignalMessage(JSON.stringify(incoming),Date.now(),{defaultLots:settings?.default_lots||0.01});if(!parsed.ok)return error(parsed.reason,422);if(!parsed.signal.external_signal_id)return error('SIGNAL_ID_REQUIRED',422);signal=parsed.signal;sourceHash=await sha256(stableStringify(incoming));}else{try{signal=validateTradingView(incoming)}catch(e){return error(e instanceof ValidationError?e.code:'INVALID_SIGNAL_SCHEMA',422)}}
  }else if(/^text\/plain(?:\s*;|\s*$)/i.test(contentType)){
   let raw;try{raw=await readBounded(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
-  if(!raw.includes('[[DRFX]]'))return error('UNSUPPORTED_MEDIA_TYPE',415);
-  const parsed=parseGodModeAlert(raw);
+  if(raw.trim().startsWith('{'))return error('UNSUPPORTED_MEDIA_TYPE',415);
+  const settings=raw.includes('[[DRFX]]')?null:await env.DB.prepare('SELECT default_lots FROM member_signal_settings WHERE user_id=?').bind(conn.tenant_id).first();
+  const parsed=raw.includes('[[DRFX]]')?parseGodModeAlert(raw):parseSignalMessage(raw,Date.now(),{defaultLots:settings?.default_lots||0.01});
+  if(parsed.ok&&!parsed.signal.external_signal_id){const id=raw.match(/(?:^|\n)\s*(?:ID|SIGNAL_ID)\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9_.:-]{0,95})\s*(?=$|\n)/i)?.[1];if(!id)return error('SIGNAL_ID_REQUIRED',422);parsed.signal.external_signal_id=id;}
   if(!parsed.ok)return error(parsed.reason,422);
   signal=parsed.signal;
   sourceHash=await sha256(raw.trim());
