@@ -4,6 +4,7 @@ export function receiptTransitionAllowed(from,to){if(from===to)return true;if(fr
 export function terminalReadyAttachment(a){return !!(a&&a.terminalOnline===true&&a.account&&a.account.login&&a.account.server)}
 export function shouldReplayAfterTerminalState(previousReady,currentAttachment){return previousReady!==true&&terminalReadyAttachment(currentAttachment)}
 const safe=(v,n=160)=>String(v??'').replace(/[|\u0000-\u001f]/g,' ').slice(0,n);
+export function eaConfiguration(a){return {build:/^\d+\.\d+\.\d+$/.test(a.clientBuild||'')?a.clientBuild:null,capabilities:a.capabilities||[],mode:a.account?.mode||null,test_symbol:a.account?.test_symbol||null,test_lots:a.account?.test_lots??null};}
 function parseMessage(message){if(typeof message!=='string'||message.length>16384)return null;try{const b=JSON.parse(message);return b&&typeof b==='object'&&!Array.isArray(b)?b:null}catch{return null}}
 function parseEaLine(message){if(typeof message!=='string'||message.length>16384)return null;const p=message.trim().split('|');return p[0]?p:null}
 function eaCorrelationTag(value){
@@ -90,7 +91,12 @@ export class AgentHub{
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
    a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1'].includes(c));
-   const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;ws.serializeAttachment(a);
+   const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;
+   const config=JSON.stringify(eaConfiguration(a));
+   if(a.lastConfigSignature!==config){
+    try{await this.env.DB.prepare("INSERT INTO site_audit (id,actor_id,action,subject_id,detail) VALUES (?,?, 'ea_configuration',?,?)").bind(crypto.randomUUID(),a.tenantId||null,a.agentId,config).run();a.lastConfigSignature=config;}catch{/* Diagnostic logging must never disrupt heartbeat or execution. */}
+   }
+   ws.serializeAttachment(a);
    this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
    ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now()+'|'+(a.licenseExpires||''));
    if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));return;
@@ -134,7 +140,7 @@ export class AgentHub{
    const agentId=request.headers.get('x-sb-agent-id')||'',tenantId=request.headers.get('x-sb-tenant-id')||'',role=request.headers.get('x-sb-client-role')==='ea'?'ea':'agent',licenseId=request.headers.get('x-sb-license-id')||'',licenseHash=request.headers.get('x-sb-license-hash')||'';if(!agentId||!tenantId||(role==='ea'&&(!licenseId||!/^[a-f0-9]{64}$/.test(licenseHash))))return json({error:'UNAUTHORIZED'},401);
    for(const old of this.currentExecutionSockets()){try{old.close(4001,'superseded by newer execution connection')}catch{}}
    const pair=new WebSocketPair(),client=pair[0],server=pair[1];this.ctx.acceptWebSocket(server);
-   server.serializeAttachment({role,agentId,tenantId,licenseId:role==='ea'?licenseId:null,licenseHash:role==='ea'?licenseHash:null,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
+   server.serializeAttachment({role,agentId,tenantId,clientBuild:(request.headers.get('user-agent')||'').match(/^DrFX-SignalBridge-EA\/(\d+\.\d+\.\d+)$/)?.[1]||null,licenseId:role==='ea'?licenseId:null,licenseHash:role==='ea'?licenseHash:null,expectedLogin:request.headers.get('x-sb-account-login')||null,expectedServer:request.headers.get('x-sb-account-server')||null,connectedAt:new Date().toISOString(),lastSeenAt:new Date().toISOString(),terminalOnline:false,account:null});
    if(role==='ea')server.send('READY|signalbridge-ea/1|demo_only');else server.send(JSON.stringify({type:'hello',protocol:'signalbridge-agent/1',agent_id:agentId,execution_enabled:'demo_only'}));
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
    const wanted=role==='ea'?'signalbridge-ea-v1':'signalbridge-agent-v1',selected=protocols.includes(wanted)?wanted:null;
