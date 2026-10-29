@@ -732,12 +732,12 @@ bool g_sbReady=false,g_mouseDown=false,g_dragging=false,g_scrollOff=false,g_scro
 int g_pX=0,g_pY=0,g_pW=420,g_dragOX=0,g_dragOY=0;
 double g_hCur=0,g_tabPos=0,g_dBal=0,g_dEq=0,g_dNet=0,g_dDD=0,g_barsGrow=0,g_sigFlash=-100,g_pressT=-100,g_toastT=-100;
 string g_hover="",g_press="",g_toast="",g_seenSignal="";bool g_valsInit=false;
-string g_hitId[];int g_hitX[],g_hitY[],g_hitW[],g_hitH[];
+string g_hbId[];int g_hbX[],g_hbY[],g_hbW[],g_hbH[];
 string SB_TABS[5]={"OVERVIEW","SIGNALS","TRADES","RISK","SETTINGS"};
 double SbNow(){return (double)GetTickCount64()/1000.0;}
-void HitReset(){ArrayResize(g_hitId,0);ArrayResize(g_hitX,0);ArrayResize(g_hitY,0);ArrayResize(g_hitW,0);ArrayResize(g_hitH,0);}
-void HitAdd(string id,int x,int y,int w,int h){int n=ArraySize(g_hitId);ArrayResize(g_hitId,n+1);ArrayResize(g_hitX,n+1);ArrayResize(g_hitY,n+1);ArrayResize(g_hitW,n+1);ArrayResize(g_hitH,n+1);g_hitId[n]=id;g_hitX[n]=x;g_hitY[n]=y;g_hitW[n]=w;g_hitH[n]=h;}
-string HitTest(int x,int y){for(int i=ArraySize(g_hitId)-1;i>=0;i--)if(x>=g_hitX[i]&&x<g_hitX[i]+g_hitW[i]&&y>=g_hitY[i]&&y<g_hitY[i]+g_hitH[i])return g_hitId[i];return "";}
+void HitReset(){ArrayResize(g_hbId,0);ArrayResize(g_hbX,0);ArrayResize(g_hbY,0);ArrayResize(g_hbW,0);ArrayResize(g_hbH,0);}
+void HitAdd(string id,int x,int y,int w,int h){int n=ArraySize(g_hbId);ArrayResize(g_hbId,n+1);ArrayResize(g_hbX,n+1);ArrayResize(g_hbY,n+1);ArrayResize(g_hbW,n+1);ArrayResize(g_hbH,n+1);g_hbId[n]=id;g_hbX[n]=x;g_hbY[n]=y;g_hbW[n]=w;g_hbH[n]=h;}
+string HitTest(int x,int y){for(int i=ArraySize(g_hbId)-1;i>=0;i--)if(x>=g_hbX[i]&&x<g_hbX[i]+g_hbW[i]&&y>=g_hbY[i]&&y<g_hbY[i]+g_hbH[i])return g_hbId[i];return "";}
 void Toast(string text){g_toast=text;g_toastT=SbNow();}
 string Money(double v){string s=DoubleToString(MathAbs(v),2);int dot=StringFind(s,".");string ip=StringSubstr(s,0,dot),fp=StringSubstr(s,dot);string out="";int n=StringLen(ip);for(int i=0;i<n;i++){out+=StringSubstr(ip,i,1);if((n-i-1)%3==0&&i<n-1)out+=",";}return (v<0?"-":"")+out+fp;}
 string Signed(double v){return (v>=0?"+":"")+Money(v);}
