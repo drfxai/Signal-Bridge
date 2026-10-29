@@ -1,6 +1,6 @@
 import {createServer} from 'node:http';
 import {mkdir} from 'node:fs/promises';
-import handler from '../site/src/worker.mjs';
+const {default:handler}=await import(process.env.SB_WORKER_BUNDLE||'../site/src/worker.mjs');
 import {chromium} from 'playwright';
 const server=createServer(async(req,res)=>{try{const r=await handler.fetch(new Request('http://127.0.0.1:4199'+req.url),{});res.writeHead(r.status,Object.fromEntries(r.headers));res.end(Buffer.from(await r.arrayBuffer()))}catch{res.writeHead(500);res.end()}});
 await new Promise(r=>server.listen(4199,'127.0.0.1',r));
