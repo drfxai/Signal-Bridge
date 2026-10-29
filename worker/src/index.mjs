@@ -45,7 +45,7 @@ async function readJson(request){
  catch(e){throw new ValidationError(e instanceof ValidationError?e.code:(e instanceof SyntaxError?'INVALID_JSON':'INVALID_ENCODING'))}
 }
 
-async function acceptTradingView(request,env,token){
+async function acceptTradingView(request,env,token,ctx){
  if(!AUTH_PATTERN.test(token))return error('UNAUTHORIZED',401);
  if(!env?.DB)return error('SERVICE_UNAVAILABLE',503);
 
@@ -92,6 +92,7 @@ async function acceptTradingView(request,env,token){
   signalId=existing.id;
  }
 
+ if(env.TELEGRAM_RELAY&&ctx){ctx.waitUntil(env.TELEGRAM_RELAY.fetch(new Request('https://member-site/internal/signal-relay',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({signal_id:signalId})})).catch(()=>{}));}
  const dispatch=await createAndDispatch(env,{
   tenantId:conn.tenant_id,agentId:conn.agent_id,sourceType:'tradingview',sourceRef:conn.id,
   signalId,signal,mode:conn.delivery_mode
@@ -241,7 +242,7 @@ async function handleTelegram(request,env,connectionId){
  return json({ok:true,duplicate,command_id:dispatch.command_id,dispatch_status:dispatch.status,delivered:dispatch.delivered,reason:dispatch.reason||null});
 }
 
-export async function handleRequest(request,env){
+export async function handleRequest(request,env,ctx){
  const url=new URL(request.url);
  if(url.pathname==='/'&&request.method==='GET')return new Response(null,{status:302,headers:{location:'/dashboard'}});
  if(request.method==='GET'&&url.pathname==='/experience')return new Response(null,{status:302,headers:{location:'/experience/'}});
@@ -285,7 +286,7 @@ export async function handleRequest(request,env){
  if(/^\/v1\/ingress\/tradingview\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)){
   if(request.method!=='POST')return new Response(null,{status:405,headers:{...headers,allow:'POST'}});
   if(url.search)return error('QUERY_NOT_ALLOWED',400);
-  try{return await acceptTradingView(request,env,url.pathname.split('/')[4])}
+  try{return await acceptTradingView(request,env,url.pathname.split('/')[4],ctx)}
   catch(e){console.error('tv ingress',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}
  }
 

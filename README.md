@@ -79,7 +79,7 @@ For source/beta testing, the canonical source is:
 mt5/DrFX_SignalBridge_EA.mq5
 ```
 
-Current direct-cloud source: **EA v0.28.0**. Only the latest EA source is kept in
+Current direct-cloud source: **EA v0.29.0**. Only the latest EA source is kept in
 `mt5/`; earlier versions are available through Git history.
 
 See [EA setup and version details](mt5/README.md) and

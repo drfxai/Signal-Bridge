@@ -1,3 +1,4 @@
+import {memberPolicy,policyFields} from './member-policy.mjs';
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const RECEIPT_STATES=new Set(['PREVIEWED','SUBMITTED','FILLED','BROKER_REJECTED','REJECTED','ACCOUNT_MISMATCH','EXPIRED','ERROR','DUPLICATE']);
 export function receiptTransitionAllowed(from,to){if(from===to)return true;if(from==='PENDING'||from==='DELIVERED')return RECEIPT_STATES.has(to);if(from==='SUBMITTED')return ['FILLED','BROKER_REJECTED','ERROR','DUPLICATE'].includes(to);return false}
@@ -14,7 +15,7 @@ function eaCorrelationTag(value){
 }
 function encodeEaCommand(c){
  const o=c.order||{},t=Array.isArray(o.take_profits)?o.take_profits:[],expiry=c.expires_at?Date.parse(c.expires_at):0;
- return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0,safe(c.source?.type||'unknown',24),safe(c.source?.strategy||'',80),safe(c.test_account?.mode||'',12),safe(c.test_account?.login||'',64),safe(c.test_account?.server||'',120)].join('|');
+ return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0,safe(c.source?.type||'unknown',24),safe(c.source?.strategy||'',80),safe(c.test_account?.mode||'',12),safe(c.test_account?.login||'',64),safe(c.test_account?.server||'',120),policyFields(c.exit_policy||{tp1:'BE',tp2:'CLOSE',tp3:'OFF',partial_percent:50,be_buffer_points:0})].join('|');
 }
 
 export class AgentHub{
@@ -88,9 +89,10 @@ export class AgentHub{
     account.risk={state:['HIT','READY'].includes(p[9])?p[9]:'UNKNOWN',drawdown_pct:numeric(10),limit_pct:numeric(11),daily_profit:numeric(12),signals:numeric(13),targets:numeric(14),stops:numeric(15),hit_id:safe(p[18],32)};
     account.test_symbol=safe(p[16],32);account.test_lots=numeric(17);
    }
+   if(p.length>=30){const num=i=>Number.isFinite(Number(p[i]))?Number(p[i]):null;account.report={signals:num(19),tp1:num(20),tp2:num(21),tp3:num(22),stops:num(23),profit:num(24),loss:num(25),net:num(26),floating:num(27),since:num(28),reset_id:safe(p[29],64),series:p[30]?p[30].split(',').map(Number).filter(Number.isFinite).slice(0,14):[]};}
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
-   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1'].includes(c));
+   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1','exit-policy-v1','reports-v1'].includes(c));
    const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;
    const config=JSON.stringify(eaConfiguration(a));
    if(a.lastConfigSignature!==config){
@@ -99,6 +101,7 @@ export class AgentHub{
    ws.serializeAttachment(a);
    this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
    ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now()+'|'+(a.licenseExpires||''));
+   if((a.capabilities||[]).includes('exit-policy-v1')){const policy=policyFields(await memberPolicy(this.env,a.tenantId));if(a.policySignature!==policy){ws.send('POLICY_SET|'+policy);a.policySignature=policy;ws.serializeAttachment(a);}}
    if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));return;
   }
   if(p[0]==='PING'){ws.send('PONG|'+safe(p[1],32)+'|'+Date.now());return}
@@ -156,6 +159,18 @@ export class AgentHub{
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
    const selected=protocols.includes('signalbridge-dashboard-v1')?'signalbridge-dashboard-v1':null;
    return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
+  }
+  if(url.pathname==='/report-range'&&request.method==='POST'){
+   const b=await request.json().catch(()=>null);if(!['today','7d','30d','all'].includes(b?.period))return json({error:'INVALID_PERIOD'},400);
+   const ws=this.currentExecutionSockets().find(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='ea'&&a.agentId===b.agent_id&&a.account?.login===b.account_login&&a.account?.server===b.account_server&&(a.capabilities||[]).includes('reports-v1')&&Date.now()-Date.parse(a.lastSeenAt)<90000});
+   if(!ws||!await this.licenseIsValid(ws.deserializeAttachment()||{}))return json({error:'EA_NOT_READY'},409);
+   ws.send(['REPORT_RANGE',b.period,safe(b.account_login,64),safe(b.account_server,120),Date.now()+15000].join('|'));return json({ok:true,status:'AWAITING_EA'},202);
+  }
+  if(url.pathname==='/report-reset'&&request.method==='POST'){
+   const b=await request.json().catch(()=>null);if(!b?.request_id)return json({error:'BAD_RESET'},400);
+   const ws=this.currentExecutionSockets().find(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='ea'&&a.agentId===b.agent_id&&a.account?.login===b.account_login&&a.account?.server===b.account_server&&(a.capabilities||[]).includes('reports-v1')&&Date.now()-Date.parse(a.lastSeenAt)<90000});
+   if(!ws||!await this.licenseIsValid(ws.deserializeAttachment()||{}))return json({error:'EA_NOT_READY'},409);
+   ws.send(['REPORT_RESET',safe(b.request_id,64),safe(b.account_login,64),safe(b.account_server,120),Date.now()+15000].join('|'));return json({ok:true,status:'AWAITING_EA',request_id:b.request_id},202);
   }
   if(url.pathname==='/risk-reset'&&request.method==='POST'){
    const b=await request.json().catch(()=>null);if(!b||!b.hit_id)return json({error:'BAD_RESET'},400);

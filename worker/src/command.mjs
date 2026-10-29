@@ -1,3 +1,4 @@
+import {memberPolicy} from './member-policy.mjs';
 const POSITIVE=v=>typeof v==='number'&&Number.isFinite(v)&&v>0;
 const SYMBOL=/^[A-Z0-9][A-Z0-9._-]{0,31}$/;
 const MODES=new Set(['dry_run','demo_execute','test_execute']);
@@ -37,7 +38,7 @@ export function makeCommand({tenantId,agentId,sourceType,sourceRef,signal,mode,c
   correlation_id:String(signal.correlation_id||signal.external_signal_id||commandId),
   correlation_tag:correlationTag(signal.correlation_id||signal.external_signal_id||commandId),
   execution_mode:mode==='test_execute'&&signal.action!=='TEST'?'dry_run':normalizeExecutionMode(mode),action:signal.action,test_account:signal.test_account||null,
-  management_event:signal.management_event||null,side:signal.side||null,symbol:signal.symbol||null,order:signal.order||null,
+  exit_policy:signal.exit_policy||null,management_event:signal.management_event||null,side:signal.side||null,symbol:signal.symbol||null,order:signal.order||null,
   occurred_at:signal.occurred_at||new Date().toISOString(),expires_at:signal.expires_at||null};
 }
 
@@ -79,7 +80,8 @@ export async function createAndDispatch(env,{tenantId,agentId,sourceType,sourceR
   return {command_id:prior.id,status:prior.status,delivered:0,reason:null,duplicate:true};
  }
 
- const command=makeCommand({tenantId,agentId,sourceType,sourceRef,signal,mode,commandId}),payload=JSON.stringify(command);
+ const configured=signal.action==='OPEN'?{...signal,exit_policy:await memberPolicy(env,tenantId)}:signal;
+ const command=makeCommand({tenantId,agentId,sourceType,sourceRef,signal:configured,mode,commandId}),payload=JSON.stringify(command);
  const inserted=await env.DB.prepare(`INSERT INTO commands
   (id,tenant_id,signal_id,source_type,source_ref,agent_id,execution_mode,payload_json,status,created_at,updated_at)
   VALUES (?,?,?,?,?,?,?,?, 'PENDING',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING`)
