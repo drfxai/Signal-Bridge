@@ -10,7 +10,7 @@ const ui=fs.readFileSync(new URL('../worker/src/test-ui.mjs',import.meta.url),'u
 test('MT5 direct EA keeps the hard DEMO execution guard',()=>{
  assert.match(ea,/ACCOUNT_TRADE_MODE_DEMO/);
  assert.match(ea,/DEMO execution refused on non-demo account/);
- assert.match(ea,/InpEnableDemoExecution\s*=\s*false/);
+ assert.match(ea,/InpEnableDemoExecution\s*=\s*true/);
 });
 
 test('standard transport is direct TLS WebSocket from the EA',()=>{

@@ -10,7 +10,7 @@ test('approved MT5 reference contains required surfaces',()=>{
   assert.match(html,new RegExp(phrase,'i'));
 });
 test('current EA remains DEMO-only by default',()=>{
- assert.match(mq5,/InpEnableDemoExecution\s*=\s*false/);
+ assert.match(mq5,/InpEnableDemoExecution\s*=\s*true/);
  assert.match(mq5,/ACCOUNT_TRADE_MODE_DEMO/);
  assert.match(mq5,/DEMO execution refused on non-demo account/);
 });

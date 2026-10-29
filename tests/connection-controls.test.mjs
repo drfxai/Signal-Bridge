@@ -127,3 +127,35 @@ test('LIVE test capability cannot be substituted with demo or legacy support',as
   assert.equal((await f.request('/api/connection/test',{confirm:true,account_mode:'LIVE',account_login:'123',account_server:'Demo',confirm_live:'CONFIRM LIVE TEST'})).status,409);assert.equal(f.calls.length,0);f.db.close();
  }
 });
+
+test('new EA test configuration comes from authenticated telemetry, never request overrides',async()=>{
+ const f=fixture();f.snapshot.capabilities=['timed-test-v2','test-config-v1'];Object.assign(f.snapshot.account,{test_symbol:'EURUSD.p',test_lots:0.02});
+ const r=await f.request('/api/connection/test',{confirm:true,account_mode:'DEMO',account_login:'123',account_server:'Demo',test_symbol:'EURUSD.p',test_lots:0.02,symbol:'GBPUSD',lots:1});
+ assert.equal(r.status,202);assert.equal(f.calls[0].symbol,'EURUSD.p');assert.equal(f.calls[0].order.volume.value,0.02);f.db.close();
+});
+test('drawdown HIT prevents test dispatch and invalid configured lots do not consume budget',async()=>{
+ for(const patch of [{risk:{state:'HIT'}},{test_symbol:'EURUSD',test_lots:-1}]){
+  const f=fixture();f.snapshot.capabilities=['timed-test-v2','test-config-v1'];Object.assign(f.snapshot.account,{test_symbol:'EURUSD',test_lots:0.01},patch);
+  const r=await f.request('/api/connection/test',{confirm:true,account_mode:'DEMO',account_login:'123',account_server:'Demo'});assert.equal(r.status,409);assert.equal(f.calls.length,0);assert.equal(f.db.prepare('SELECT count(*) AS n FROM site_rate_limits').get().n,0);f.db.close();
+ }
+});
+test('risk reset requires user consent, tenant account binding and exact HIT generation',async()=>{
+ const f=fixture();f.snapshot.capabilities=['risk-v1'];f.snapshot.account.risk={state:'HIT',hit_id:'12345'};
+ const b={confirm:true,hit_id:'12345',account_login:'123',account_server:'Demo'};
+ assert.equal((await f.request('/api/risk/reset',{})).status,400);
+ assert.equal((await f.request('/api/risk/reset',b,f.other)).status,409);
+ for(const patch of [{hit_id:'old'},{account_login:'999'},{account_server:'Other'}])assert.equal((await f.request('/api/risk/reset',{...b,...patch})).status,409);
+ assert.equal(f.calls.length,0);assert.equal((await f.request('/api/risk/reset',b)).status,200);assert.equal(f.calls.length,1);assert.equal(f.calls[0].agent_id,'ea_a');f.db.close();
+});
+test('hub reset sends a short-lived bound non-trading control and rejects stale HIT',async()=>{
+ const f=fixture(),sent=[];let a={role:'ea',agentId:'ea_a',licenseId:'lic_a',licenseHash:digest('license'),lastSeenAt:new Date().toISOString(),capabilities:['risk-v1'],account:{login:'123',server:'Demo',risk:{state:'HIT',hit_id:'12345'}}};
+ const ws={readyState:1,deserializeAttachment:()=>a,send:x=>sent.push(x)};globalThis.WebSocket??={OPEN:1};const hub=new AgentHub({getWebSockets:()=>[ws]},f.env);
+ const req=b=>new Request('https://hub/risk-reset',{method:'POST',body:JSON.stringify(b)}),b={agent_id:'ea_a',account_login:'123',account_server:'Demo',hit_id:'12345'};
+ assert.equal((await hub.fetch(req({...b,hit_id:'old'}))).status,409);assert.equal(sent.length,0);
+ assert.equal((await hub.fetch(req(b))).status,202);assert.match(sent[0],/^RISK_RESET\|[^|]+\|123\|Demo\|CONFIRM\|12345\|\d+$/);assert.ok(Number(sent[0].split('|')[6])<=Date.now()+15000);a.account.risk.state='READY';assert.equal((await hub.fetch(req(b))).status,409);f.db.close();
+});
+test('EA configuration changes after browser confirmation require fresh consent',async()=>{
+ const f=fixture();f.snapshot.capabilities=['timed-test-v2','test-config-v1'];Object.assign(f.snapshot.account,{test_symbol:'GBPUSD',test_lots:0.01});
+ const r=await f.request('/api/connection/test',{confirm:true,account_mode:'DEMO',account_login:'123',account_server:'Demo',test_symbol:'EURUSD',test_lots:0.01});
+ assert.equal(r.status,409);assert.equal((await r.json()).error,'TEST_SETTINGS_CHANGED');assert.equal(f.calls.length,0);f.db.close();
+});

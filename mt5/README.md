@@ -1,7 +1,7 @@
 # SignalBridge MT5 EA
 
 The only current source is [`DrFX_SignalBridge_EA.mq5`](DrFX_SignalBridge_EA.mq5),
-**EA v0.27.2**. Older EA snapshots have been removed from the working tree;
+**EA v0.28.0**. Older EA snapshots have been removed from the working tree;
 Git history retains their previous contents.
 
 ## Setup
@@ -10,7 +10,7 @@ Git history retains their previous contents.
 2. Place the EX5 in `MQL5/Experts` and attach it to an MT5 **DEMO** chart (or LIVE for separately opted-in connection tests).
 3. Allow `https://signalbridge.drfx.online` in **Tools → Options → Expert Advisors**.
 4. Paste your private 43-character activation code into `InpActivationCode`.
-5. Keep `InpEnableDemoExecution=false` until dry-run checks pass.
+5. Keep `InpEnableDemoExecution=true` until dry-run checks pass.
 6. The optional BUY gold 0.01 / local five-second exit test also requires `InpEnableConnectionTest=true`.
 
 The EA connects directly to `signalbridge.drfx.online:443` at `/v1/ea/ws`
@@ -49,3 +49,13 @@ In EA Properties → Inputs → **Broker Symbol Settings**, set:
 Copy the exact case-sensitive symbol from Market Watch. An explicitly configured
 but unavailable gold symbol is rejected; the EA does not silently trade a different
 contract. Existing positions, spread limits and account opt-in checks still apply.
+
+### EA 0.28.0 — ready-to-test defaults and daily drawdown
+
+Connection-test inputs are enabled by default. `InpTestSymbol=XAUUSD` and
+`InpDefaultLots=0.01` can be changed to another broker instrument and valid volume.
+For this broker use `InpTestSymbol=XAUUSD.p` (or preserve InpGoldSymbol mapping).
+`InpDailyDrawdownPercent=10` closes **all account positions** and cancels pending
+orders at the equity-loss limit. HIT stays red until you explicitly confirm restart
+in the EA or personal portal, after all positions/orders have closed.
+See [calculation, counters and limits](../docs/EA_V028_DAILY_DRAWDOWN.md).

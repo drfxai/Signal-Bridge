@@ -32,12 +32,12 @@ test('partial targets remain absolute fractions of original volume for replay sa
 });
 
 test('current EA remains hard DEMO-only',()=>{
- assert.match(ea,/InpEnableDemoExecution=false/);
+ assert.match(ea,/InpEnableDemoExecution=true/);
  assert.match(ea,/ACCOUNT_TRADE_MODE_DEMO/);
  assert.match(ea,/DEMO execution refused on non-demo account/);
 });
 
 test('current EA uses valid MQL5 array reference syntax and current version metadata',()=>{
  assert.match(ea,/void HandleCommand\(string &parts\[\]\)/);
- assert.match(ea,/#property version\s+"0\.272"/);
+ assert.match(ea,/#property version\s+"0\.280"/);
 });

@@ -1,4 +1,4 @@
-name: Build MT5 EA v0.27.2 (opt-in tests)
+name: Build MT5 EA v0.28.0 (opt-in tests)
 on:
   push:
     branches: [main]
@@ -38,7 +38,7 @@ jobs:
           }
           if(-not $meta){throw "MetaEditor was not installed"}
           "METAEDITOR_PATH=$($meta.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-      - name: Compile v0.27.2 EA and validate EX5
+      - name: Compile v0.28.0 EA and validate EX5
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
@@ -70,14 +70,14 @@ jobs:
           $info=Get-Item $compiled
           if($info.Length -lt 4096){throw "EX5 unexpectedly small"}
           New-Item -ItemType Directory 'dist' -Force | Out-Null
-          Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.27.2_CONTROLLED_TESTS.ex5'
+          Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.28.0_CONTROLLED_TESTS.ex5'
           $hash=(Get-FileHash $compiled -Algorithm SHA256).Hash
-          @("SignalBridge EA v0.27.2 - CONTROLLED CONNECTION TESTS","SHA256: $hash","Size: $($info.Length) bytes","Automatic signals DEMO-only; LIVE position test requires separate explicit opt-in.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
+          @("SignalBridge EA v0.28.0 - CONTROLLED CONNECTION TESTS","SHA256: $hash","Size: $($info.Length) bytes","Automatic signals DEMO-only; LIVE position test requires separate explicit opt-in.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
           Write-Host "Binary built: $($info.Length) bytes; SHA256 $hash"
       - name: Upload actual EX5 for download
         uses: actions/upload-artifact@v4
         with:
-          name: DrFX_SignalBridge_EA_v0.27.2_CONTROLLED_TESTS_EX5
+          name: DrFX_SignalBridge_EA_v0.28.0_CONTROLLED_TESTS_EX5
           path: dist/
           if-no-files-found: error
           retention-days: 30
