@@ -1,6 +1,7 @@
 // Consistent dimensions for the marketing site, member workspace and Mini App.
 export const RESPONSIVE_REFRESH=String.raw`
 /* Intrinsic showcase badge: never stretch to the heading height. */
+#product-gallery{padding:64px 32px}#product-gallery>div{max-width:1216px;margin-inline:auto}
 #product-gallery .drfx-gallery-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:28px}
 #product-gallery .drfx-gallery-head>div{min-width:0;max-width:760px}
 #product-gallery .drfx-gallery-badge{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;align-self:flex-end;width:max-content;max-width:100%;height:auto;min-height:0;padding:9px 12px;border:1px solid #38db9e40;border-radius:999px;background:#38db9e0a;color:#81dec0;font:500 11px/1.3 "JetBrains Mono",monospace;letter-spacing:.04em;white-space:nowrap}
