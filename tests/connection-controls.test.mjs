@@ -1,3 +1,4 @@
+import {routeTelegramSignal,relayTradingView} from '../site/src/signal-routing.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
@@ -158,4 +159,40 @@ test('EA configuration changes after browser confirmation require fresh consent'
  const f=fixture();f.snapshot.capabilities=['timed-test-v2','test-config-v1'];Object.assign(f.snapshot.account,{test_symbol:'GBPUSD',test_lots:0.01});
  const r=await f.request('/api/connection/test',{confirm:true,account_mode:'DEMO',account_login:'123',account_server:'Demo',test_symbol:'EURUSD',test_lots:0.01});
  assert.equal(r.status,409);assert.equal((await r.json()).error,'TEST_SETTINGS_CHANGED');assert.equal(f.calls.length,0);f.db.close();
+});
+
+test('member policy settings are tenant scoped and route activation requires verification',async()=>{
+ const f=fixture();const initial=await (await f.request('/api/member/settings')).json();assert.equal(initial.settings.policy.tp1,'BE');
+ const body={policy:{tp1:'BE',tp2:'OFF',tp3:'CLOSE',partial_percent:50,be_buffer_points:5},default_lots:0.01,tv_to_telegram:false,telegram_to_mt5:false};
+ assert.equal((await f.request('/api/member/settings',body)).status,200);assert.equal(f.db.prepare('SELECT count(*) AS n FROM member_signal_settings WHERE user_id=\'usr_b\'').get().n,0);
+ assert.equal((await f.request('/api/member/settings',{...body,telegram_to_mt5:true,confirm:true})).status,409);
+ const r=await f.request('/api/connection/test',{confirm:true,account_mode:'DEMO',account_login:'123',account_server:'Demo'});assert.equal(r.status,409);f.db.close();
+});
+test('report reset requires updated EA and confirmation, never modifies daily drawdown',async()=>{
+ const f=fixture();assert.equal((await f.request('/api/member/report/reset',{})).status,400);assert.equal((await f.request('/api/member/report/reset',{confirm:true})).status,409);f.snapshot.capabilities.push('reports-v1');
+ assert.equal((await f.request('/api/member/report/reset',{confirm:true},f.other)).status,409);assert.equal((await f.request('/api/member/report/reset',{confirm:true})).status,200);assert.equal(f.calls[0].agent_id,'ea_a');assert.equal(f.db.prepare('SELECT count(*) AS n FROM member_signal_settings').get().n,0);f.db.close();
+});
+test('target lifecycle events are account-scoped, deduplicated and acknowledged after durable storage',async()=>{
+ const f=fixture(),sent=[];let attached;const ws={send:x=>sent.push(x),serializeAttachment:a=>{attached=a}};const a={role:'ea',agentId:'ea_a',tenantId:'usr_a',licenseId:'lic_a',licenseHash:digest('license'),account:{login:'123',server:'Demo'}};const hub=new AgentHub({},f.env);
+ await hub.handleEaMessage(ws,'TARGET_EVENT|abcdef123456|0|2|1',a);await hub.handleEaMessage(ws,'TARGET_EVENT|abcdef123456|0|2|1',a);
+ assert.equal(f.db.prepare('SELECT count(*) AS n FROM position_events').get().n,1);assert.equal(f.db.prepare('SELECT user_id FROM position_events').get().user_id,'usr_a');assert.equal(sent.at(-1),'EVENT_ACK|abcdef123456|0|2');
+ await hub.handleEaMessage(ws,'TARGET_EVENT|bad|0|2|1',a);assert.equal(f.db.prepare('SELECT count(*) AS n FROM position_events').get().n,1);f.db.close();
+});
+test('authorized Telegram route preserves owner and deduplicates replies, unknown messages go to review',async()=>{
+ const f=fixture();await f.request('/api/webhook/create',{});await f.request('/api/webhook/mode',{mode:'demo_execute',confirm:true});
+ f.db.prepare("INSERT INTO member_signal_settings(user_id,telegram_chat_id,telegram_verified,telegram_to_mt5) VALUES ('usr_a','-100123',1,1)").run();
+ const update={update_id:1,message:{message_id:20,date:Math.floor(Date.now()/1000),chat:{id:-100123},from:{id:9},text:'BUY GOLD\nSL: 2300\nTP1: 2350\nTP2: 2360'}};
+ assert.equal((await routeTelegramSignal(update,f.env)).status,200);assert.equal(f.calls.length,1);assert.equal(f.calls[0].tenant_id,'usr_a');assert.equal(f.calls[0].execution_mode,'demo_execute');
+ await routeTelegramSignal(update,f.env);assert.equal(f.calls.length,1);
+ await routeTelegramSignal({...update,message:{...update.message,message_id:21,text:'TP1 HIT',reply_to_message:{message_id:20}}},f.env);assert.equal(f.calls.length,2);assert.equal(f.calls[1].action,'MANAGE');assert.equal(f.calls[1].correlation_id,f.calls[0].correlation_id);
+ await routeTelegramSignal({...update,message:{...update.message,message_id:22,text:'maybe buy gold later'}},f.env);assert.equal(f.calls.length,2);assert.equal(f.db.prepare('SELECT count(*) AS n FROM signal_review_queue').get().n,1);
+ assert.equal(await routeTelegramSignal({...update,message:{...update.message,chat:{id:-999}}},f.env),null);assert.equal(f.calls.length,2);f.db.close();
+});
+test('TradingView Telegram outbox sends only authorized persisted signals, deduplicates and never blindly retries uncertain delivery',async()=>{
+ const f=fixture(),token='c'.repeat(43);f.db.prepare("INSERT INTO ingress_connections(id,tenant_id,provider,token_sha256,agent_id) VALUES ('relay_c','usr_a','tradingview',?,'ea_a')").run(digest(token));f.db.prepare("INSERT INTO member_signal_settings(user_id,telegram_chat_id,telegram_verified,tv_to_telegram) VALUES ('usr_a','123',1,1)").run();
+ const signal={side:'BUY',symbol:'XAUUSD',order:{volume:{value:0.01},stop_loss:2300,take_profits:[2350,2360]}};
+ for(const id of ['relay_s1','relay_s2'])f.db.prepare("INSERT INTO received_signals(id,tenant_id,connection_id,external_signal_id,payload_sha256,normalized_json,received_at,expires_at) VALUES (?,'usr_a','relay_c',?,?,?,CURRENT_TIMESTAMP,'2099-01-01')").run(id,id,digest(id),JSON.stringify(signal));
+ f.env.TELEGRAM_BOT_TOKEN='fixture-not-a-secret';let sends=0,uncertain=false;const original=globalThis.fetch;globalThis.fetch=async(url,options)=>{sends++;assert.match(url,/api.telegram.org/);assert.equal(JSON.parse(options.body).chat_id,'123');if(uncertain)throw Error('simulated dropped reply');return Response.json({ok:true,result:{message_id:42}})};
+ const request=(id,key=token)=>new Request('https://member/internal/signal-relay',{method:'POST',headers:{authorization:'Bearer '+key},body:JSON.stringify({signal_id:id})});
+ try{await relayTradingView(request('relay_s1','d'.repeat(43)),f.env);assert.equal(sends,0);await relayTradingView(request('relay_s1'),f.env);await relayTradingView(request('relay_s1'),f.env);assert.equal(sends,1);assert.equal(f.db.prepare("SELECT status FROM telegram_signal_outbox WHERE signal_id='relay_s1'").get().status,'SENT');uncertain=true;await relayTradingView(request('relay_s2'),f.env);await relayTradingView(request('relay_s2'),f.env);assert.equal(sends,2);assert.equal(f.db.prepare("SELECT status FROM telegram_signal_outbox WHERE signal_id='relay_s2'").get().status,'UNKNOWN');assert.equal(f.calls.length,0);}finally{globalThis.fetch=original;f.db.close();}
 });

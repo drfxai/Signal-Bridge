@@ -233,17 +233,24 @@ void RecordManagedExit(string event){ulong d=trade.ResultDeal();if(d==0)return;d
 string TestSymbol(){string reason="",sym=ResolveTestSymbol(reason);return sym==""?InpTestSymbol:sym;}
 string RiskTelemetry(){return "|"+(g_riskHit?"HIT":"READY")+"|"+F2(g_riskDD)+"|"+F2(InpDailyDrawdownPercent)+"|"+F2(g_dailyProfit)+"|"+N64(g_signalCount)+"|"+IntegerToString(g_targets)+"|"+IntegerToString(g_stops)+"|"+Safe(TestSymbol())+"|"+DoubleToString(InpDefaultLots,4)+"|"+DoubleToString(g_hitId,0);}
 // Snapshot exit rules before submission; broker-side TP backs up the first full exit.
-string g_policy1="BE",g_policy2="CLOSE",g_policy3="OFF",g_reportResetId="";double g_policyPartial=50;int g_policyBuffer=0;long g_reportViewSince=0,g_reportResetFloor=0,g_reportSince=0;ulong g_reportTick=0;double g_reportBars[14];long g_reportSignals=0,g_reportTP1=0,g_reportTP2=0,g_reportTP3=0,g_reportStops=0;double g_reportProfit=0,g_reportLoss=0;ulong g_policyTick=0;
+bool g_policyDirty=false;string g_policy1="BE",g_policy2="CLOSE",g_policy3="OFF",g_reportResetId="";double g_policyPartial=50;int g_policyBuffer=0;long g_reportViewSince=0,g_reportResetFloor=0,g_reportSince=0;ulong g_reportTick=0;double g_reportBars[14];long g_reportSignals=0,g_reportTP1=0,g_reportTP2=0,g_reportTP3=0,g_reportStops=0;double g_reportProfit=0,g_reportLoss=0;ulong g_policyTick=0;
 string PK(string tag,string field){return RiskKey(tag+field);}
 string PolicyAction(int i){return i==0?g_policy1:i==1?g_policy2:g_policy3;}
 bool ValidPolicyAction(string a){return a=="BE"||a=="CLOSE"||a=="PARTIAL"||a=="OFF";}
 void SavePolicyDefaults(){GlobalVariableSet(RiskKey("p1"),PolicyCode(g_policy1));GlobalVariableSet(RiskKey("p2"),PolicyCode(g_policy2));GlobalVariableSet(RiskKey("p3"),PolicyCode(g_policy3));GlobalVariableSet(RiskKey("pp"),g_policyPartial);GlobalVariableSet(RiskKey("pb"),g_policyBuffer);GlobalVariablesFlush();}
 int PolicyCode(string a){return a=="BE"?1:a=="CLOSE"?2:a=="PARTIAL"?3:0;}
 string PolicyName(int a){return a==1?"BE":a==2?"CLOSE":a==3?"PARTIAL":"OFF";}
-void LoadPolicyDefaults(){g_policy1=PolicyName((int)InpTP1Action);g_policy2=PolicyName((int)InpTP2Action);g_policy3=PolicyName((int)InpTP3Action);g_policyPartial=InpPartialPercent;g_policyBuffer=InpBreakEvenBufferPoints;if(GlobalVariableCheck(RiskKey("p1"))){g_policy1=PolicyName((int)GlobalVariableGet(RiskKey("p1")));g_policy2=PolicyName((int)GlobalVariableGet(RiskKey("p2")));g_policy3=PolicyName((int)GlobalVariableGet(RiskKey("p3")));g_policyPartial=GlobalVariableGet(RiskKey("pp"));g_policyBuffer=(int)GlobalVariableGet(RiskKey("pb"));}g_reportResetFloor=GlobalVariableCheck(RiskKey("report_since"))?(long)GlobalVariableGet(RiskKey("report_since")):0;g_reportViewSince=BrokerDay();g_reportSince=(long)MathMax(g_reportResetFloor,g_reportViewSince);}
+void LoadPolicyDefaults(){
+ g_policy1=PolicyName((int)InpTP1Action);g_policy2=PolicyName((int)InpTP2Action);g_policy3=PolicyName((int)InpTP3Action);g_policyPartial=InpPartialPercent;g_policyBuffer=InpBreakEvenBufferPoints;
+ double sig=(double)RiskHash(g_policy1+"|"+g_policy2+"|"+g_policy3+"|"+F2(g_policyPartial)+"|"+IntegerToString(g_policyBuffer));bool stored=GlobalVariableCheck(RiskKey("input_sig"));bool changed=stored?GlobalVariableGet(RiskKey("input_sig"))!=sig:(g_policy1!="BE"||g_policy2!="CLOSE"||g_policy3!="OFF"||g_policyPartial!=50||g_policyBuffer!=0);
+ if(changed){g_policyDirty=true;SavePolicyDefaults();}else if(GlobalVariableCheck(RiskKey("p1"))){g_policy1=PolicyName((int)GlobalVariableGet(RiskKey("p1")));g_policy2=PolicyName((int)GlobalVariableGet(RiskKey("p2")));g_policy3=PolicyName((int)GlobalVariableGet(RiskKey("p3")));g_policyPartial=GlobalVariableGet(RiskKey("pp"));g_policyBuffer=(int)GlobalVariableGet(RiskKey("pb"));}
+ GlobalVariableSet(RiskKey("input_sig"),sig);GlobalVariablesFlush();g_reportResetFloor=GlobalVariableCheck(RiskKey("report_since"))?(long)GlobalVariableGet(RiskKey("report_since")):0;g_reportViewSince=BrokerDay();g_reportSince=(long)MathMax(g_reportResetFloor,g_reportViewSince);
+}
 double PolicyClosePrice(double t1,double t2,double t3){double levels[3];levels[0]=t1;levels[1]=t2;levels[2]=t3;for(int i=0;i<3;i++)if(PolicyAction(i)=="CLOSE")return levels[i];return 0;}
 void SavePositionPolicy(string tag,double t1,double t2,double t3,double lots){double levels[3];levels[0]=t1;levels[1]=t2;levels[2]=t3;for(int i=0;i<3;i++){GlobalVariableSet(PK(tag,"t"+IntegerToString(i)),levels[i]);GlobalVariableSet(PK(tag,"a"+IntegerToString(i)),PolicyCode(PolicyAction(i)));}GlobalVariableSet(PK(tag,"pct"),g_policyPartial);GlobalVariableSet(PK(tag,"buf"),g_policyBuffer);GlobalVariableSet(PK(tag,"vol"),lots);GlobalVariablesFlush();}
-void PolicyHit(string tag,int i){string key=PK(tag,"h"+IntegerToString(i));if(!GlobalVariableCheck(key)){GlobalVariableSet(key,(double)TimeCurrent());GlobalVariablesFlush();}}
+void QueueTargetEvent(string tag,int i,int state){GlobalVariableSet(PK(tag,"e"+IntegerToString(i)),state);GlobalVariablesFlush();}
+void FlushTargetEvents(){if(!CloudConnected())return;int count=0;for(int n=GlobalVariablesTotal()-1;n>=0&&count<12;n--){string key=GlobalVariableName(n);if(StringFind(key,g_riskPrefix)!=0)continue;string tail=StringSubstr(key,StringLen(g_riskPrefix));if(StringLen(tail)!=14||StringSubstr(tail,12,1)!="e")continue;int i=(int)StringToInteger(StringSubstr(tail,13));if(i<0||i>2)continue;string tag=StringSubstr(tail,0,12);int state=(int)GlobalVariableGet(key);if(GlobalVariableCheck(PK(tag,"ack"+IntegerToString(i)))&&GlobalVariableGet(PK(tag,"ack"+IntegerToString(i)))==state)continue;if(SendLine("TARGET_EVENT|"+tag+"|"+IntegerToString(i)+"|"+IntegerToString(state)+"|"+IntegerToString((int)GlobalVariableGet(PK(tag,"a"+IntegerToString(i))))))count++;}}
+void PolicyHit(string tag,int i){string key=PK(tag,"h"+IntegerToString(i));if(!GlobalVariableCheck(key)){GlobalVariableSet(key,(double)TimeCurrent());GlobalVariablesFlush();QueueTargetEvent(tag,i,1);}}
 void ApplyPositionTarget(string tag,ulong ticket,int i){
  string stateKey=PK(tag,"s"+IntegerToString(i));if(GlobalVariableCheck(stateKey)&&GlobalVariableGet(stateKey)==2)return;
  if(!PositionSelectByTicket(ticket)||(long)PositionGetInteger(POSITION_MAGIC)!=InpMagic)return;
@@ -253,21 +260,21 @@ void ApplyPositionTarget(string tag,ulong ticket,int i){
  if(action==1){
   double point=SymbolInfoDouble(sym,SYMBOL_POINT),step=SymbolInfoDouble(sym,SYMBOL_TRADE_TICK_SIZE),buffer=GlobalVariableGet(PK(tag,"buf"))*point;if(step<=0)return;
   double wanted=buy?MathCeil((open+buffer)/step)*step:MathFloor((open-buffer)/step)*step;
-  if((buy&&sl>=wanted&&sl>0)||(!buy&&sl>0&&sl<=wanted)){GlobalVariableSet(stateKey,2);return;}
+  if((buy&&sl>=wanted&&sl>0)||(!buy&&sl>0&&sl<=wanted)){GlobalVariableSet(stateKey,2);QueueTargetEvent(tag,i,2);return;}
   MqlTick q;if(!SymbolInfoTick(sym,q))return;double distance=MathMax((double)SymbolInfoInteger(sym,SYMBOL_TRADE_STOPS_LEVEL),(double)SymbolInfoInteger(sym,SYMBOL_TRADE_FREEZE_LEVEL))*point;
   if((buy&&q.bid-wanted<=distance)||(!buy&&wanted-q.ask<=distance)){g_lastExecution="TP1 BE awaiting broker stop distance";return;}
-  if(trade.PositionModify(ticket,wanted,tp)&&trade.ResultRetcode()==TRADE_RETCODE_DONE){GlobalVariableSet(stateKey,2);GlobalVariablesFlush();g_lastExecution="TP"+IntegerToString(i+1)+" BE confirmed";}else g_lastExecution="BE retry / "+trade.ResultRetcodeDescription();return;
+  if(trade.PositionModify(ticket,wanted,tp)&&trade.ResultRetcode()==TRADE_RETCODE_DONE){GlobalVariableSet(stateKey,2);QueueTargetEvent(tag,i,2);GlobalVariablesFlush();g_lastExecution="TP"+IntegerToString(i+1)+" BE confirmed";}else g_lastExecution="BE retry / "+trade.ResultRetcodeDescription();return;
  }
- if(action==2){if(trade.PositionClose(ticket)&&trade.ResultRetcode()==TRADE_RETCODE_DONE&&!PositionSelectByTicket(ticket)){GlobalVariableSet(stateKey,2);GlobalVariablesFlush();g_lastExecution="TP"+IntegerToString(i+1)+" full close confirmed";}return;}
+ if(action==2){if(trade.PositionClose(ticket)&&trade.ResultRetcode()==TRADE_RETCODE_DONE&&!PositionSelectByTicket(ticket)){GlobalVariableSet(stateKey,2);QueueTargetEvent(tag,i,2);GlobalVariablesFlush();g_lastExecution="TP"+IntegerToString(i+1)+" full close confirmed";}return;}
  // Partial exits reduce to a fixed remaining volume; uncertain submissions never replay blindly.
  double original=GlobalVariableGet(PK(tag,"vol")),pct=GlobalVariableGet(PK(tag,"pct")),sum=0;for(int j=0;j<=i;j++)if((int)GlobalVariableGet(PK(tag,"a"+IntegerToString(j)))==3)sum+=pct;
  double target=RoundVolume(sym,original*MathMax(0,1-sum/100)),step=SymbolInfoDouble(sym,SYMBOL_VOLUME_STEP),minimum=SymbolInfoDouble(sym,SYMBOL_VOLUME_MIN);
- if(volume<=target+step*0.25){GlobalVariableSet(stateKey,2);return;}
+ if(volume<=target+step*0.25){GlobalVariableSet(stateKey,2);QueueTargetEvent(tag,i,2);return;}
  if(target<minimum||RoundVolume(sym,volume-target)<minimum){g_lastExecution="Partial blocked: broker minimum volume";return;}
  if(GlobalVariableCheck(stateKey)&&GlobalVariableGet(stateKey)==3){g_lastExecution="Partial submission uncertain: reconcile before retry";return;}
  if(AccountInfoInteger(ACCOUNT_MARGIN_MODE)!=ACCOUNT_MARGIN_MODE_RETAIL_HEDGING){g_lastExecution="Partial exits require a hedging account";return;}
- GlobalVariableSet(stateKey,3);GlobalVariablesFlush();bool ok=trade.PositionClosePartial(ticket,RoundVolume(sym,volume-target));long rc=(long)trade.ResultRetcode();
- if(ok&&(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)){if(PositionSelectByTicket(ticket)&&PositionGetDouble(POSITION_VOLUME)<=target+step*0.25)GlobalVariableSet(stateKey,2);else GlobalVariableSet(stateKey,1);}
+ GlobalVariableSet(stateKey,3);QueueTargetEvent(tag,i,3);GlobalVariablesFlush();bool ok=trade.PositionClosePartial(ticket,RoundVolume(sym,volume-target));long rc=(long)trade.ResultRetcode();
+ if(ok&&(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)){if(PositionSelectByTicket(ticket)&&PositionGetDouble(POSITION_VOLUME)<=target+step*0.25){GlobalVariableSet(stateKey,2);QueueTargetEvent(tag,i,2);}else GlobalVariableSet(stateKey,1);}
  else if(rc==TRADE_RETCODE_REJECT||rc==TRADE_RETCODE_INVALID_VOLUME||rc==TRADE_RETCODE_MARKET_CLOSED||rc==TRADE_RETCODE_TRADE_DISABLED||rc==TRADE_RETCODE_PRICE_CHANGED||rc==TRADE_RETCODE_REQUOTE)GlobalVariableSet(stateKey,1);GlobalVariablesFlush();
 }
 void ProcessPositionTargets(){
@@ -296,7 +303,7 @@ string TestCapabilities(){
  return "risk-v1,test-config-v1";
 }
 void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry());g_lastHb=GetTickCount64();}
-void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry()))g_lastHb=GetTickCount64();}
+void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry()))g_lastHb=GetTickCount64();FlushTargetEvents();}
 void EnsureCloud(){
  if(CloudConnected())return;ulong now=GetTickCount64();int retry=InpReconnectMs;if(retry<250)retry=250;if(retry>10000)retry=10000;if(now-g_lastConnectTry<(ulong)retry)return;g_lastConnectTry=now;DisconnectCloud();
  if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";return;}
@@ -428,7 +435,7 @@ void HandleOpen(string id,string mode,string side,string requested,string tag,st
  string sym=ResolveSymbol(requested);if(sym==""){Receipt(id,"REJECTED","",0,"symbol not found");return;}bool buy=(side=="BUY");MqlTick tick;if(!SymbolInfoTick(sym,tick)){Receipt(id,"REJECTED","",0,"no broker quote");return;}double current=buy?tick.ask:tick.bid;if(referencePrice>0&&MathAbs(current-referencePrice)/referencePrice*100.0>InpMaxPriceDeviationPct){Receipt(id,"REJECTED","",0,"price deviation too large");return;}
  long marginMode=AccountInfoInteger(ACCOUNT_MARGIN_MODE);
  if((marginMode==ACCOUNT_MARGIN_MODE_RETAIL_NETTING||marginMode==ACCOUNT_MARGIN_MODE_EXCHANGE)&&HasAnyPositionOnSymbol(sym)){Receipt(id,"REJECTED","",0,"netting account already has a position on this symbol; merge risk blocked");return;}
- double lots=(volumeMode=="RISK_PERCENT")?LotsForRisk(sym,buy,sl,volumeValue):NormalizeVolume(sym,volumeValue);if(lots<=0){Receipt(id,"REJECTED","",0,"position size invalid or below broker minimum");return;}double finalTp=PolicyClosePrice(tp1,tp2,tp3);if(finalTp<=0||!StopsValid(sym,buy,sl,finalTp)){Receipt(id,"REJECTED","",0,"SL/TP/spread validation failed");return;}
+ double lots=(volumeMode=="RISK_PERCENT")?LotsForRisk(sym,buy,sl,volumeValue):NormalizeVolume(sym,volumeValue);if(lots<=0){Receipt(id,"REJECTED","",0,"position size invalid or below broker minimum");return;}double finalTp=PolicyClosePrice(tp1,tp2,tp3);if(finalTp<=0){Receipt(id,"REJECTED","",0,"configured full-close target is missing");return;}if(!StopsValid(sym,buy,sl,finalTp)){Receipt(id,"REJECTED","",0,"SL/TP/spread validation failed");return;}
  if(mode=="dry_run"){Receipt(id,"PREVIEWED","",0,"preview accepted by MT5");return;}if(mode!="demo_execute"){Receipt(id,"REJECTED","",0,"unknown execution mode");return;}if(!DemoGate(id))return;if(CountMyPositions()>=InpMaxOpenTrades){Receipt(id,"REJECTED","",0,"max open trades reached");return;}
  SavePositionPolicy(tag,tp1,tp2,tp3,lots);if(!RegisterPending(tag,id)){Receipt(id,"ERROR","",0,"persistent pending-command ledger is full");return;}trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.SetTypeFillingBySymbol(sym);bool ok=buy?trade.Buy(lots,sym,0.0,sl,finalTp,"SB:"+tag):trade.Sell(lots,sym,0.0,sl,finalTp,"SB:"+tag);long rc=(long)trade.ResultRetcode();if(!ok){Receipt(id,"BROKER_REJECTED","",rc,trade.ResultRetcodeDescription());return;}GlobalVariableSet(GVVol(tag),lots);FlushTradeIdentity();
  RememberPositionFromDeal(tag,trade.ResultDeal());
@@ -571,6 +578,7 @@ void HandleTimedTest(string id,string mode,string side,string requested,string t
 void HandleCommand(string &parts[]){
  if(ArraySize(parts)<16)return;
  if(!LicenseReady()){Receipt(parts[1],"REJECTED","",0,"activation not confirmed");return;}string id=parts[1],mode=parts[2],action=parts[3],event=parts[4],side=parts[5],requested=parts[6],tag=parts[7],volumeMode=parts[8];double volumeValue=StringToDouble(parts[9]),referencePrice=StringToDouble(parts[10]),sl=StringToDouble(parts[11]),tp1=StringToDouble(parts[12]),tp2=StringToDouble(parts[13]),tp3=StringToDouble(parts[14]);long expiresMs=(long)StringToInteger(parts[15]);if(StringLen(tag)!=12){Receipt(id,"REJECTED","",0,"invalid correlation tag");return;}g_activityTick=GetTickCount64();g_lastSource=ArraySize(parts)>16?parts[16]:"unknown";g_lastStrategy=ArraySize(parts)>17?parts[17]:"";g_lastSignal=action+" "+event+" "+side+" "+requested;
+ if(action=="OPEN"&&g_policyDirty){Receipt(id,"REJECTED","",0,"POLICY_SYNC_PENDING");return;}
  if(action=="OPEN"&&ArraySize(parts)>=26&&ValidPolicyAction(parts[21])&&ValidPolicyAction(parts[22])&&ValidPolicyAction(parts[23])){g_policy1=parts[21];g_policy2=parts[22];g_policy3=parts[23];g_policyPartial=StringToDouble(parts[24]);g_policyBuffer=(int)StringToInteger(parts[25]);}
  if(action=="OPEN")CountSignal(id);RiskCheck();if(g_riskHit){Receipt(id,"REJECTED","",0,"DAILY_DRAWDOWN_HIT: manual reset required");return;}
  if(action=="TEST"){HandleTimedTest(id,mode,side,requested,tag,volumeValue,expiresMs,ArraySize(parts)>18?parts[18]:"",ArraySize(parts)>19?parts[19]:"",ArraySize(parts)>20?parts[20]:"");return;}
@@ -583,13 +591,15 @@ void ProcessLine(string line){
   long server=(long)StringToInteger(p[1]);string expiryText=p[2];StringReplace(expiryText,"-",".");datetime expiry=StringToTime(expiryText);
   if(server<=0||expiry<=0||(long)expiry*1000<=server){g_licenseActive=false;g_connStage="LICENSE EXPIRED / INVALID";return;}
   g_serverMs=server;g_licenseVerifiedTick=GetTickCount64();g_licenseExpiryMs=(long)expiry*1000;
-  g_licenseActive=true;g_licenseExpires=p[2];g_connStage="LICENSE ACTIVE";SendTestStatus();return;
+  g_licenseActive=true;g_licenseExpires=p[2];g_connStage="LICENSE ACTIVE";if(g_policyDirty)SendLine("POLICY_UPDATE|"+g_policy1+"|"+g_policy2+"|"+g_policy3+"|"+F2(g_policyPartial)+"|"+IntegerToString(g_policyBuffer));SendTestStatus();return;
  }
  if(p[0]=="TEST_ACK"&&n>=3&&p[1]==g_testId&&p[2]==g_testPhase&&(p[2]=="CLOSED"||p[2]=="REJECTED")){
   if(FileDelete(TimedTestFile(),FILE_COMMON)){g_testId="";g_testTag="";g_testPhase="";g_testDeadlineTick=0;}return;
  }
  if(p[0]=="ERR"){g_licenseActive=false;g_connStage="ACTIVATION REJECTED";g_lastExecution="ACTIVATION: "+(n>=2?p[1]:"DENIED");Print("SignalBridge: activation rejected: ",n>=2?p[1]:"DENIED");DisconnectCloud();return;}
- if(p[0]=="POLICY_SET"&&n>=6&&ValidPolicyAction(p[1])&&ValidPolicyAction(p[2])&&ValidPolicyAction(p[3])){double pct=StringToDouble(p[4]);int buffer=(int)StringToInteger(p[5]);if(pct>0&&pct<100&&buffer>=0&&(p[1]=="CLOSE"||p[2]=="CLOSE"||p[3]=="CLOSE")){g_policy1=p[1];g_policy2=p[2];g_policy3=p[3];g_policyPartial=pct;g_policyBuffer=buffer;SavePolicyDefaults();}return;}
+ if(p[0]=="EVENT_ACK"&&n>=4){int index=(int)StringToInteger(p[2]),state=(int)StringToInteger(p[3]);if(StringLen(p[1])==12&&index>=0&&index<3&&state>=1&&state<=3){GlobalVariableSet(PK(p[1],"ack"+IntegerToString(index)),state);GlobalVariablesFlush();}return;}
+ if(p[0]=="POLICY_ACK"){g_policyDirty=false;return;}if(p[0]=="POLICY_REJECTED"){g_lastExecution="Policy sync rejected; check your settings";return;}
+ if(p[0]=="POLICY_SET"&&!g_policyDirty&&n>=6&&ValidPolicyAction(p[1])&&ValidPolicyAction(p[2])&&ValidPolicyAction(p[3])){double pct=StringToDouble(p[4]);int buffer=(int)StringToInteger(p[5]);if(pct>0&&pct<100&&buffer>=0&&(p[1]=="CLOSE"||p[2]=="CLOSE"||p[3]=="CLOSE")){g_policy1=p[1];g_policy2=p[2];g_policy3=p[3];g_policyPartial=pct;g_policyBuffer=buffer;SavePolicyDefaults();}return;}
  if(p[0]=="REPORT_RANGE"&&n>=5&&LicenseReady()&&p[2]==N64(AccountInfoInteger(ACCOUNT_LOGIN))&&p[3]==AccountInfoString(ACCOUNT_SERVER)&&(long)StringToInteger(p[4])>=LicenseNowMs()){if(p[1]=="today"||p[1]=="7d"||p[1]=="30d"||p[1]=="all"){g_reportViewSince=p[1]=="all"?0:BrokerDay()-(p[1]=="7d"?6:p[1]=="30d"?29:0)*86400;g_reportTick=0;SendHeartbeat();}return;}
  if(p[0]=="REPORT_RESET"&&n>=5&&LicenseReady()&&p[2]==N64(AccountInfoInteger(ACCOUNT_LOGIN))&&p[3]==AccountInfoString(ACCOUNT_SERVER)&&(long)StringToInteger(p[4])>=LicenseNowMs()){if(!GlobalVariableCheck(RiskKey("rrid"))||GlobalVariableGet(RiskKey("rrid"))!=(double)RiskHash(p[1]))ResetReport(p[1]);return;}
  if(p[0]=="RISK_RESET"&&n>=7){bool bound=p[2]==N64(AccountInfoInteger(ACCOUNT_LOGIN))&&p[3]==AccountInfoString(ACCOUNT_SERVER);bool ok=LicenseReady()&&bound&&p[4]=="CONFIRM"&&(long)StringToInteger(p[6])>=LicenseNowMs()&&ResetDailyRisk(StringToDouble(p[5]));SendLine("RISK_RESET_ACK|"+p[1]+"|"+(ok?"READY":"REJECTED"));return;}

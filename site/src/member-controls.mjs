@@ -5,6 +5,7 @@ export async function memberSettings(env,user){const r=await env.DB.prepare('SEL
 export async function memberControls(path,b,env,user,diagnostic){
  if(path==='/api/member/settings'&&b===undefined)return reply({ok:true,settings:await memberSettings(env,user)});
  if(path==='/api/member/settings'){
+  if(typeof b.tv_to_telegram!=='boolean'||typeof b.telegram_to_mt5!=='boolean')return reply({error:'INVALID_ROUTE'},400);
   let policy;try{policy=validatePolicy(b.policy)}catch(e){return reply({error:e.message},400)}
   if(!Number.isFinite(b.default_lots)||b.default_lots<=0||b.default_lots>100)return reply({error:'INVALID_LOTS'},400);
   const old=await memberSettings(env,user),enabled=!!b.tv_to_telegram||!!b.telegram_to_mt5;
@@ -26,8 +27,8 @@ export async function memberControls(path,b,env,user,diagnostic){
   const s=await memberSettings(env,user);return reply({ok:true,parsed:parseSignalMessage(String(b.text||''),Date.now(),{defaultLots:s.default_lots})});
  }
  if(path==='/api/member/report'){
-  const [d,rows,review,outbox]=await Promise.all([diagnostic(),env.DB.prepare("SELECT id,source_type,status,last_error,created_at,json_extract(payload_json,'$.symbol') AS symbol,json_extract(payload_json,'$.side') AS side,json_extract(payload_json,'$.order.volume.value') AS lots FROM commands WHERE tenant_id=? ORDER BY created_at DESC LIMIT 60").bind(user.id).all(),env.DB.prepare('SELECT id,reason,created_at FROM signal_review_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 10').bind(user.id).all(),env.DB.prepare('SELECT status,detail,created_at FROM telegram_signal_outbox WHERE user_id=? ORDER BY created_at DESC LIMIT 8').bind(user.id).all()]);
-  return reply({ok:true,diagnostic:d,commands:rows.results||[],review:review.results||[],outbox:outbox.results||[]});
+  const [d,rows,review,outbox,events]=await Promise.all([diagnostic(),env.DB.prepare("SELECT id,source_type,status,last_error,created_at,json_extract(payload_json,'$.symbol') AS symbol,json_extract(payload_json,'$.side') AS side,json_extract(payload_json,'$.correlation_tag') AS tag,json_extract(payload_json,'$.order.volume.value') AS lots FROM commands WHERE tenant_id=? ORDER BY created_at DESC LIMIT 60").bind(user.id).all(),env.DB.prepare('SELECT id,reason,created_at FROM signal_review_queue WHERE user_id=? ORDER BY created_at DESC LIMIT 10').bind(user.id).all(),env.DB.prepare('SELECT status,detail,created_at FROM telegram_signal_outbox WHERE user_id=? ORDER BY created_at DESC LIMIT 8').bind(user.id).all(),env.DB.prepare('SELECT tag,target_index,state,action,created_at FROM position_events WHERE user_id=? ORDER BY created_at DESC LIMIT 30').bind(user.id).all()]);
+  return reply({ok:true,diagnostic:d,events:events.results||[],commands:rows.results||[],review:review.results||[],outbox:outbox.results||[]});
  }
  if(path==='/api/member/report/range'){const d=await diagnostic();if(!['today','7d','30d','all'].includes(b.period))return reply({error:'INVALID_PERIOD'},400);if(!d.terminal_online||!d.capabilities.includes('reports-v1'))return reply({error:'UPDATED_EA_REQUIRED'},409);const hub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(d.agent_id));const r=await hub.fetch(new Request('https://agent-hub/report-range',{method:'POST',body:JSON.stringify({period:b.period,agent_id:d.agent_id,account_login:d.mt5_account.login,account_server:d.mt5_account.server})}));return reply(await r.json(),r.status);}
  if(path==='/api/member/report/reset'){

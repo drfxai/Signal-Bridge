@@ -6,5 +6,5 @@ export function validatePolicy(p){
  if(!Number.isFinite(p.partial_percent)||p.partial_percent<=0||p.partial_percent>=100||!Number.isInteger(p.be_buffer_points)||p.be_buffer_points<0||p.be_buffer_points>100000)throw Error('INVALID_POLICY');
  return {...p};
 }
-export async function memberPolicy(env,userId){try{const r=await env.DB.prepare('SELECT policy_json FROM member_signal_settings WHERE user_id=?').bind(userId).first();return r?validatePolicy(JSON.parse(r.policy_json)):{...DEFAULT_POLICY}}catch{return {...DEFAULT_POLICY}}}
+export async function memberPolicy(env,userId){const r=await env.DB.prepare('SELECT policy_json FROM member_signal_settings WHERE user_id=?').bind(userId).first();return r?validatePolicy(JSON.parse(r.policy_json)):null}
 export function policyFields(p){return [p.tp1,p.tp2,p.tp3,p.partial_percent,p.be_buffer_points].join('|');}

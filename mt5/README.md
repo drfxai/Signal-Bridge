@@ -59,3 +59,12 @@ For this broker use `InpTestSymbol=XAUUSD.p` (or preserve InpGoldSymbol mapping)
 orders at the equity-loss limit. HIT stays red until you explicitly confirm restart
 in the EA or personal portal, after all positions/orders have closed.
 See [calculation, counters and limits](../docs/EA_V028_DAILY_DRAWDOWN.md).
+
+### Approved command center — 0.29.0
+
+Defaults are **TP1 = BE**, **TP2 = CLOSE**, **TP3 = OFF**. Both portals provide policy,
+routing, preview and report controls. Native EA has Overview/Signals/Trades/Risk/
+Settings tabs and compact mode. Report reset does not reset daily drawdown.
+Partial exits require a hedging account; default BE/full close support netting too.
+Keep MT5 running for local target actions. See the [release behavior and install
+requirements](../docs/EA_V029_APPROVED_COMMAND_CENTER.md) before enabling routes.

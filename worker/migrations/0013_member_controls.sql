@@ -13,3 +13,9 @@ CREATE TABLE IF NOT EXISTS signal_review_queue (
  id TEXT PRIMARY KEY,user_id TEXT NOT NULL,source_ref TEXT NOT NULL,reason TEXT NOT NULL,
  normalized_preview TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(user_id,source_ref)
 );
+CREATE TABLE IF NOT EXISTS position_events (
+ id TEXT PRIMARY KEY, user_id TEXT NOT NULL, agent_id TEXT NOT NULL, tag TEXT NOT NULL,
+ target_index INTEGER NOT NULL, state INTEGER NOT NULL, action INTEGER NOT NULL,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_position_events_user_time ON position_events(user_id,created_at);

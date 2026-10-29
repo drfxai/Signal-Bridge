@@ -1,4 +1,4 @@
-import {memberPolicy,policyFields} from './member-policy.mjs';
+import {memberPolicy,policyFields,validatePolicy} from './member-policy.mjs';
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const RECEIPT_STATES=new Set(['PREVIEWED','SUBMITTED','FILLED','BROKER_REJECTED','REJECTED','ACCOUNT_MISMATCH','EXPIRED','ERROR','DUPLICATE']);
 export function receiptTransitionAllowed(from,to){if(from===to)return true;if(from==='PENDING'||from==='DELIVERED')return RECEIPT_STATES.has(to);if(from==='SUBMITTED')return ['FILLED','BROKER_REJECTED','ERROR','DUPLICATE'].includes(to);return false}
@@ -15,7 +15,7 @@ function eaCorrelationTag(value){
 }
 function encodeEaCommand(c){
  const o=c.order||{},t=Array.isArray(o.take_profits)?o.take_profits:[],expiry=c.expires_at?Date.parse(c.expires_at):0;
- return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0,safe(c.source?.type||'unknown',24),safe(c.source?.strategy||'',80),safe(c.test_account?.mode||'',12),safe(c.test_account?.login||'',64),safe(c.test_account?.server||'',120),policyFields(c.exit_policy||{tp1:'BE',tp2:'CLOSE',tp3:'OFF',partial_percent:50,be_buffer_points:0})].join('|');
+ return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0,safe(c.source?.type||'unknown',24),safe(c.source?.strategy||'',80),safe(c.test_account?.mode||'',12),safe(c.test_account?.login||'',64),safe(c.test_account?.server||'',120),c.exit_policy?policyFields(c.exit_policy):'||||'].join('|');
 }
 
 export class AgentHub{
@@ -75,6 +75,8 @@ export class AgentHub{
  async handleEaMessage(ws,message,a){
   const p=parseEaLine(message);if(!p){ws.send('ERR|INVALID_MESSAGE');return}
   a.lastSeenAt=new Date().toISOString();
+  if(p[0]==='POLICY_UPDATE'){try{if(!await this.licenseIsValid(a))return;const policy=validatePolicy({tp1:p[1],tp2:p[2],tp3:p[3],partial_percent:Number(p[4]),be_buffer_points:Number(p[5])});await this.env.DB.prepare('INSERT INTO member_signal_settings(user_id,policy_json) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET policy_json=excluded.policy_json,updated_at=CURRENT_TIMESTAMP').bind(a.tenantId,JSON.stringify(policy)).run();a.policySignature=policyFields(policy);ws.serializeAttachment(a);ws.send('POLICY_ACK');}catch{ws.send('POLICY_REJECTED');}return;}
+  if(p[0]==='TARGET_EVENT'){const [_,tag,index,state,action]=p;const i=Number(index),v=Number(state),act=Number(action);if(!/^[a-f0-9]{12}$/.test(tag||'')||![0,1,2].includes(i)||![1,2,3].includes(v)||![0,1,2,3].includes(act)||!await this.licenseIsValid(a))return;const id=[a.agentId,tag,i,v].join(':');await this.env.DB.prepare('INSERT INTO position_events(id,user_id,agent_id,tag,target_index,state,action,created_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(id,a.tenantId,a.agentId,tag,i,v,act,new Date().toISOString()).run();ws.send(['EVENT_ACK',tag,i,v].join('|'));return;}
   if(p[0]==='RISK_RESET_ACK'){a.lastRiskReset={request_id:safe(p[1],64),status:safe(p[2],16)};ws.serializeAttachment(a);return;}
   if(p[0]==='TEST_STATUS'){
    const status=p[2];if(!['OPEN','CLOSED','CLOSE_FAILED','REJECTED'].includes(status))return;
@@ -101,7 +103,7 @@ export class AgentHub{
    ws.serializeAttachment(a);
    this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
    ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now()+'|'+(a.licenseExpires||''));
-   if((a.capabilities||[]).includes('exit-policy-v1')){const policy=policyFields(await memberPolicy(this.env,a.tenantId));if(a.policySignature!==policy){ws.send('POLICY_SET|'+policy);a.policySignature=policy;ws.serializeAttachment(a);}}
+   if((a.capabilities||[]).includes('exit-policy-v1')){const currentPolicy=await memberPolicy(this.env,a.tenantId);const policy=currentPolicy?policyFields(currentPolicy):null;if(policy&&a.policySignature!==policy){ws.send('POLICY_SET|'+policy);a.policySignature=policy;ws.serializeAttachment(a);}}
    if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));return;
   }
   if(p[0]==='PING'){ws.send('PONG|'+safe(p[1],32)+'|'+Date.now());return}
