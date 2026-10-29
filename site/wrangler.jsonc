@@ -1,0 +1,24 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "drfx-company-site",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-10-28",
+  "workers_dev": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "signalbridge-ingress",
+      "database_id": "9439ff03-b1ec-47e6-b2b6-b8f2e7d33559",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "AGENT_HUB",
+        "class_name": "AgentHub",
+        "script_name": "drfx-signalbridge-ingress"
+      }
+    ]
+  }
+}

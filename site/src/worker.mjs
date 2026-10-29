@@ -344,7 +344,7 @@ async function connectionDiagnostic(env,user){
   live_socket_verified:live,terminal_online:terminal,live_snapshot_available:snapshotAvailable,
   connected_at:connectedAt,fresh,mt5_mode:mt5Mode,capabilities,
    license_unexpired:!!row.expires_at&&Date.parse(row.expires_at.replace(' ','T')+'Z')>Date.now(),trade_executed:false,
-  note:snapshotAvailable?'Live Durable Object EA snapshot; no order was placed.':'Live socket could not be independently verified. Database history shown only.'};
+  note:snapshotAvailable?'Live Durable Object EA snapshot; no order was placed.':!env.AGENT_HUB?'EA hub binding is missing from the site deployment.':'Live socket could not be independently verified. Database history shown only.'};
 }
 async function setWebhookMode(req,env,user){
  const b=await readBody(req);
@@ -360,9 +360,10 @@ async function setWebhookMode(req,env,user){
 }
 async function runConnectionTest(req,env,user){
  const b=await readBody(req);if(b.confirm!==true)return fail('EXPLICIT_CONFIRMATION_REQUIRED');
- if(!await limited(req,env,'demo:test:'+user.id,1))return fail('RATE_LIMITED',429);
+ if(!env.AGENT_HUB)return fail('EA_HUB_NOT_CONFIGURED',503);
  const d=await connectionDiagnostic(env,user),reason=demoReadiness(d,{timedTest:true});
  if(reason)return fail(reason,409);
+ if(!await limited(req,env,'demo:test:'+user.id,1))return fail('RATE_LIMITED',429);
  const id=uid('test'),commandId=crypto.randomUUID();
  const inserted=await env.DB.prepare("INSERT INTO connection_tests (id,user_id,agent_id,command_id) VALUES (?,?,?,?) ON CONFLICT DO NOTHING").bind(id,user.id,d.agent_id,commandId).run();
  if(inserted.meta?.changes!==1)return fail('TEST_ALREADY_PENDING',409);
@@ -609,7 +610,7 @@ async function api(req,env){
  const u=new URL(req.url),path=u.pathname;
  if(path==='/api/telegram/webhook'&&req.method==='POST')return telegramWebhook(req,env);
  if(path==='/api/payments/ipn'&&req.method==='POST')return ipnHandler(req,env);
- if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY});
+ if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY,ea_hub:!!env.AGENT_HUB,release:'signalbridge-connectivity-20261029.1'});
  if(path==='/api/telegram/health'&&req.method==='GET'){
   if(!await limited(req,env,'public:telegram-health',5))return fail('RATE_LIMITED',429);
   return json(await telegramHealth(env));

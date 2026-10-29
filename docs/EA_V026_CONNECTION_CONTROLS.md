@@ -55,3 +55,29 @@ PRs #49 and #56 contain earlier versions of features already superseded on `main
 `npm run check` syntax-checks JavaScript across site, worker, design, Windows agent, scripts and tests, then runs the full Node test suite. SQLite-backed endpoint tests apply every migration and cover ownership, confirmation, demo/freshness/capability gates, durable dispatch, concurrency, webhook modes and lifecycle status. The Windows Actions workflow compiles EA 0.26.0 using official MetaEditor; actual broker timing/restart tests remain an explicit manual verification step.
 
 Browser CI renders desktop, tablet, mobile website and Telegram Mini App controls with fictional test data. Screenshots are uploaded as `portal-responsive-ui-previews`; they are UI previews, not evidence of live trading. Confirmation cancellation must send no trade request, and accepted confirmation must send exactly one.
+
+## Production connectivity repair — 2026-10-29
+
+A source merge alone does not publish Cloudflare Workers. Production previously
+lacked the connection-test table, the site-to-ingress Durable Object binding,
+and the current test controls in both JavaScript assets.
+
+`site/wrangler.jsonc` now declares the shared D1 database and the **external**
+`AgentHub` class from `drfx-signalbridge-ingress`. Never create a separate site
+namespace: both Workers must resolve exactly the same EA object IDs.
+
+When deploying, apply migration 0011 before either Worker update. Preserve
+existing secret bindings (particularly `LICENSE_VAULT_KEY`, Telegram token and
+webhook secret), plain-text variables and domain routes. If using Wrangler,
+use the site config with `--keep-vars`; if using multipart API uploads, retain
+secret bindings with `keep_bindings: ["secret_text"]`. Ingress must continue
+declaring `AgentHub` as an existing SQLite Durable Object export.
+
+`GET /api/config` exposes `ea_hub` and a non-secret release marker for verifying
+the deployed site. A failed EA readiness check no longer consumes the timed-test
+rate limit. The panel explains old/disabled EA capabilities and the required
+`InpEnableDemoExecution` / `InpEnableConnectionTest` inputs. The read-only
+connection check no longer depends on the optional webhook credential request
+succeeding.
+
+Production verification: both public JavaScript assets contain the test/status handlers, `/api/config` reports the new release and `ea_hub: true`, and ingress health is healthy. An isolated temporary authenticated QA fixture verified the real site → D1 → external Durable Object snapshot path (HTTP 200, snapshot available, no trade), and correctly rejected an offline demo-test attempt with `EA_NOT_READY` (HTTP 409). The temporary QA account/license/session rows were removed afterward. No broker position was opened.
