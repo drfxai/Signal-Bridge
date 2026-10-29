@@ -30,7 +30,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  await page.goto('http://127.0.0.1:4199'+url,{waitUntil:'networkidle'});
  if(['website-desktop','website-tablet','website-mobile'].includes(label)){
   await page.locator('#preloader').waitFor({state:'hidden'});
-  await page.evaluate(async()=>{for(let y=0;y<document.documentElement.scrollHeight;y+=innerHeight*.8){scrollTo(0,y);await new Promise(r=>setTimeout(r,90))}scrollTo(0,0)});
+  await page.evaluate(async()=>{for(let y=0;y<document.documentElement.scrollHeight;y+=innerHeight*.8){scrollTo({top:y,behavior:'instant'});await new Promise(r=>setTimeout(r,90))}scrollTo({top:0,behavior:'instant'})});
   await page.waitForFunction(()=>[...document.querySelectorAll('.sx-reveal.sx-in,.reveal-cinema.active')].every(e=>Number(getComputedStyle(e).opacity)>.99));
   await page.screenshot({path:dir+'/'+label+'-landing.png',fullPage:true});
  }
