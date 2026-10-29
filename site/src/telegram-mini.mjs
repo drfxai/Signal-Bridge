@@ -10,6 +10,17 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .brand-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 0 16px;border-bottom:1px solid #ffffff12}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}.mark{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:11px;border:1px solid #bc9c5f;background:linear-gradient(140deg,#423522,#141316 70%);box-shadow:inset 0 1px #fff2,0 0 15px #cb9c4423;color:#f5d592;font-size:15px;font-weight:900;letter-spacing:-.1em}.brandname{min-width:0}.brandname .name{display:block;font-weight:800;letter-spacing:.01em;font-size:16px;line-height:1.1;white-space:nowrap}.brandname .name em{color:var(--gold-light);font-style:normal}.brandname small{display:block;color:#b0a88f;font-size:10px;font-weight:700;letter-spacing:.1em;margin-top:5px}
 .header-actions{display:flex;align-items:center;gap:8px}.lang-toggle{height:39px;min-width:58px;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid #a2865480;border-radius:10px;background:linear-gradient(130deg,#2b2116,#111419);color:#f6dea4;font-size:12px;font-weight:800}
+
+/* Shared premium language control with desktop website. */
+.mini-lang-globe{height:17px;width:17px;flex:none;color:#f3d28a}
+.lang-toggle{height:42px;min-width:78px;border-radius:999px;padding:0 11px;gap:8px;border-color:#c09c5a91;background:linear-gradient(145deg,#29231b,#0b1018 85%);box-shadow:inset 0 1px #fff2,0 2px 13px #0007;transition:border-color .18s,box-shadow .18s}
+.lang-toggle:focus-visible,.lang-toggle[aria-expanded=true]{border-color:#f2d08e;box-shadow:0 0 0 3px #d4af3729}
+.mini-lang-options{width:min(235px,calc(100vw - 24px));border-color:#c09c5a8a;border-radius:15px;background:linear-gradient(145deg,#201c17,#0e1420 80%);box-shadow:0 24px 60px #000d}
+.mini-lang-options button{min-height:49px;border-radius:10px;font-weight:650}
+.mini-lang-options button[aria-pressed=true]{border-color:#e6bb6b99;background:linear-gradient(110deg,#b28a3933,#19352344)}
+.mini-lang-options button:focus-visible{outline:2px solid #eccc87;outline-offset:-2px}
+@media(max-width:410px){.lang-toggle{min-width:50px;height:40px;gap:5px;padding:0 8px}.mini-lang-chevron{display:none}.mini-lang-globe{height:16px;width:16px}.mini-lang-options{right:0}}
+
 .mini-lang-picker{position:relative;z-index:80;direction:ltr}
 .mini-lang-chevron{color:#a9aabd;font-size:20px;line-height:1}
 .lang-toggle[aria-expanded=true] .mini-lang-chevron{transform:rotate(180deg)}
@@ -69,16 +80,16 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
- <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button id="langToggle" class="lang-toggle" type="button" aria-label="Choose app language" aria-expanded="false" aria-controls="miniLangOptions" aria-haspopup="true"><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div class="mini-lang-options" id="miniLangOptions" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">APP LANGUAGE</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="ar" aria-pressed="false"><b>AR</b><span>العربية</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
+ <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button id="langToggle" class="lang-toggle" type="button" aria-label="Change Mini App language" title="Change language · تغییر زبان" aria-expanded="false" aria-controls="miniLangOptions" aria-haspopup="true"><svg class="mini-lang-globe" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.5 4.5 5.5 4.5 9S15 18.5 12 21M12 3C9 5.5 7.5 8.5 7.5 12S9 18.5 12 21"/></svg><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div class="mini-lang-options" id="miniLangOptions" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">SELECT LANGUAGE · زبان</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="ar" aria-pressed="false"><b>AR</b><span>العربية</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
 <section class="hero">
- <span class="eyebrow" data-tr="eyebrow">YOUR SIGNALBRIDGE ADVANTAGE</span>
- <h1><span data-tr="hero1">Every signal.</span><br><em data-tr="hero2">One powerful bridge.</em></h1>
- <p class="desc" data-tr="desc">One private workspace for your TradingView alerts, Telegram signals, MT5 license and membership. Built to keep you in control.</p>
+ <span class="eyebrow" data-tr="eyebrow">ALL YOUR SIGNALS. ONE CONTROL CENTER.</span>
+ <h1><span data-tr="hero1">Your signals.</span><br><em data-tr="hero2">One powerful connection.</em></h1>
+ <p class="desc" data-tr="desc">Take control of your TradingView alerts, Telegram signals and MT5 license. Manage your personal webhook and membership in one premium command center.</p>
  <div class="hero-kicker"><span><i></i> Private license</span><span>Telegram verified sign-in</span></div>
 </section>
 <div class="route-stage" aria-label="Illustrative route from alerts through SignalBridge to MetaTrader 5">
- <div class="route-head"><strong>SignalBridge</strong><small>CONNECTION FLOW · ILLUSTRATION</small></div>
+ <div class="route-head"><strong>SignalBridge</strong><small>TRADINGVIEW · TELEGRAM · MT5</small></div>
  <div class="route-steps">
   <div class="route-node"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="3"/><path d="M7 16l3-4 3 2 4-6"/></svg><b>Alerts</b><small>TradingView / TG</small></div>
   <div class="route-line"></div>
@@ -154,7 +165,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <div id="miniAdminUsers" class="mini-admin-users"></div></div>
  <p id="miniAdminStatus" class="mini-note" role="status"></p>
  </section>
-<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Interactive routing illustration; not independently verified trading results.</footer>
+<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Private licensing and signal connectivity. Trading performance is displayed only when broker-verified records exist.</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
  <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Home</span></button>
