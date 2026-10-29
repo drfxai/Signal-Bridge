@@ -31,3 +31,5 @@ test('configured volume fallback never overrides an explicitly invalid volume la
 test('simple JSON preserves explicit signal ID while invalid IDs are rejected',()=>{
  const signal={id:'test:source:123',action:'BUY',symbol:'GOLD',sl:2300,tp:[2350,2360]};assert.equal(parseSignalMessage(JSON.stringify(signal),Date.now(),{defaultLots:0.01}).signal.external_signal_id,'test:source:123');assert.equal(parseSignalMessage(JSON.stringify({...signal,id:'bad id'}),Date.now(),{defaultLots:0.01}).ok,false);
 });
+
+test('native broker target recovery reconstructs confirmed exits with broker timestamps, not fresh fake hits',()=>{const ea=readFileSync('mt5/DrFX_SignalBridge_EA.mq5','utf8');const recovery=ea.slice(ea.indexOf('void RecoverClosedTargets()'),ea.indexOf('void RefreshReport()'));assert.match(recovery,/HistorySelectByPosition\(pid\)/);assert.match(recovery,/DEAL_REASON_TP/);assert.match(recovery,/GlobalVariableSet\(h,\(double\)when\)/);assert.doesNotMatch(recovery,/trade\./);assert.match(recovery,/checked<100/);});
