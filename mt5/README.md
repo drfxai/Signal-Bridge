@@ -1,7 +1,7 @@
 # SignalBridge MT5 EA
 
 The only current source is [`DrFX_SignalBridge_EA.mq5`](DrFX_SignalBridge_EA.mq5),
-**EA v0.27.1**. Older EA snapshots have been removed from the working tree;
+**EA v0.27.2**. Older EA snapshots have been removed from the working tree;
 Git history retains their previous contents.
 
 ## Setup
@@ -34,3 +34,18 @@ Automatic signals remain demo-only; LIVE connection tests require separate conse
 Actual broker E2E/timing certification is separate from compilation.
 
 See [DEMO/LIVE test controls and the new compact panel](../docs/EA_V027_LUXURY_TESTS.md).
+
+### Broker symbol settings (EA 0.27.2)
+
+In EA Properties → Inputs → **Broker Symbol Settings**, set:
+
+| Input | Example | Applies to |
+| --- | --- | --- |
+| `InpGoldSymbol` | `XAUUSD.p` | Incoming XAUUSD signals and the gold position test |
+| `InpTestSymbol` | blank | Optional test-only override; normally leave blank |
+| `InpSymbolSuffix` | `.p` | Other incoming symbols, e.g. EURUSD → EURUSD.p |
+| `InpSymbolPrefix` | blank | Optional broker prefix for other symbols |
+
+Copy the exact case-sensitive symbol from Market Watch. An explicitly configured
+but unavailable gold symbol is rejected; the EA does not silently trade a different
+contract. Existing positions, spread limits and account opt-in checks still apply.

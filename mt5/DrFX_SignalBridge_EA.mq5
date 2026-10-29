@@ -5,8 +5,8 @@
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
 #property strict
-#property version   "0.271"
-#property description "SignalBridge EA v0.27.1: animated compact panel, live telemetry and account-bound connection tests."
+#property version   "0.272"
+#property description "SignalBridge EA v0.27.2: animated compact panel, live telemetry and account-bound connection tests."
 #property description "Signals remain DEMO-only. Explicitly confirmed, opt-in account-bound LIVE tests are supported."
 #property description "Enter your private activation code in the first EA input. No compilation required for EX5 users."
 
@@ -25,7 +25,6 @@ input int InpReconnectMs=1000;
 input group "=== DEMO signals / confirmed connection tests ==="
 input bool InpEnableDemoExecution=false;
 input bool InpEnableLiveConnectionTest=false; // Separate opt-in for confirmed LIVE position tests only
-input string InpTestSymbol=""; // Optional exact broker gold symbol; blank = unique XAU/USD detection
 input int InpTestEmergencySLPoints=2000; // Broker-side emergency stop for timed tests
 input bool InpAnimations=true;
 input int InpUiRefreshMs=125; // UI animation frame interval, clamped to 100-1000 ms
@@ -37,8 +36,11 @@ input double InpMaxPriceDeviationPct=0.75;
 input int InpMaxOpenTrades=4;
 input int InpMaxSpreadPoints=80;
 input int InpSlippagePoints=20;
-input string InpSymbolPrefix="";
-input string InpSymbolSuffix="";
+input group "=== Broker Symbol Settings | XAUUSD.p / GOLD ==="
+input string InpGoldSymbol=""; // Exact broker gold symbol for XAUUSD signals AND tests, e.g. XAUUSD.p
+input string InpTestSymbol=""; // Optional TEST-ONLY override; blank uses InpGoldSymbol
+input string InpSymbolPrefix=""; // Prefix for other signal symbols, e.g. m
+input string InpSymbolSuffix=""; // Suffix for other signal symbols, e.g. .p
 
 input group "=== Live Panel ==="
 input bool InpShowPanel=true;
@@ -48,7 +50,7 @@ input int InpPanelX=16;
 input int InpPanelY=22;
 input int InpPanelWidth=390;
 
-#define SBP "SB271_"
+#define SBP "SB272_"
 #define MAX_PENDING 32
 #define MAX_RECEIPTS 64
 CTrade trade;
@@ -133,7 +135,7 @@ void DisconnectCloud(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_sock
 bool WsHandshake(){
  uchar nonce[];ArrayResize(nonce,16);for(int i=0;i<16;i++)nonce[i]=(uchar)(MathRand()&255);
  string key=Base64(nonce,16);
- string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.27.1\r\n\r\n";
+ string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.27.2\r\n\r\n";
  if(!TlsSendString(req))return false;
  uchar pending[];ulong until=GetTickCount64()+5000;
  while(GetTickCount64()<until&&!IsStopped()){
@@ -222,7 +224,7 @@ void ClearPendingById(string id){bool changed=false;for(int i=0;i<MAX_PENDING;i+
 bool FinalReceiptAckClearsPending(string status){return status=="FILLED"||status=="BROKER_REJECTED"||status=="DUPLICATE";}
 bool HasPending(){for(int i=0;i<MAX_PENDING;i++)if(g_pendingId[i]!="")return true;return false;}
 
-string ResolveSymbol(string requested){string s=InpSymbolPrefix+requested+InpSymbolSuffix;if(SymbolSelect(s,true))return s;if(SymbolSelect(requested,true))return requested;return "";}
+string ResolveSymbol(string requested){if((requested=="XAUUSD"||requested==InpGoldSymbol)&&InpGoldSymbol!=""){if(SymbolSelect(InpGoldSymbol,true))return InpGoldSymbol;return "";}string s=InpSymbolPrefix+requested+InpSymbolSuffix;if(SymbolSelect(s,true))return s;if(SymbolSelect(requested,true))return requested;return "";}
 // Resolve the gold test independently. Never guess between multiple contracts.
 string ResolveTestSymbol(string &reason){
  if(InpTestSymbol!=""){
@@ -230,6 +232,7 @@ string ResolveTestSymbol(string &reason){
   reason="TEST_SYMBOL_NOT_FOUND: configured "+InpTestSymbol;return "";
  }
  string exact=ResolveSymbol("XAUUSD");if(exact!="")return exact;
+ if(InpGoldSymbol!=""){reason="TEST_SYMBOL_NOT_FOUND: InpGoldSymbol="+InpGoldSymbol;return "";}
  string candidate="";int matches=0;
  for(int i=0;i<SymbolsTotal(false);i++){
   string name=SymbolName(i,false);
@@ -498,7 +501,7 @@ void RenderPanel(){
   Label("equity",x+8,y+35,"EQ "+F2(AccountInfoDouble(ACCOUNT_EQUITY)),9,C_TEXT,"Consolas");Label("positions",x+151,y+35,"OPEN "+IntegerToString(CountMyPositions()),8,C_CYAN,"Consolas");
   Label("rtt",x+8,y+60,"RTT "+F2(g_cloudRttMs)+"ms",7,C_MUTED,"Consolas");Label("test",x+117,y+60,TimedTestActive()?"TEST / "+g_testPhase:LicenseReady()?"CONNECTED":"OFFLINE",7,TimedTestActive()?C_AMBER:stateColor,"Consolas");
  }else{
-  Label("title",x+14,y+10,"DrFX / SIGNALBRIDGE",11,gold);Label("version",x+14,y+29,"EA 0.27.1  /  "+AccountMode(),7,C_MUTED,"Consolas");Button("compact",x+w-96,y+12,82,23,"COMPACT");
+  Label("title",x+14,y+10,"DrFX / SIGNALBRIDGE",11,gold);Label("version",x+14,y+29,"EA 0.27.2  /  "+AccountMode(),7,C_MUTED,"Consolas");Button("compact",x+w-96,y+12,82,23,"COMPACT");
   Label("status",x+14,y+60,LicenseReady()?"● EA CONNECTED":"● "+g_connStage,9,stateColor);Label("license",x+14,y+83,"LICENSE / "+LicenseRemaining(),9,gold,"Consolas");
   int col=(w-40)/2;
   Rect("balance_card",x+12,y+109,col,50,C_BG2,C_BORDER);Label("balance_k",x+22,y+117,"BALANCE",7,C_MUTED,"Consolas");Label("balance_v",x+22,y+134,F2(AccountInfoDouble(ACCOUNT_BALANCE)),11,C_TEXT,"Consolas");
@@ -521,7 +524,7 @@ void RenderPanel(){
  ChartRedraw(0);
 }
 
-int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.27.1 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.27.2 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
 void OnDeinit(const int reason){EventKillTimer();if(g_testLock!=INVALID_HANDLE){FileClose(g_testLock);g_testLock=INVALID_HANDLE;}DisconnectCloud();DeletePanel();ChartRedraw(0);}
 void OnTick(){CloseTimedTest();}
 void OnTimer(){
