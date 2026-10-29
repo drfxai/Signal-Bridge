@@ -2,7 +2,7 @@ import { validateTradingView, ValidationError, stableStringify } from './validat
 import { authenticateAgent } from './agent-auth.mjs';
 import { authenticateEaLicense } from './ea-license.mjs';
 import { createAndDispatch, validateTestSignal } from './command.mjs';
-import { parseTelegramTrade } from './telegram-parser.mjs';
+import { parseSignalMessage, telegramMessageFresh } from './signal-adapters.mjs';
 import { parseGodModeAlert } from './godmode-parser.mjs';
 import { TEST_UI } from './test-ui.mjs';
 import { DASHBOARD_UI } from './dashboard-ui.mjs';
@@ -217,7 +217,8 @@ async function handleTelegram(request,env,connectionId){
   return json({ok:true,paired:true});
  }
 
- const parsed=parseTelegramTrade(msg.text);
+ if(!telegramMessageFresh(msg))return json({ok:true,ignored:'STALE_OR_INVALID_MESSAGE_TIME'});
+ const parsed=parseSignalMessage(msg.text);
  const normalized=parsed.ok?JSON.stringify(parsed.signal):null;
  const textHash=await sha256(msg.text);
  const ins=await env.DB.prepare(

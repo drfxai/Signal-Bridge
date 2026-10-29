@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'site/**'
       - 'design/**'
       - 'mt5/**'
       - 'worker/**'
@@ -13,6 +14,7 @@ on:
       - '.github/workflows/ui-checks.yml'
   pull_request:
     paths:
+      - 'site/**'
       - 'design/**'
       - 'mt5/**'
       - 'worker/**'

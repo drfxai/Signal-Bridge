@@ -33,7 +33,7 @@ export function validateTestSignal(body,nowMs=Date.now()){
 
 export function makeCommand({tenantId,agentId,sourceType,sourceRef,signal,mode,commandId=crypto.randomUUID()}){
  return {protocol:'signalbridge-command/1',command_id:commandId,tenant_id:tenantId,agent_id:agentId,
-  source:{type:sourceType,ref:sourceRef||null},
+  source:{type:sourceType,ref:sourceRef||null,strategy:signal.metadata?.strategy||null},
   correlation_id:String(signal.correlation_id||signal.external_signal_id||commandId),
   correlation_tag:correlationTag(signal.correlation_id||signal.external_signal_id||commandId),
   execution_mode:normalizeExecutionMode(mode),action:signal.action,
@@ -66,7 +66,7 @@ async function findExisting(env,{signalId,sourceType,sourceRef,agentId}){
  return null;
 }
 
-export async function createAndDispatch(env,{tenantId,agentId,sourceType,sourceRef,signalId=null,signal,mode='dry_run'}){
+export async function createAndDispatch(env,{tenantId,agentId,sourceType,sourceRef,signalId=null,signal,mode='dry_run',commandId}){
  if(!agentId)return {command_id:null,status:'NO_ROUTE',delivered:0,reason:'NO_ROUTE'};
  if(!env?.DB||!env?.AGENT_HUB)throw new Error('COMMAND_SERVICE_UNAVAILABLE');
 
@@ -79,7 +79,7 @@ export async function createAndDispatch(env,{tenantId,agentId,sourceType,sourceR
   return {command_id:prior.id,status:prior.status,delivered:0,reason:null,duplicate:true};
  }
 
- const command=makeCommand({tenantId,agentId,sourceType,sourceRef,signal,mode}),payload=JSON.stringify(command);
+ const command=makeCommand({tenantId,agentId,sourceType,sourceRef,signal,mode,commandId}),payload=JSON.stringify(command);
  const inserted=await env.DB.prepare(`INSERT INTO commands
   (id,tenant_id,signal_id,source_type,source_ref,agent_id,execution_mode,payload_json,status,created_at,updated_at)
   VALUES (?,?,?,?,?,?,?,?, 'PENDING',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING`)
