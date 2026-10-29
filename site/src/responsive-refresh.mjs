@@ -1,5 +1,20 @@
 // Consistent dimensions for the marketing site, member workspace and Mini App.
 export const RESPONSIVE_REFRESH=String.raw`
+/* Compact membership comparison, independent of generated utility breakpoints. */
+#plans>div:first-child{margin-bottom:36px}
+#plans>.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;max-width:1100px;margin-inline:auto;align-items:stretch}
+#plans .cinema-card{padding:24px!important;min-width:0;border-radius:16px}
+#plans .cinema-card>div>.flex{margin-bottom:14px;font-size:10px;gap:8px}
+#plans h3{font-size:21px;line-height:1.3}
+#plans .cinema-card p{font-size:13px;line-height:1.55;min-height:40px}
+#plans .cinema-card .my-8{margin:18px 0;padding-bottom:18px}
+#plans .cinema-card .text-5xl{font-size:36px;line-height:1.15}
+#plans ul{display:grid;gap:9px;padding:0;margin:0;font-size:12px;line-height:1.55}
+#plans ul>li{margin:0!important;gap:8px;align-items:flex-start}
+#plans .cinema-card button{margin-top:22px;min-height:44px;padding:11px 12px;font-size:10px;letter-spacing:.06em;border-radius:10px}
+#plans>.grid>.relative>.absolute{font-size:9px;padding:5px 10px;letter-spacing:.05em}
+@media(max-width:900px){#plans>.grid{grid-template-columns:1fr;gap:24px;max-width:440px}#plans .cinema-card{padding:20px!important}#plans h3{font-size:20px}#plans .cinema-card p{min-height:0}#plans .cinema-card .my-8{margin:14px 0;padding-bottom:14px}#plans .cinema-card .text-5xl{font-size:32px}#plans ul{gap:7px;font-size:12px}#plans .cinema-card button{margin-top:18px}#plans>div:first-child{margin-bottom:28px}}
+
 /* Intrinsic showcase badge: never stretch to the heading height. */
 #product-gallery{padding:64px 32px}#product-gallery>div{max-width:1216px;margin-inline:auto}
 #product-gallery .drfx-gallery-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:28px}

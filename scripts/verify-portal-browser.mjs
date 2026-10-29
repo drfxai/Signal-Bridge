@@ -38,6 +38,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   const gridBox=await page.locator('.drfx-gallery-grid').boundingBox();
   if(headBox.y+headBox.height>gridBox.y+1)throw Error('Showcase heading overlaps previews');
   await page.locator('#product-gallery').screenshot({path:dir+'/'+label+'-showcase.png'});
+  await page.locator('#plans').screenshot({path:dir+'/'+label+'-membership.png'});
   await page.screenshot({path:dir+'/'+label+'-landing.png',fullPage:true});
  }
  if(url==='/')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
