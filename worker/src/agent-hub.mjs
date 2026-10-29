@@ -92,6 +92,7 @@ export class AgentHub{
     account.test_symbol=safe(p[16],32);account.test_lots=numeric(17);
    }
    if(p.length>=30){const num=i=>Number.isFinite(Number(p[i]))?Number(p[i]):null;account.report={signals:num(19),tp1:num(20),tp2:num(21),tp3:num(22),stops:num(23),profit:num(24),loss:num(25),net:num(26),floating:num(27),since:num(28),reset_id:safe(p[29],64),series:p[30]?p[30].split(',').map(Number).filter(Number.isFinite).slice(0,14):[]};}
+   if(p[31]){const v=p[31].split(';');if(v.length>=10&&['BUY','SELL'].includes(v[1]))account.active_position={symbol:safe(v[0],32),side:v[1],lots:Number(v[2]),entry:Number(v[3]),current:Number(v[4]),sl:Number(v[5]),tp:Number(v[6]),tag:safe(v[7],12),profit:Number(v[8]),be_confirmed:v[9]==='2'};}
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
    a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1','exit-policy-v1','reports-v1'].includes(c));
