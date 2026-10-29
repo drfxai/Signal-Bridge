@@ -1,3 +1,5 @@
+import {memberControls} from './member-controls.mjs';
+import {relayTradingView,routeTelegramSignal} from './signal-routing.mjs';
 import { createAndDispatch } from '../../worker/src/command.mjs';
 import { demoReadiness, testReadiness, makeConnectionTest } from './execution-control.mjs';
 import { SITE_HTML, SITE_CSS, SITE_JS, DESIGN_JS } from './ui.mjs';
@@ -518,6 +520,7 @@ async function telegramWebhook(req,env){
  if(!safeEq(secret,env.TELEGRAM_WEBHOOK_SECRET))return fail('UNAUTHORIZED',401);
  const data=await readBody(req,16384);
  if(data.callback_query)return botLanguageCallback(data,env);
+ const routed=await routeTelegramSignal(data,env);if(routed)return routed;
  const msg=data.message;
  if(!msg||msg.chat?.type!=='private'||!msg.from?.id)return json({ok:true,ignored:'NO_PRIVATE_MESSAGE'});
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
@@ -656,6 +659,7 @@ async function api(req,env){
  if(path==='/api/webhook'&&req.method==='GET')return json({ok:true,webhook:await userWebhook(env,user)});
  if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
  if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);
+ if(path.startsWith('/api/member/')&&['GET','POST'].includes(req.method)){const result=await memberControls(path,req.method==='POST'?await readBody(req):undefined,env,user,()=>connectionDiagnostic(env,user));if(result)return result;}
  if(path==='/api/risk/reset'&&req.method==='POST')return resetDailyRisk(req,env,user);
  if(path==='/api/connection/check'&&req.method==='GET')return json({ok:true,diagnostic:await connectionDiagnostic(env,user)});
  if(path==='/api/connection/test-demo'&&req.method==='POST')return runConnectionTest(req,env,user,true);
@@ -699,6 +703,7 @@ export default {
   if(request.method==='GET'&&url.pathname==='/assets/tailwind.css')return asset(TAILWIND_CSS,'text/css; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/app.js')return asset(SITE_JS,'text/javascript; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/design.js')return asset(DESIGN_JS+"\nfunction showToast(message){const t=document.getElementById('toast');if(!t)return;t.textContent=message;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),3400)}\nfunction copyToClipboard(value,message){navigator.clipboard.writeText(value).then(()=>showToast(message)).catch(()=>showToast('Clipboard unavailable'))}\n",'text/javascript; charset=utf-8');
+  if(url.pathname==='/internal/signal-relay'&&request.method==='POST'){try{return await relayTradingView(request,env)}catch{return fail('RELAY_UNAVAILABLE',503)}}
   if(url.pathname.startsWith('/api/')){
    if(!env?.DB)return fail('DATABASE_UNAVAILABLE',503);
    try{return await api(request,env)}catch(error){

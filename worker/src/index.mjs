@@ -45,7 +45,7 @@ async function readJson(request){
  catch(e){throw new ValidationError(e instanceof ValidationError?e.code:(e instanceof SyntaxError?'INVALID_JSON':'INVALID_ENCODING'))}
 }
 
-async function acceptTradingView(request,env,token){
+async function acceptTradingView(request,env,token,ctx){
  if(!AUTH_PATTERN.test(token))return error('UNAUTHORIZED',401);
  if(!env?.DB)return error('SERVICE_UNAVAILABLE',503);
 
@@ -60,11 +60,13 @@ async function acceptTradingView(request,env,token){
 
  if(/^application\/json(?:\s*;|\s*$)/i.test(contentType)){
   let incoming;try{incoming=await readJson(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
-  try{signal=validateTradingView(incoming)}catch(e){return error(e instanceof ValidationError?e.code:'INVALID_SIGNAL_SCHEMA',422)}
+  if(incoming&&!incoming.schema_version&&typeof incoming==='object'&&'sl' in incoming){const settings=await env.DB.prepare('SELECT default_lots FROM member_signal_settings WHERE user_id=?').bind(conn.tenant_id).first();const parsed=parseSignalMessage(JSON.stringify(incoming),Date.now(),{defaultLots:settings?.default_lots||0.01});if(!parsed.ok)return error(parsed.reason,422);if(!parsed.signal.external_signal_id)return error('SIGNAL_ID_REQUIRED',422);signal=parsed.signal;sourceHash=await sha256(stableStringify(incoming));}else{try{signal=validateTradingView(incoming)}catch(e){return error(e instanceof ValidationError?e.code:'INVALID_SIGNAL_SCHEMA',422)}}
  }else if(/^text\/plain(?:\s*;|\s*$)/i.test(contentType)){
   let raw;try{raw=await readBounded(request)}catch(e){return error(e.code,e.code==='BODY_TOO_LARGE'?413:400)}
-  if(!raw.includes('[[DRFX]]'))return error('UNSUPPORTED_MEDIA_TYPE',415);
-  const parsed=parseGodModeAlert(raw);
+  if(raw.trim().startsWith('{'))return error('UNSUPPORTED_MEDIA_TYPE',415);
+  const settings=raw.includes('[[DRFX]]')?null:await env.DB.prepare('SELECT default_lots FROM member_signal_settings WHERE user_id=?').bind(conn.tenant_id).first();
+  const parsed=raw.includes('[[DRFX]]')?parseGodModeAlert(raw):parseSignalMessage(raw,Date.now(),{defaultLots:settings?.default_lots||0.01});
+  if(parsed.ok&&!parsed.signal.external_signal_id){const id=raw.match(/(?:^|\n)\s*(?:ID|SIGNAL_ID)\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9_.:-]{0,95})\s*(?=$|\n)/i)?.[1];if(!id)return error('SIGNAL_ID_REQUIRED',422);parsed.signal.external_signal_id=id;}
   if(!parsed.ok)return error(parsed.reason,422);
   signal=parsed.signal;
   sourceHash=await sha256(raw.trim());
@@ -92,6 +94,7 @@ async function acceptTradingView(request,env,token){
   signalId=existing.id;
  }
 
+ if(env.TELEGRAM_RELAY&&ctx){ctx.waitUntil(env.TELEGRAM_RELAY.fetch(new Request('https://member-site/internal/signal-relay',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({signal_id:signalId})})).catch(()=>{}));}
  const dispatch=await createAndDispatch(env,{
   tenantId:conn.tenant_id,agentId:conn.agent_id,sourceType:'tradingview',sourceRef:conn.id,
   signalId,signal,mode:conn.delivery_mode
@@ -241,7 +244,7 @@ async function handleTelegram(request,env,connectionId){
  return json({ok:true,duplicate,command_id:dispatch.command_id,dispatch_status:dispatch.status,delivered:dispatch.delivered,reason:dispatch.reason||null});
 }
 
-export async function handleRequest(request,env){
+export async function handleRequest(request,env,ctx){
  const url=new URL(request.url);
  if(url.pathname==='/'&&request.method==='GET')return new Response(null,{status:302,headers:{location:'/dashboard'}});
  if(request.method==='GET'&&url.pathname==='/experience')return new Response(null,{status:302,headers:{location:'/experience/'}});
@@ -285,7 +288,7 @@ export async function handleRequest(request,env){
  if(/^\/v1\/ingress\/tradingview\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)){
   if(request.method!=='POST')return new Response(null,{status:405,headers:{...headers,allow:'POST'}});
   if(url.search)return error('QUERY_NOT_ALLOWED',400);
-  try{return await acceptTradingView(request,env,url.pathname.split('/')[4])}
+  try{return await acceptTradingView(request,env,url.pathname.split('/')[4],ctx)}
   catch(e){console.error('tv ingress',e?.name||'Error');return error('SERVICE_UNAVAILABLE',503)}
  }
 

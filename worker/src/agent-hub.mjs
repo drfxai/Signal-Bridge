@@ -1,3 +1,4 @@
+import {memberPolicy,policyFields,validatePolicy} from './member-policy.mjs';
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const RECEIPT_STATES=new Set(['PREVIEWED','SUBMITTED','FILLED','BROKER_REJECTED','REJECTED','ACCOUNT_MISMATCH','EXPIRED','ERROR','DUPLICATE']);
 export function receiptTransitionAllowed(from,to){if(from===to)return true;if(from==='PENDING'||from==='DELIVERED')return RECEIPT_STATES.has(to);if(from==='SUBMITTED')return ['FILLED','BROKER_REJECTED','ERROR','DUPLICATE'].includes(to);return false}
@@ -14,7 +15,7 @@ function eaCorrelationTag(value){
 }
 function encodeEaCommand(c){
  const o=c.order||{},t=Array.isArray(o.take_profits)?o.take_profits:[],expiry=c.expires_at?Date.parse(c.expires_at):0;
- return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0,safe(c.source?.type||'unknown',24),safe(c.source?.strategy||'',80),safe(c.test_account?.mode||'',12),safe(c.test_account?.login||'',64),safe(c.test_account?.server||'',120)].join('|');
+ return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0,safe(c.source?.type||'unknown',24),safe(c.source?.strategy||'',80),safe(c.test_account?.mode||'',12),safe(c.test_account?.login||'',64),safe(c.test_account?.server||'',120),c.exit_policy?policyFields(c.exit_policy):'||||'].join('|');
 }
 
 export class AgentHub{
@@ -59,7 +60,7 @@ export class AgentHub{
   a.expectedLogin=row.account_login;a.expectedServer=row.account_server;a.licenseExpires=row.expires_at;
   return true;
  }
- sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(cmd.action==='TEST'&&(a.role!=='ea'||!(a.capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c))))return false;if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}))}
+ sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(cmd.action==='OPEN'&&cmd.exit_policy&&(a.role!=='ea'||!(a.capabilities||[]).includes('exit-policy-v1')))return false;if(cmd.action==='TEST'&&(a.role!=='ea'||!(a.capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c))))return false;if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}));return true}
  async bindEaAccount(a,account,ws){
   if(a.role==='ea')return this.bindEaLicense(a,account,ws);
   if(a.expectedLogin&&a.expectedLogin!==account.login){ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false}
@@ -74,6 +75,8 @@ export class AgentHub{
  async handleEaMessage(ws,message,a){
   const p=parseEaLine(message);if(!p){ws.send('ERR|INVALID_MESSAGE');return}
   a.lastSeenAt=new Date().toISOString();
+  if(p[0]==='POLICY_UPDATE'){try{if(!await this.licenseIsValid(a))return;const policy=validatePolicy({tp1:p[1],tp2:p[2],tp3:p[3],partial_percent:Number(p[4]),be_buffer_points:Number(p[5])});const saved=await this.env.DB.prepare('INSERT INTO member_signal_settings(user_id,policy_json) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET policy_json=excluded.policy_json,updated_at=CURRENT_TIMESTAMP').bind(a.tenantId,JSON.stringify(policy)).run();if(!saved?.success)throw Error('POLICY_STORAGE_UNAVAILABLE');a.policySignature=policyFields(policy);ws.serializeAttachment(a);ws.send('POLICY_ACK');}catch{ws.send('POLICY_REJECTED');}return;}
+  if(p[0]==='TARGET_EVENT'){const [_,tag,index,state,action]=p;const i=Number(index),v=Number(state),act=Number(action);if(!/^[a-f0-9]{12}$/.test(tag||'')||![0,1,2].includes(i)||![1,2,3].includes(v)||![0,1,2,3].includes(act)||!await this.licenseIsValid(a))return;const id=[a.agentId,tag,i,v].join(':');const stored=await this.env.DB.prepare('INSERT INTO position_events(id,user_id,agent_id,tag,target_index,state,action,created_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(id,a.tenantId,a.agentId,tag,i,v,act,new Date().toISOString()).run();if(!stored?.success)return;ws.send(['EVENT_ACK',tag,i,v].join('|'));return;}
   if(p[0]==='RISK_RESET_ACK'){a.lastRiskReset={request_id:safe(p[1],64),status:safe(p[2],16)};ws.serializeAttachment(a);return;}
   if(p[0]==='TEST_STATUS'){
    const status=p[2];if(!['OPEN','CLOSED','CLOSE_FAILED','REJECTED'].includes(status))return;
@@ -88,9 +91,11 @@ export class AgentHub{
     account.risk={state:['HIT','READY'].includes(p[9])?p[9]:'UNKNOWN',drawdown_pct:numeric(10),limit_pct:numeric(11),daily_profit:numeric(12),signals:numeric(13),targets:numeric(14),stops:numeric(15),hit_id:safe(p[18],32)};
     account.test_symbol=safe(p[16],32);account.test_lots=numeric(17);
    }
+   if(p.length>=30){const num=i=>Number.isFinite(Number(p[i]))?Number(p[i]):null;account.report={signals:num(19),tp1:num(20),tp2:num(21),tp3:num(22),stops:num(23),profit:num(24),loss:num(25),net:num(26),floating:num(27),since:num(28),reset_id:safe(p[29],64),series:p[30]?p[30].split(',').map(Number).filter(Number.isFinite).slice(0,14):[]};}
+   if(p[31]){const v=p[31].split(';');if(v.length>=10&&['BUY','SELL'].includes(v[1]))account.active_position={symbol:safe(v[0],32),side:v[1],lots:Number(v[2]),entry:Number(v[3]),current:Number(v[4]),sl:Number(v[5]),tp:Number(v[6]),tag:safe(v[7],12),profit:Number(v[8]),be_confirmed:v[9]==='2'};}
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
-   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1'].includes(c));
+   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1','exit-policy-v1','reports-v1'].includes(c));
    const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;
    const config=JSON.stringify(eaConfiguration(a));
    if(a.lastConfigSignature!==config){
@@ -99,6 +104,7 @@ export class AgentHub{
    ws.serializeAttachment(a);
    this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
    ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now()+'|'+(a.licenseExpires||''));
+   if((a.capabilities||[]).includes('exit-policy-v1')){const currentPolicy=await memberPolicy(this.env,a.tenantId);const policy=currentPolicy?policyFields(currentPolicy):null;if(policy&&a.policySignature!==policy){ws.send('POLICY_SET|'+policy);a.policySignature=policy;ws.serializeAttachment(a);}}
    if(shouldReplayAfterTerminalState(wasReady,a))this.ctx.waitUntil(this.replay(a.agentId,ws));return;
   }
   if(p[0]==='PING'){ws.send('PONG|'+safe(p[1],32)+'|'+Date.now());return}
@@ -128,7 +134,7 @@ export class AgentHub{
    if(cmd.action==='TEST'&&!(attachment.capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c)))continue;
    if(ws.readyState===WebSocket.OPEN){
     if(!await this.licenseIsValid(ws.deserializeAttachment()||{}))return;
-    this.sendCommand(ws,cmd,true);
+    if(this.sendCommand(ws,cmd,true)===false)continue;
     await this.env.DB.prepare("UPDATE commands SET status='DELIVERED',delivered_at=COALESCE(delivered_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('PENDING','DELIVERED')").bind(row.id).run();
    }
   }
@@ -157,6 +163,18 @@ export class AgentHub{
    const selected=protocols.includes('signalbridge-dashboard-v1')?'signalbridge-dashboard-v1':null;
    return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
   }
+  if(url.pathname==='/report-range'&&request.method==='POST'){
+   const b=await request.json().catch(()=>null);if(!['today','7d','30d','all'].includes(b?.period))return json({error:'INVALID_PERIOD'},400);
+   const ws=this.currentExecutionSockets().find(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='ea'&&a.agentId===b.agent_id&&a.account?.login===b.account_login&&a.account?.server===b.account_server&&(a.capabilities||[]).includes('reports-v1')&&Date.now()-Date.parse(a.lastSeenAt)<90000});
+   if(!ws||!await this.licenseIsValid(ws.deserializeAttachment()||{}))return json({error:'EA_NOT_READY'},409);
+   ws.send(['REPORT_RANGE',b.period,safe(b.account_login,64),safe(b.account_server,120),Date.now()+15000].join('|'));return json({ok:true,status:'AWAITING_EA'},202);
+  }
+  if(url.pathname==='/report-reset'&&request.method==='POST'){
+   const b=await request.json().catch(()=>null);if(!b?.request_id)return json({error:'BAD_RESET'},400);
+   const ws=this.currentExecutionSockets().find(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='ea'&&a.agentId===b.agent_id&&a.account?.login===b.account_login&&a.account?.server===b.account_server&&(a.capabilities||[]).includes('reports-v1')&&Date.now()-Date.parse(a.lastSeenAt)<90000});
+   if(!ws||!await this.licenseIsValid(ws.deserializeAttachment()||{}))return json({error:'EA_NOT_READY'},409);
+   ws.send(['REPORT_RESET',safe(b.request_id,64),safe(b.account_login,64),safe(b.account_server,120),Date.now()+15000].join('|'));return json({ok:true,status:'AWAITING_EA',request_id:b.request_id},202);
+  }
   if(url.pathname==='/risk-reset'&&request.method==='POST'){
    const b=await request.json().catch(()=>null);if(!b||!b.hit_id)return json({error:'BAD_RESET'},400);
    const ws=this.currentExecutionSockets().find(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='ea'&&a.agentId===b.agent_id&&a.account?.login===b.account_login&&a.account?.server===b.account_server&&a.account?.risk?.state==='HIT'&&a.account.risk.hit_id===String(b.hit_id)&&(a.capabilities||[]).includes('risk-v1')&&Date.now()-Date.parse(a.lastSeenAt)<90000});
@@ -175,7 +193,7 @@ export class AgentHub{
     return json({ok:true,delivered:0,reason:'LICENSE_INACTIVE'});
    }
    if(body.action==='TEST'&&!((socket.deserializeAttachment()||{}).capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c)))return json({ok:true,delivered:0,reason:'EA_UPDATE_REQUIRED'});
-   this.sendCommand(socket,body,false);this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
+   if(this.sendCommand(socket,body,false)===false)return json({ok:true,delivered:0,reason:'EA_UPDATE_REQUIRED'});this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
   }
   if(url.pathname==='/snapshot'&&request.method==='GET'){
    const clients=this.currentExecutionSockets().map(ws=>{const a=ws.deserializeAttachment()||{};return {agent_id:a.agentId||null,client_type:a.role||null,connected_at:a.connectedAt||null,last_seen_at:a.lastSeenAt||null,terminal_online:a.terminalOnline===true,account:a.account||null,capabilities:a.capabilities||[]}});

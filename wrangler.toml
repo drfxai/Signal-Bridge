@@ -25,3 +25,7 @@ storage = "sqlite"
 #
 # Free launch: no Queues on the critical path.
 # Direct MT5 EA transport uses a hibernatable Durable Object WebSocket.\n# /v1/agent/ws remains a temporary rollback path during V3 validation.
+
+[[services]]
+binding = "TELEGRAM_RELAY"
+service = "drfx-company-site"

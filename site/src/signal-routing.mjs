@@ -1,0 +1,28 @@
+import {parseSignalMessage,telegramMessageFresh,parseManagement} from '../../worker/src/signal-adapters.mjs';
+import {createAndDispatch} from '../../worker/src/command.mjs';
+export function telegramSignalText(signal,id){const o=signal.order||{};return ['DrFX SignalBridge',signal.side+' '+signal.symbol,'LOT: '+(o.volume?.value??''),...(o.reference_price?['ENTRY: '+o.reference_price]:[]),'SL: '+o.stop_loss,...(o.take_profits||[]).map((v,i)=>'TP'+(i+1)+': '+v),'Signal ID: '+id,'Source: TradingView'].join('\n');}
+export async function relayTradingView(req,env){
+ const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');if(!/^[A-Za-z0-9_-]{43}$/.test(token))return Response.json({error:'UNAUTHORIZED'},{status:401});
+ const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))),x=>x.toString(16).padStart(2,'0')).join('');const b=await req.json();
+ const row=await env.DB.prepare("SELECT s.id,s.normalized_json,s.tenant_id,m.telegram_chat_id FROM received_signals s JOIN ingress_connections c ON c.id=s.connection_id JOIN member_signal_settings m ON m.user_id=s.tenant_id JOIN site_users u ON u.id=s.tenant_id WHERE s.id=? AND c.token_sha256=? AND c.status='active' AND u.status='active' AND m.tv_to_telegram=1 AND m.telegram_verified=1").bind(b.signal_id,hash).first();
+ if(!row||!env.TELEGRAM_BOT_TOKEN)return Response.json({ok:true,ignored:'ROUTE_DISABLED'});
+ const id=crypto.randomUUID();await env.DB.prepare("INSERT INTO telegram_signal_outbox(id,user_id,signal_id,chat_id) VALUES (?,?,?,?) ON CONFLICT(user_id,signal_id) DO NOTHING").bind(id,row.tenant_id,row.id,row.telegram_chat_id).run();
+ const claim=await env.DB.prepare("UPDATE telegram_signal_outbox SET status='SENDING' WHERE user_id=? AND signal_id=? AND status='PENDING'").bind(row.tenant_id,row.id).run();if(claim.meta?.changes!==1)return Response.json({ok:true,duplicate:true});
+ try{const r=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:row.telegram_chat_id,text:telegramSignalText(JSON.parse(row.normalized_json),row.id),protect_content:true}),signal:AbortSignal.timeout(8000)});const j=await r.json();await env.DB.prepare('UPDATE telegram_signal_outbox SET status=?,message_id=?,detail=? WHERE user_id=? AND signal_id=?').bind(j.ok?'SENT':'FAILED',j.ok?String(j.result.message_id):null,j.ok?null:'Telegram rejected delivery',row.tenant_id,row.id).run();return Response.json({ok:!!j.ok});}catch{await env.DB.prepare("UPDATE telegram_signal_outbox SET status='UNKNOWN',detail='Delivery uncertain; no automatic duplicate retry' WHERE user_id=? AND signal_id=?").bind(row.tenant_id,row.id).run();return Response.json({ok:false,status:'UNKNOWN'});}
+}
+export async function routeTelegramSignal(update,env){
+ const msg=update.message||update.channel_post||update.edited_message||update.edited_channel_post;if(!msg?.text||msg.text.startsWith('/')||msg.from?.is_bot||msg.text.startsWith('DrFX SignalBridge\n'))return null;
+ const chatId=String(msg.chat?.id||'');if(!chatId)return null;
+ const rows=await env.DB.prepare("SELECT m.*,sl.agent_id FROM member_signal_settings m JOIN site_users u ON u.id=m.user_id JOIN site_licenses sl ON sl.user_id=u.id WHERE m.telegram_chat_id=? AND m.telegram_verified=1 AND m.telegram_to_mt5=1 AND u.status='active'").bind(chatId).all();if(!rows.results?.length)return null;
+ for(const row of rows.results){
+  const ref='member-tg:'+chatId+':'+msg.message_id;
+  if(update.edited_message||update.edited_channel_post){await env.DB.prepare('INSERT INTO signal_review_queue(id,user_id,source_ref,reason) VALUES (?,?,?,?) ON CONFLICT(user_id,source_ref) DO NOTHING').bind(crypto.randomUUID(),row.user_id,ref+':edit','EDITED_MESSAGE_REQUIRES_REVIEW').run();continue;}
+  let parsed;const event=parseManagement(msg.text);if(event&&msg.reply_to_message?.message_id&&telegramMessageFresh(msg)){const prior=await env.DB.prepare("SELECT payload_json FROM commands WHERE tenant_id=? AND source_type='telegram' AND source_ref=? LIMIT 1").bind(row.user_id,'member-tg:'+chatId+':'+msg.reply_to_message.message_id).first();if(prior){const source=JSON.parse(prior.payload_json);parsed={ok:true,signal:{action:'MANAGE',correlation_id:source.correlation_id,management_event:event,occurred_at:new Date().toISOString()}};}}
+  parsed=parsed||(telegramMessageFresh(msg)?parseSignalMessage(msg.text,Date.now(),{defaultLots:row.default_lots}):{ok:false,reason:'STALE_SIGNAL'});
+  if(!parsed.ok){await env.DB.prepare('INSERT INTO signal_review_queue(id,user_id,source_ref,reason) VALUES (?,?,?,?) ON CONFLICT(user_id,source_ref) DO NOTHING').bind(crypto.randomUUID(),row.user_id,ref,parsed.reason).run();continue;}
+  // Ordinary execution remains DEMO-gated in MT5, with the existing dry-run switch respected.
+  const route=await env.DB.prepare('SELECT delivery_mode FROM ingress_connections WHERE tenant_id=? AND status=\'active\' LIMIT 1').bind(row.user_id).first();
+  await createAndDispatch(env,{tenantId:row.user_id,agentId:row.agent_id,sourceType:'telegram',sourceRef:ref,signal:parsed.signal,mode:route?.delivery_mode||'dry_run'});
+ }
+ return Response.json({ok:true,routed:true});
+}
