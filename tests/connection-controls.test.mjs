@@ -204,3 +204,9 @@ test('TradingView labeled text and simple JSON require stable IDs and deduplicat
  assert.equal((await send(text.replace('ID: text-test-1\n',''))).status,422);assert.equal(f.calls.length,1);
  assert.equal((await send(JSON.stringify({id:'json-test-2',side:'BUY',symbol:'GOLD',sl:2300,tp:[2350,2360]}),'application/json')).status,202);assert.equal(f.calls.length,2);f.db.close();
 });
+test('failed durable writes never acknowledge policy synchronization or retire target events',async()=>{
+ const f=fixture(),sent=[];const prepare=f.env.DB.prepare;f.env.DB.prepare=sql=>{const real=prepare(sql);if(!sql.startsWith('INSERT INTO position_events')&&!sql.startsWith('INSERT INTO member_signal_settings'))return real;return {bind(){return this},async run(){return {success:false}}}};
+ const a={role:'ea',agentId:'ea_a',tenantId:'usr_a',licenseId:'lic_a',licenseHash:digest('license'),account:{login:'123',server:'Demo'}},ws={send:s=>sent.push(s),serializeAttachment(){}};const hub=new AgentHub({},f.env);
+ await hub.handleEaMessage(ws,'TARGET_EVENT|abcdef123456|0|2|1',a);assert.equal(sent.length,0);
+ await hub.handleEaMessage(ws,'POLICY_UPDATE|BE|CLOSE|OFF|50|0',a);assert.deepEqual(sent,['POLICY_REJECTED']);assert.equal(a.policySignature,undefined);f.db.close();
+});
