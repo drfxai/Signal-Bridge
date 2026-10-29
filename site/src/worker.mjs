@@ -365,14 +365,26 @@ async function runConnectionTest(req,env,user,legacy=false){
  if(reason)return fail(reason,409);
  if(!legacy&&(b.account_mode!==d.mt5_mode||b.account_login!==d.mt5_account?.login||b.account_server!==d.mt5_account?.server))return fail('TEST_ACCOUNT_CHANGED',409);
  if(d.mt5_mode==='LIVE'&&b.confirm_live!=='CONFIRM LIVE TEST')return fail('LIVE_CONFIRMATION_REQUIRED',400);
+ if(!legacy&&d.capabilities.includes('test-config-v1')&&(!/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(d.telemetry?.test_symbol||'')||!Number.isFinite(d.telemetry?.test_lots)||d.telemetry.test_lots<=0||d.telemetry.test_lots>100))return fail('INVALID_EA_TEST_SETTINGS',409);
+ if(!legacy&&d.capabilities.includes('test-config-v1')&&(b.test_symbol!==d.telemetry.test_symbol||b.test_lots!==d.telemetry.test_lots))return fail('TEST_SETTINGS_CHANGED',409);
  if(!await limited(req,env,'demo:test:'+user.id,1))return fail('RATE_LIMITED',429);
  const id=uid('test'),commandId=crypto.randomUUID();
  const inserted=await env.DB.prepare("INSERT INTO connection_tests (id,user_id,agent_id,command_id,account_mode,account_login,account_server) VALUES (?,?,?,?,?,?,?) ON CONFLICT DO NOTHING").bind(id,user.id,d.agent_id,commandId,d.mt5_mode,d.mt5_account?.login,d.mt5_account?.server).run();
  if(inserted.meta?.changes!==1)return fail('TEST_ALREADY_PENDING',409);
  await audit(env,user.id,'connection_test',user.id,id+' '+d.mt5_mode);
  // Persist before dispatch. An uncertain dispatch must never be blindly repeated.
- const dispatch=await createAndDispatch(env,{tenantId:user.id,agentId:d.agent_id,sourceType:'test',sourceRef:id,commandId,signal:makeConnectionTest(id,Date.now(),legacy?null:{mode:d.mt5_mode,...d.mt5_account}),mode:legacy?'demo_execute':'test_execute'});
+ const dispatch=await createAndDispatch(env,{tenantId:user.id,agentId:d.agent_id,sourceType:'test',sourceRef:id,commandId,signal:makeConnectionTest(id,Date.now(),legacy?null:{mode:d.mt5_mode,...d.mt5_account},!legacy&&d.capabilities.includes('test-config-v1')?{symbol:d.telemetry.test_symbol,lots:d.telemetry.test_lots}:null),mode:legacy?'demo_execute':'test_execute'});
  return json({ok:true,test_id:id,command_id:dispatch.command_id,status:dispatch.status,trade_executed:false},202);
+}
+async function resetDailyRisk(req,env,user){
+ const b=await readBody(req);if(b.confirm!==true)return fail('EXPLICIT_CONFIRMATION_REQUIRED');
+ const d=await connectionDiagnostic(env,user);
+ if(!d.live_socket_verified||!d.terminal_online||!d.fresh)return fail('EA_NOT_READY',409);
+ if(d.license!=='active'||!d.license_unexpired)return fail('LICENSE_INACTIVE',409);
+ if(!d.capabilities.includes('risk-v1')||d.telemetry?.risk?.state!=='HIT'||String(b.hit_id)!==d.telemetry.risk.hit_id||b.account_login!==d.mt5_account?.login||b.account_server!==d.mt5_account?.server)return fail('RISK_STATE_CHANGED',409);
+ const hub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(d.agent_id));
+ const r=await hub.fetch(new Request('https://agent-hub/risk-reset',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent_id:d.agent_id,account_login:b.account_login,account_server:b.account_server,hit_id:b.hit_id})}));
+ const result=await r.json();if(r.ok)await audit(env,user.id,'daily_risk_reset_requested',user.id,String(b.hit_id));return json(result,r.status);
 }
 async function testStatus(req,env,user){
  const id=new URL(req.url).searchParams.get('id');
@@ -644,6 +656,7 @@ async function api(req,env){
  if(path==='/api/webhook'&&req.method==='GET')return json({ok:true,webhook:await userWebhook(env,user)});
  if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
  if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);
+ if(path==='/api/risk/reset'&&req.method==='POST')return resetDailyRisk(req,env,user);
  if(path==='/api/connection/check'&&req.method==='GET')return json({ok:true,diagnostic:await connectionDiagnostic(env,user)});
  if(path==='/api/connection/test-demo'&&req.method==='POST')return runConnectionTest(req,env,user,true);
  if(path==='/api/connection/test'&&req.method==='POST')return runConnectionTest(req,env,user);

@@ -73,6 +73,7 @@ export class AgentHub{
  async handleEaMessage(ws,message,a){
   const p=parseEaLine(message);if(!p){ws.send('ERR|INVALID_MESSAGE');return}
   a.lastSeenAt=new Date().toISOString();
+  if(p[0]==='RISK_RESET_ACK'){a.lastRiskReset={request_id:safe(p[1],64),status:safe(p[2],16)};ws.serializeAttachment(a);return;}
   if(p[0]==='TEST_STATUS'){
    const status=p[2];if(!['OPEN','CLOSED','CLOSE_FAILED','REJECTED'].includes(status))return;
    await this.env.DB.prepare("UPDATE connection_tests SET status=?,broker_ticket=COALESCE(?,broker_ticket),detail=?,updated_at=CURRENT_TIMESTAMP WHERE command_id=? AND agent_id=? AND status!='CLOSED'").bind(status,safe(p[3],64)||null,safe(p[4],300),p[1],a.agentId).run();
@@ -81,9 +82,14 @@ export class AgentHub{
   if(p[0]==='HELLO'||p[0]==='HB'){
    if(p.length<7){ws.send('ERR|INVALID_TERMINAL_STATE');return}
    const account={login:safe(p[1],64),server:safe(p[2],120),mode:safe(p[3],32),balance:Number.isFinite(Number(p[4]))?Number(p[4]):null,equity:Number.isFinite(Number(p[5]))?Number(p[5]):null,positions:Number.isFinite(Number(p[6]))?Number(p[6]):null,cloud_rtt_ms:Number.isFinite(Number(p[7]))?Math.max(0,Math.min(60000,Number(p[7]))):null};
+   if(p.length>=19){
+    const numeric=i=>p[i]!==''&&Number.isFinite(Number(p[i]))?Number(p[i]):null;
+    account.risk={state:['HIT','READY'].includes(p[9])?p[9]:'UNKNOWN',drawdown_pct:numeric(10),limit_pct:numeric(11),daily_profit:numeric(12),signals:numeric(13),targets:numeric(14),stops:numeric(15),hit_id:safe(p[18],32)};
+    account.test_symbol=safe(p[16],32);account.test_lots=numeric(17);
+   }
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
-   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c));
+   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1'].includes(c));
    const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;ws.serializeAttachment(a);
    this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
    ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now()+'|'+(a.licenseExpires||''));
@@ -144,6 +150,14 @@ export class AgentHub{
    const protocols=(request.headers.get('sec-websocket-protocol')||'').split(',').map(x=>x.trim());
    const selected=protocols.includes('signalbridge-dashboard-v1')?'signalbridge-dashboard-v1':null;
    return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
+  }
+  if(url.pathname==='/risk-reset'&&request.method==='POST'){
+   const b=await request.json().catch(()=>null);if(!b||!b.hit_id)return json({error:'BAD_RESET'},400);
+   const ws=this.currentExecutionSockets().find(ws=>{const a=ws.deserializeAttachment()||{};return a.role==='ea'&&a.agentId===b.agent_id&&a.account?.login===b.account_login&&a.account?.server===b.account_server&&a.account?.risk?.state==='HIT'&&a.account.risk.hit_id===String(b.hit_id)&&(a.capabilities||[]).includes('risk-v1')&&Date.now()-Date.parse(a.lastSeenAt)<90000});
+   if(!ws)return json({error:'RISK_STATE_CHANGED'},409);
+   if(!await this.licenseIsValid(ws.deserializeAttachment()||{}))return json({error:'LICENSE_INACTIVE'},409);
+   const id=crypto.randomUUID();ws.send(['RISK_RESET',id,safe(b.account_login,64),safe(b.account_server,120),'CONFIRM',safe(b.hit_id,32),Date.now()+15000].join('|'));
+   return json({ok:true,status:'AWAITING_EA',request_id:id},202);
   }
   if(url.pathname==='/dispatch'&&request.method==='POST'){
    const body=await request.json().catch(()=>null);if(!body||body.protocol!=='signalbridge-command/1'||!body.command_id||(body.execution_mode==='test_execute'&&body.action!=='TEST'))return json({error:'BAD_COMMAND'},400);
