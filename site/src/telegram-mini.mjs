@@ -120,7 +120,7 @@ ${SXM_HOME_HTML} <div class="grid">
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook" data-tr="createWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" data-tr="copyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" data-tr="rotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
- ${EXECUTION_HTML.replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
+ ${EXECUTION_HTML.replace('<button data-sb-tab="settings">⚙ Settings</button></nav>','<button data-sb-tab="settings">⚙ Settings</button><button type="button" data-jump="scalper">◎ Scalper Pro</button></nav>').replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
