@@ -48,10 +48,12 @@ jobs:
           node-version: '22'
       - name: Install browser verification tools
         run: |
-          npm install --no-save --package-lock=false playwright@1.62.1
+          npm install --no-save --package-lock=false playwright@1.62.1 wrangler
           npx playwright install --with-deps chromium
       - name: Verify confirmation flow and responsive controls
-        run: node scripts/verify-portal-browser.mjs
+        run: |
+          npx wrangler deploy --dry-run --config site/wrangler.jsonc --outdir /tmp/signalbridge-built
+          SB_WORKER_BUNDLE=file:///tmp/signalbridge-built/worker.js node scripts/verify-portal-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
