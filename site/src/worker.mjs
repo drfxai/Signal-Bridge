@@ -10,11 +10,12 @@ import { telegramHealth } from './telegram-health.mjs';
 import { botLanguage, botText, botLanguageKeyboard } from './telegram-i18n.mjs';
 import { I18N_JS } from './i18n.mjs';
 import { PROMO_ASSETS } from './promo.mjs';
+import { scalperOverview, scalperCheckout, scalperPaid, scalperGrant, SCALPER_PLANS } from './scalper.mjs';
 
 const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
 const DURATION={trial:'+1 month',quarterly:'+3 months',annual:'+1 year'};
-const ADMIN_ACTIONS=new Set(['suspend','resume','grant_trial','grant_quarterly','grant_annual','revoke_license']);
+const ADMIN_ACTIONS=new Set(['suspend','resume','grant_trial','grant_quarterly','grant_annual','revoke_license','grant_scalper_1m','grant_scalper_3m']);
 const API_ORIGIN='https://drfx.company';
 const encoder=new TextEncoder();
 const json=(data,status=200,extra={})=>new Response(JSON.stringify(data),{status,headers:{...HEAD,'content-type':'application/json; charset=utf-8',...extra}});
@@ -88,6 +89,12 @@ async function login(env,userId){
 async function audit(env,actor,action,subject,detail=''){
  await env.DB.prepare('INSERT INTO site_audit (id,actor_id,action,subject_id,detail) VALUES (?,?,?,?,?)').bind(uid('aud'),actor,action,subject,safeText(detail,240)).run();
 }
+// Shared helpers handed to the Scalper Pro module.
+const scalperHelpers=env=>({json,fail,readBody,limited,encryptCode,decryptCode,uid,audit,origin:API_ORIGIN,
+ notify:async(userId,key,login,days)=>{
+  const u=await env.DB.prepare('SELECT telegram_id FROM site_users WHERE id=?').bind(userId).first();
+  if(u?.telegram_id)await botSend(env,u.telegram_id,'🔑 <b>DrFX Scalper Pro key</b>\nMT5 #'+login+' · '+days+' days\n<code>'+key+'</code>\nPaste it on the panel: ENTER LICENCE KEY → ACTIVATE.');
+ }});
 async function licenseRecord(env,user){
  const row=await env.DB.prepare(
  "SELECT sl.encrypted_code,sl.nonce,sl.agent_id,el.plan,el.status,el.account_login,el.account_server,el.expires_at,el.activated_at " +
@@ -399,6 +406,10 @@ async function adminUpdate(req,env,admin){
  const user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(b.user_id).first();
  if(!user)return fail('NOT_FOUND',404);
  if(user.id===admin.id && (b.action==='suspend'||b.action==='revoke_license'))return fail('SELF_LOCKOUT_REFUSED',409);
+ if(b.action.startsWith('grant_scalper_')){
+  try{const k=await scalperGrant(env,scalperHelpers(env),{adminId:admin.id,userId:user.id,login:b.account_login,plan:b.action.slice(6)});return json({ok:true,scalper:k});}
+  catch(e){return fail(e.message==='INVALID_MT5_ACCOUNT'||e.message==='INVALID_PLAN'?e.message:'SCALPER_LICENSING_NOT_CONFIGURED',e.message==='SCALPER_LICENSING_NOT_CONFIGURED'?503:400);}
+ }
  if(b.action.startsWith('grant_')){await licenseRecord(env,user);await applyPlan(env,user.id,b.action.slice(6),admin.id);}
  else if(b.action==='suspend'||b.action==='resume'){
   const status=b.action==='suspend'?'suspended':'active';
@@ -445,6 +456,7 @@ async function ipnHandler(req,env){
  if(!safeEq(signature.toLowerCase(),signatureHex))return fail('INVALID_SIGNATURE',401);
  if(body.payment_status!=='finished')return json({ok:true,ignored:'NOT_FINAL'});
  const orderId=String(body.order_id||''),paymentId=String(body.payment_id||'');
+ if(orderId.startsWith('sco_'))return scalperPaid(env,scalperHelpers(env),body);
  const order=await env.DB.prepare('SELECT * FROM site_orders WHERE id=?').bind(orderId).first();
  if(!order||order.status==='failed')return fail('ORDER_NOT_FOUND',404);
  if(order.status==='paid')return json({ok:true,duplicate:true});
@@ -526,7 +538,7 @@ async function telegramWebhook(req,env){
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=text.split(' ')[0].split('@')[0];
- if(!['/start','/language','/lang','/app','/login','/resetlogin','/me','/code','/link','/admin','/users','/detail','/grant','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/language','/lang','/app','/login','/resetlogin','/me','/code','/link','/scalper','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  const language=await userBotLocale(env,telegramId);
@@ -583,6 +595,21 @@ async function telegramWebhook(req,env){
    await audit(env,user.id,'link_telegram_account',target.id);
    await botSend(env,chatId,'✅ Telegram linked to your existing verified email account. Use /login to open it on the website.');
   }catch{await botSend(env,chatId,'Could not link accounts. Request a fresh code.');}
+ }else if(command==='/scalper'){
+  const rows=(await env.DB.prepare('SELECT account_login,days,encrypted_key,nonce,created_at FROM scalper_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 5').bind(user.id).all()).results||[];
+  let out='⚡ <b>DrFX Scalper Pro</b>\nThe AI liquidity radar for XAUUSD on MT5. 7 days free inside the EA, then '+
+   Object.values(SCALPER_PLANS).map(p=>p.label+' $'+p.usd).join(' · ')+'.\n';
+  for(const r of rows)out+='\nMT5 #'+r.account_login+' · '+r.days+' days\n<code>'+await decryptCode(env,r.encrypted_key,r.nonce)+'</code>';
+  out+=rows.length?'\n\nPaste a key on the panel: ENTER LICENCE KEY → ACTIVATE.':'\n\nBuy a plan in your dashboard: '+API_ORIGIN+'/#scalper';
+  await botSend(env,chatId,out,true);
+ }else if(command==='/scalperkey'&&user.role==='admin'){
+  const args=text.split(/\s+/),login=args[1],plan=({'1m':'scalper_1m','3m':'scalper_3m'})[args[2]],target=args[3]||user.id;
+  if(!login||!plan||!/^usr_[0-9a-z_]{1,40}$/.test(target)){await botSend(env,chatId,'Use: /scalperkey MT5_LOGIN 1m|3m [usr_...]');return json({ok:true});}
+  const recipient=await env.DB.prepare('SELECT id FROM site_users WHERE id=?').bind(target).first();
+  if(!recipient){await botSend(env,chatId,'User not found.');return json({ok:true});}
+  try{const k=await scalperGrant(env,scalperHelpers(env),{adminId:user.id,userId:target,login,plan});
+   await botSend(env,chatId,'✅ Scalper Pro key for MT5 #'+k.account_login+' ('+k.days+' days)\n<code>'+k.key+'</code>');}
+  catch(e){await botSend(env,chatId,'Could not issue key: '+safeText(e.message,60));}
  }else if(command==='/admin'&&user.role==='admin'){
   const stats=await env.DB.prepare('SELECT COUNT(*) AS total,SUM(CASE WHEN plan="quarterly" THEN 1 ELSE 0 END) AS quarter,SUM(CASE WHEN plan="annual" THEN 1 ELSE 0 END) AS annual FROM site_users').first();
   await botSend(env,chatId,'DrFX Admin\nUsers: '+stats.total+'\nQuarterly: '+stats.quarter+'\nAnnual: '+stats.annual+'\nFull management: '+API_ORIGIN);
@@ -627,7 +654,7 @@ async function api(req,env){
  const u=new URL(req.url),path=u.pathname;
  if(path==='/api/telegram/webhook'&&req.method==='POST')return telegramWebhook(req,env);
  if(path==='/api/payments/ipn'&&req.method==='POST')return ipnHandler(req,env);
- if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY,ea_hub:!!env.AGENT_HUB,release:'signalbridge-design-20261029.2'});
+ if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY,scalper:!!env.SCALPER_LICENSE_SECRET,ea_hub:!!env.AGENT_HUB,release:'signalbridge-design-20261029.2'});
  if(path==='/api/telegram/health'&&req.method==='GET'){
   if(!await limited(req,env,'public:telegram-health',5))return fail('RATE_LIMITED',429);
   return json(await telegramHealth(env));
@@ -667,6 +694,8 @@ async function api(req,env){
  if(path==='/api/connection/test-status'&&req.method==='GET')return testStatus(req,env,user);
  if(path==='/api/webhook/mode'&&req.method==='POST')return setWebhookMode(req,env,user);
  if(path==='/api/checkout'&&req.method==='POST')return createCheckout(req,env,user);
+ if(path==='/api/scalper'&&req.method==='GET')return json(await scalperOverview(env,scalperHelpers(env),user));
+ if(path==='/api/scalper/checkout'&&req.method==='POST')return scalperCheckout(req,env,scalperHelpers(env),user);
  if(path==='/api/orders'&&req.method==='GET'){
   const rows=await env.DB.prepare('SELECT id,plan,amount_usd,status,invoice_url,created_at,paid_at FROM site_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 30').bind(user.id).all();
   return json({ok:true,orders:rows.results||[]});
