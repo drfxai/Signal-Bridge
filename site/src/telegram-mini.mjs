@@ -53,17 +53,30 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 @media(max-width:360px){.container{padding:0 12px}.brandname .name{font-size:14px}.chip{font-size:9px;padding:7px}.hero h1{font-size:29px}.card{padding:15px}.grid{gap:8px}.small{padding:12px 11px}.micro{font-size:10px}.action-grid{grid-template-columns:1fr}.route-head{padding:11px 11px 4px}}
 @media(min-width:681px){nav.bottom{padding-inline:max(16px,calc((100% - 660px)/2))}.container{padding-inline:22px}.hero{padding-top:33px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+.lang-toggle{height:39px;min-width:57px;max-width:none;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid #a2865480;border-radius:10px;background:linear-gradient(130deg,#2b2116,#111419);color:#f6dea4;font-size:12px;font-weight:800}
+.mini-lang-picker{position:relative;z-index:90;direction:ltr}
+.mini-lang-chevron{color:#b5acaa;font-size:20px;line-height:1;transition:transform .2s}
+.lang-toggle[aria-expanded=true] .mini-lang-chevron{transform:rotate(180deg)}
+.mini-lang-options{position:absolute;top:calc(100% + 9px);right:0;z-index:99;width:194px;max-height:min(325px,66dvh);overflow:auto;border:1px solid #9f82536e;border-radius:13px;background:#14161def;box-shadow:0 18px 40px #000d;backdrop-filter:blur(16px);padding:8px}
+.mini-lang-options[hidden]{display:none!important}
+.mini-lang-title{font:750 10px ui-monospace,monospace;letter-spacing:.08em;color:#bca276;padding:8px}
+.mini-lang-options button{display:flex;align-items:center;gap:9px;width:100%;min-height:45px;border:1px solid transparent;border-radius:8px;padding:8px;color:#e3e5ec;font-size:14px;background:transparent;text-align:left}
+.mini-lang-options button b{font:750 11px ui-monospace,monospace;color:#efd49b;min-width:27px;padding:5px 4px;border:1px solid #8d704653;border-radius:5px;text-align:center}
+.mini-lang-options button i{margin-left:auto;font-style:normal;opacity:0;color:#89e9b4}
+.mini-lang-options button[aria-pressed=true]{background:#edc2761c;border-color:#b7964e53;color:#ffe2a6}
+.mini-lang-options button[aria-pressed=true] i{opacity:1}
 </style>
 <script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
- <div class="header-actions"><select id="langToggle" class="lang-toggle" aria-label="Choose language"><option value="en">EN</option><option value="fa">FA</option><option value="ar">AR</option><option value="tr">TR</option><option value="ru">RU</option><option value="hi">HI</option></select><span id="connection" class="chip">Checking</span></div>
+ <div class="header-actions"><div id="miniLangPicker" class="mini-lang-picker"><button id="langToggle" class="lang-toggle" type="button" aria-label="Select Mini App language" aria-haspopup="true" aria-expanded="false" aria-controls="miniLangOptions"><span id="miniLangCurrent">EN</span><span class="mini-lang-chevron" aria-hidden="true">⌄</span></button><div id="miniLangOptions" class="mini-lang-options" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">APP LANGUAGE</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i aria-hidden="true">✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i aria-hidden="true">✓</i></button><button type="button" data-mini-lang="ar" aria-pressed="false"><b>AR</b><span>العربية</span><i aria-hidden="true">✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i aria-hidden="true">✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i aria-hidden="true">✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i aria-hidden="true">✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
 <section class="hero">
- <span class="eyebrow" data-tr="eyebrow">YOUR TRADING WORKSPACE</span>
- <h1><span data-tr="hero1">Trade smarter.</span><br><em data-tr="hero2">Stay connected.</em></h1>
- <p class="desc" data-tr="desc">Your membership, MT5 Expert Advisor and private activation key — together in one secure dashboard.</p>
+ <span class="eyebrow" data-tr="eyebrow">YOUR SIGNALBRIDGE ADVANTAGE</span>
+ <h1><span data-tr="hero1">Every signal.</span><br><em data-tr="hero2">One powerful bridge.</em></h1>
+ <p class="desc" data-tr="desc">Your alerts, MT5 license and SignalBridge membership in one secure command center. Stay connected. Stay in control.</p>
  <div class="hero-kicker"><span><i></i> Private license</span><span>Telegram verified sign-in</span></div>
 </section>
 <div class="route-stage" aria-label="Illustrative route from alerts through SignalBridge to MetaTrader 5">
@@ -114,7 +127,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <p class="tab-kicker" data-tr="eaKicker">EXPERT ADVISOR</p><h2 class="section-title" data-tr="connect">Connect your <span>MT5 account</span></h2>
  <div class="card gold"><div class="micro">ONE EA · ONE PRIVATE CODE</div><h2 style="font-size:22px;margin-top:10px" data-tr="setupTitle">Set up SignalBridge</h2>
   <ol class="list"><li data-tr="step1">Install the official compiled DrFX EX5 Expert Advisor in MetaTrader 5.</li><li data-tr="step2">Allow https://signalbridge.drfx.online in MT5 Expert Advisors.</li><li data-tr="step3">Enter your activation code as the first EA setting.</li><li data-tr="step4">Check the MT5 Experts tab for the verified license state.</li></ol>
-  <span class="inline-tag" data-tr="demoOnly">DEMO ACCOUNT ONLY · LIVE TRADING DISABLED</span>
+  <span class="inline-tag" data-tr="demoOnly">PRACTICE ACCOUNTS ONLY · LIVE-MONEY TRADING UNAVAILABLE</span>
  </div><button class="btn primary" type="button" data-jump="home" data-tr="back">View activation code ↗</button>
 </section>
 <section class="tab-panel" data-panel="plans" id="panel-plans" hidden>
@@ -143,7 +156,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <div id="miniAdminUsers" class="mini-admin-users"></div></div>
  <p id="miniAdminStatus" class="mini-note" role="status"></p>
  </section>
-<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
+<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Visual routing illustration only. No verified trading performance is claimed.</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
  <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Home</span></button>
@@ -190,7 +203,9 @@ export const MINI_JS=String.raw`(() => {
    const key=el.dataset.tr;
    el.textContent=dictionary[locale]?.[key]||english[key];
   });
-  $('langToggle').value=locale;
+  $('miniLangCurrent').textContent=locale.toUpperCase();
+  $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.miniLang===locale)));
+  closeMiniLanguage();
   if(state.user){
    set('memberPlan',planLabel(state.user.plan));
    set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected','متصل نیست'));
@@ -207,7 +222,11 @@ export const MINI_JS=String.raw`(() => {
   const name={trial:'oneMonth',quarterly:'threeMonth',annual:'annualElite'}[plan];
   return dictionary[locale]?.[name]||dictionary.en?.[name]||'Membership';
  }
- $('langToggle').addEventListener('change',()=>{language($('langToggle').value);tg?.HapticFeedback?.selectionChanged?.()});
+ function closeMiniLanguage(){ $('miniLangOptions').hidden=true; $('langToggle').setAttribute('aria-expanded','false'); }
+ $('langToggle').addEventListener('click',()=>{const open=$('miniLangOptions').hidden;$('miniLangOptions').hidden=!open;$('langToggle').setAttribute('aria-expanded',String(open));});
+ $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.addEventListener('click',()=>{language(b.dataset.miniLang);tg?.HapticFeedback?.selectionChanged?.()}));
+ document.addEventListener('click',e=>{if(!$('miniLangPicker').contains(e.target))closeMiniLanguage()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMiniLanguage()});
 
  async function offerBotLaunch(){
   $('launchHint').hidden=false;
