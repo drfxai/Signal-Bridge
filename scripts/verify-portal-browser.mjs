@@ -47,6 +47,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   await page.locator(nav+' [data-sb-tab='+tab+']').click();
   const target={signals:'.sb-stream',routes:'.sb-routes',settings:'.sb-policy'}[tab];
   if(!await page.locator(target).isVisible())throw Error('Tab not reachable: '+tab);
+  if(width<=700&&tab==='signals'){await page.locator('#signalRows td[data-label=Status]').first().waitFor();if(await page.locator('.sb-table-scroll table').evaluate(e=>getComputedStyle(e).display)!=='block')throw Error('Mobile history must use readable cards');}
   if(await page.locator(nav+' [data-sb-tab='+tab+']').getAttribute('aria-pressed')!=='true')throw Error('Tab state not accessible');
   if(width<=700&&tab==='routes'){
    const font=await page.locator('#signalPreviewText').evaluate(e=>parseFloat(getComputedStyle(e).fontSize));if(font<16)throw Error('Mobile input would auto-zoom');

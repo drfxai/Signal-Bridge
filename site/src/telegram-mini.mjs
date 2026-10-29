@@ -1,3 +1,4 @@
+import {RESPONSIVE_REFRESH} from './responsive-refresh.mjs';
 import { EXECUTION_HTML, EXECUTION_JS } from './portal-execution.mjs';
 import { SXM_HOME_HTML, SXM_NAV_HTML, SXM_PANEL_HTML, SXM_CSS, SXM_JS } from './scalper-mini.mjs';
 // DrFX Telegram Mini App: mobile-first full-width UI, authenticated account state.
@@ -66,7 +67,8 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 .mini-lang-options button{min-height:49px;font-weight:650;border-radius:10px}
 .mini-lang-options button[aria-pressed=true]{background:linear-gradient(110deg,#a8873d38,#233c3048);border-color:#ddb66870}
 @media(max-width:420px){.lang-toggle{height:40px;min-width:54px;padding:0 8px;gap:5px}.mini-lang-chevron{display:none}.mini-globe-icon{width:17px;height:17px}}
-${SXM_CSS}</style>
+${SXM_CSS}
+${RESPONSIVE_REFRESH}</style>
 <script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
