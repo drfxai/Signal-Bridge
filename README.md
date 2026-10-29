@@ -36,6 +36,20 @@ messages. Persian and Arabic use right-to-left layout.
 
 SignalBridge is a premium realtime bridge for traders who want **TradingView and Telegram signals delivered into MetaTrader 5 with minimal setup**. The V3 architecture removes the Windows companion Agent from the standard user flow: the MT5 EA connects directly to SignalBridge Cloud over TLS/WebSocket.
 
+## 🆕 DrFX Scalper Pro, now in the suite
+
+<p align="center"><a href="products/scalper-pro/README.md"><img src="products/scalper-pro/images/hero.png" alt="DrFX Scalper Pro: the AI liquidity radar for gold" width="100%"></a></p>
+
+**SignalBridge executes the signals you already trust. Scalper Pro finds new ones on gold.** It is an MT5 Expert Advisor that maps the liquidity sweep, marks the Fair Value Gap and Order Block smart money left behind, and scores every setup with a calibrated win %, reach % and EV before you take it.
+
+- **7-day free trial** inside the EA, then **$19 / 30 days** or **$49 / 90 days**.
+- **Buy and get your key in the Client Portal** at [drfx.company](https://drfx.company/#scalper): enter your MT5 account number, pay with crypto, and the key appears in the portal's **Scalper Pro** tab and in the DrFX Telegram bot (`/scalper`).
+- **Telegram Mini App:** a Scalper Pro tab shows the promo, plans, install steps and your keys.
+
+<p align="center"><img src="products/scalper-pro/images/scan.gif" alt="Scalper Pro AI scan" width="80%"></p>
+
+▶ [Promo video](products/scalper-pro/scalper-pro-promo.mp4) · 📘 [Install and user guide](products/scalper-pro/README.md) · 🛠 [Operator setup](site/README.md#scalper-pro)
+
 ## ✨ Product direction
 
 - **One MT5 EA** — no Node.js, no PowerShell, no local Windows Agent.

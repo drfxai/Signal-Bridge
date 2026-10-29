@@ -85,7 +85,8 @@ test('supplied cinematic design is wired to production actions',()=>{
  assert.doesNotThrow(()=>new Function(DESIGN_JS));
 });
 test('first animation removed and second reimplemented at native display resolution',async()=>{
- assert.equal((SITE_HTML.match(/<video /g)||[]).length,0);
+ // The only video is the Scalper Pro promo, served as a static asset.
+ assert.deepEqual((SITE_HTML.match(/<video [^>]*src="[^"]*"/g)||[]).map(v=>v.match(/src="([^"]*)"/)[1]),['/media/scalper/promo.mp4']);
  assert.ok(!SITE_HTML.includes('48356-globe.mp4'));
  assert.ok(!SITE_HTML.includes('48355-connections.mp4'));
  assert.ok(!worker.includes("from './media.mjs'"));
@@ -181,7 +182,7 @@ test('live feature readiness is reflected honestly in account and checkout UI',a
  assert.ok(SITE_HTML.includes('loaderFallback'));
  const r=await handler.fetch(new Request('https://drfx.company/api/config'),{DB:{},LICENSE_VAULT_KEY:'configured-but-not-shared'});
  assert.equal(r.status,200);
- assert.deepEqual(await r.json(),{ok:true,email:false,telegram:false,payments:false,licensing:true,ea_hub:false,release:'signalbridge-design-20261029.2'});
+ assert.deepEqual(await r.json(),{ok:true,email:false,telegram:false,payments:false,licensing:true,scalper:false,ea_hub:false,release:'signalbridge-design-20261029.2'});
 });
 test('cinematic render loops reuse canvas pixel buffers rather than reallocating at every frame',()=>{
  assert.match(DESIGN_JS,/indCanvas\.width !== wpx/);
