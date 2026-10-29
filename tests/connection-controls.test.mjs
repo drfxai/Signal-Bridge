@@ -101,5 +101,29 @@ test('missing site-to-ingress hub binding is reported explicitly without dispatc
  const f=fixture();delete f.env.AGENT_HUB;
  const response=await f.request('/api/connection/test-demo',{confirm:true});assert.equal(response.status,503);
  assert.equal((await response.json()).error,'EA_HUB_NOT_CONFIGURED');assert.equal(f.calls.length,0);
- const config=await (await f.request('/api/config')).json();assert.equal(config.ea_hub,false);assert.equal(config.release,'signalbridge-connectivity-20261029.1');f.db.close();
+ const config=await (await f.request('/api/config')).json();assert.equal(config.ea_hub,false);assert.equal(config.release,'signalbridge-design-20261029.2');f.db.close();
+});
+
+test('v2 DEMO test is explicitly account-bound with dedicated execution mode',async()=>{
+ const f=fixture();f.snapshot.capabilities=['timed-test-v2'];
+ const body={confirm:true,account_mode:'DEMO',account_login:'123',account_server:'Demo'};
+ assert.equal((await f.request('/api/connection/test',{...body,account_login:'wrong'})).status,409);
+ const response=await f.request('/api/connection/test',body);assert.equal(response.status,202);
+ assert.equal(f.calls[0].execution_mode,'test_execute');assert.deepEqual(f.calls[0].test_account,{mode:'DEMO',login:'123',server:'Demo'});
+ assert.equal(f.db.prepare('SELECT account_mode FROM connection_tests').get().account_mode,'DEMO');f.db.close();
+});
+test('LIVE test requires live capability, exact account identity and explicit separate confirmation',async()=>{
+ const f=fixture();f.snapshot.account.mode='LIVE';f.snapshot.capabilities=['live-test-v2'];
+ const body={confirm:true,account_mode:'LIVE',account_login:'123',account_server:'Demo'};
+ assert.equal((await f.request('/api/connection/test',body)).status,400);
+ assert.equal(f.calls.length,0);assert.equal(f.db.prepare('SELECT count(*) AS n FROM site_rate_limits').get().n,0);
+ assert.equal((await f.request('/api/connection/test',{...body,confirm_live:'CONFIRM LIVE TEST'})).status,202);
+ assert.equal(f.calls[0].test_account.mode,'LIVE');assert.equal(f.calls[0].execution_mode,'test_execute');
+ assert.equal((await f.request('/api/webhook/mode',{mode:'demo_execute',confirm:true})).status,409);f.db.close();
+});
+test('LIVE test capability cannot be substituted with demo or legacy support',async()=>{
+ for(const caps of [['timed-test-v1'],['timed-test-v2'],[]]){
+  const f=fixture();f.snapshot.account.mode='LIVE';f.snapshot.capabilities=caps;
+  assert.equal((await f.request('/api/connection/test',{confirm:true,account_mode:'LIVE',account_login:'123',account_server:'Demo',confirm_live:'CONFIRM LIVE TEST'})).status,409);assert.equal(f.calls.length,0);f.db.close();
+ }
 });

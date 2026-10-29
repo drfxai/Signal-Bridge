@@ -1,13 +1,13 @@
 # SignalBridge MT5 EA
 
 The only current source is [`DrFX_SignalBridge_EA.mq5`](DrFX_SignalBridge_EA.mq5),
-**EA v0.26.0**. Older EA snapshots have been removed from the working tree;
+**EA v0.27.0**. Older EA snapshots have been removed from the working tree;
 Git history retains their previous contents.
 
 ## Setup
 
 1. Compile the source with official MetaEditor, or use an independently reviewed compiled EX5 build.
-2. Place the EX5 in `MQL5/Experts` and attach it to an MT5 **DEMO** chart.
+2. Place the EX5 in `MQL5/Experts` and attach it to an MT5 **DEMO** chart (or LIVE for separately opted-in connection tests).
 3. Allow `https://signalbridge.drfx.online` in **Tools → Options → Expert Advisors**.
 4. Paste your private 43-character activation code into `InpActivationCode`.
 5. Keep `InpEnableDemoExecution=false` until dry-run checks pass.
@@ -29,6 +29,8 @@ for supported formats and test restrictions.
 
 ## Verification
 
-[Official Windows MetaEditor build](https://github.com/drfxai/Signal-Bridge/actions/runs/40847595192):
-zero compile errors; one pre-1.0 Market-version warning. The product remains demo-only.
+[Official Windows MetaEditor workflow](https://github.com/drfxai/Signal-Bridge/actions/workflows/build-ea.yml).
+Automatic signals remain demo-only; LIVE connection tests require separate consent.
 Actual broker E2E/timing certification is separate from compilation.
+
+See [DEMO/LIVE test controls and the new compact panel](../docs/EA_V027_LUXURY_TESTS.md).

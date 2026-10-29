@@ -8,7 +8,7 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const dir='artifacts/ui-verification';await mkdir(dir,{recursive:true});
 const user={id:'preview-user',email:'preview@example.test',role:'user',plan:'trial',license_status:'active',expires_at:'2099-01-01 00:00:00',activated_at:'2026-10-29 00:00:00',mt5_account:{login:'DEMO PREVIEW',server:'Preview broker'},activation_code:'',indicator_delivery_ready:false};
 const errors=[];
-for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['website-tablet','/',820,1180],['website-mobile','/',390,844],['telegram-mobile','/telegram',390,844]]){
+for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['website-tablet','/',820,1180],['website-mobile','/',390,844],['telegram-mobile','/telegram',390,844],['website-live','/',390,844],['telegram-live','/telegram',390,844]]){
  const page=await browser.newPage({viewport:{width,height}});page.on('pageerror',e=>errors.push(label+': '+e.message));
  let testRequested=0;
  await page.route('**/api/**',async route=>{
@@ -16,9 +16,9 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['websi
   let data={ok:true};
   if(path==='/api/me')data={ok:true,user};
   if(path==='/api/config')data={ok:true,email:true,telegram:true,licensing:true,payments:false};
-  if(path==='/api/connection/check')data={ok:true,diagnostic:{license:'active',live_snapshot_available:true,live_socket_verified:true,terminal_online:true}};
+  if(path==='/api/connection/check')data={ok:true,diagnostic:{license:'active',expires_at:'2099-01-01 00:00:00',mt5_mode:label.includes('live')?'LIVE':'DEMO',mt5_account:{login:'PREVIEW',server:'TEST'},telemetry:{equity:1000},live_snapshot_available:true,live_socket_verified:true,terminal_online:true}};
   if(path==='/api/webhook'||path==='/api/webhook/mode')data={ok:true,webhook:{exists:true,webhook_url:'https://example.test/PREVIEW-NOT-A-CREDENTIAL',mode:'dry_run',received:0}};
-  if(path==='/api/connection/test-demo'){testRequested++;data={ok:true,test_id:'preview-test',command_id:'preview-command',status:'DELIVERED'}};
+  if(path==='/api/connection/test'){testRequested++;data={ok:true,test_id:'preview-test',command_id:'preview-command',status:'DELIVERED'}};
   if(path==='/api/connection/test-status')data={ok:true,test:{id:'preview-test',status:'CLOSED',detail:'UI preview only · no broker order',command_status:'FILLED'}};
   await route.fulfill({json:data});
  });
@@ -29,8 +29,14 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['websi
  await page.screenshot({path:dir+'/'+label+'.png'});
  if(!await page.locator('#startTimedTest').isVisible())throw Error('Test control not visible');
  // Cancellation must not call the trade endpoint.
- page.once('dialog',d=>d.dismiss());await page.locator('#startTimedTest').click();if(testRequested!==0)throw Error('cancel dispatched order');
- page.once('dialog',d=>d.accept());await page.locator('#startTimedTest').click();
+ if(await page.locator('.sb-actions button').count()!==2)throw Error('Expected exactly two test actions');
+ await page.locator('#checkConnectionAction').click();if(testRequested!==0)throw Error('Read-only check traded');
+ await page.locator('#startTimedTest').click();await page.locator('#tradeTestConfirm[open]').waitFor();
+ await page.locator('#cancelTradeTest').click();if(testRequested!==0)throw Error('cancel dispatched order');
+ await page.locator('#startTimedTest').click();await page.locator('#tradeTestConfirm[open]').waitFor();
+ if(label.includes('live')){await page.locator('#confirmTradeTest').click();if(testRequested!==0)throw Error('Unconfirmed live order');await page.locator('#liveConfirmInput').fill('LIVE');}
+ await page.screenshot({path:dir+'/'+label+'-confirmation.png'});
+ await page.locator('#confirmTradeTest').click();
  await page.waitForFunction(()=>document.getElementById('executionFeedback').textContent.includes('CLOSED'));
  if(testRequested!==1)throw Error('wrong number of test requests');
  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);

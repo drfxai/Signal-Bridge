@@ -17,3 +17,5 @@ are subject to project-maintainer review and do not grant rights in the product.
 
 An independent security and licensing review is required before enabling
 real-money trading, charging users, or publishing EX5 binaries.
+
+Owner-approved scope in EA 0.27.0: separately opted-in and explicitly confirmed LIVE connection tests, as specified in docs/EA_V027_LUXURY_TESTS.md. Ordinary signal execution remains DEMO-only. CI and maintenance work must never submit real broker orders.

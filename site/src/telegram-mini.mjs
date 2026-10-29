@@ -113,7 +113,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  </article>
  <section class="mini-tools" aria-label="SignalBridge account tools"><div class="mini-tools-head"><span>PERSONAL SIGNALBRIDGE</span><strong>Connection & Webhook</strong></div>
  <div class="mini-status-grid"><div><small data-tr="licenseStatus">EA LICENSE</small><strong id="miniConnectionLicense">Not checked</strong></div><div><small data-tr="lastHandshake">LAST HANDSHAKE</small><strong id="miniConnectionLast">Not checked</strong></div></div>
- <button type="button" id="miniTestConnection" class="btn primary mini-wide" data-tr="testConnection">Test Connection · No Trade</button>
+ <span id="miniTestConnection" hidden></span>
  <p class="mini-note" id="miniConnectionInfo" role="status">Reads the last EA handshake. It does not place a market order.</p>
  <h3 data-tr="personalWebhook">My TradingView Webhook</h3><p class="mini-note">Private endpoint for your TradingView alerts, initially Dry Run. Do not share this URL.</p>
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
