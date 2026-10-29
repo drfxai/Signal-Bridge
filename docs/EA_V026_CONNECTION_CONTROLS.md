@@ -53,3 +53,5 @@ PRs #49 and #56 contain earlier versions of features already superseded on `main
 ## Validation
 
 `npm run check` syntax-checks JavaScript across site, worker, design, Windows agent, scripts and tests, then runs the full Node test suite. SQLite-backed endpoint tests apply every migration and cover ownership, confirmation, demo/freshness/capability gates, durable dispatch, concurrency, webhook modes and lifecycle status. The Windows Actions workflow compiles EA 0.26.0 using official MetaEditor; actual broker timing/restart tests remain an explicit manual verification step.
+
+Browser CI renders desktop, tablet, mobile website and Telegram Mini App controls with fictional test data. Screenshots are uploaded as `portal-responsive-ui-previews`; they are UI previews, not evidence of live trading. Confirmation cancellation must send no trade request, and accepted confirmation must send exactly one.

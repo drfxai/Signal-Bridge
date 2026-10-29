@@ -10,3 +10,5 @@ private/
 *.mq5.log
 *.mq5.txt
 agent-windows/receipt-outbox.jsonl
+
+artifacts/
