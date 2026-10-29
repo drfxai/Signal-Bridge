@@ -14,7 +14,7 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .mini-lang-chevron{color:#a9aabd;font-size:20px;line-height:1}
 .lang-toggle[aria-expanded=true] .mini-lang-chevron{transform:rotate(180deg)}
 .mini-lang-options{position:absolute;top:calc(100% + 10px);right:0;width:188px;border-radius:12px;border:1px solid #9f82536e;background:#14161def;box-shadow:0 18px 40px #000d;backdrop-filter:blur(16px);padding:8px;z-index:90}
-.mini-lang-options[hidden]{display:none}
+.mini-lang-options[hidden]{display:none}.mini-lang-options{max-height:min(375px,62dvh);overflow-y:auto;overscroll-behavior:contain}
 .mini-lang-title{font:750 10px/1.4 ui-monospace,monospace;letter-spacing:.06em;color:#bca276;padding:9px 9px 8px}
 .mini-lang-options button{display:flex;align-items:center;gap:9px;width:100%;min-height:47px;border-radius:8px;border:1px solid transparent;background:transparent;color:#e3e5ec;font-size:14px;padding:9px}
 .mini-lang-options button b{font-size:10px;border:1px solid #98764050;color:#ebcc89;border-radius:5px;padding:5px}
@@ -69,7 +69,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
- <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button id="langToggle" class="lang-toggle" type="button" aria-label="Choose app language" aria-expanded="false" aria-controls="miniLangOptions" aria-haspopup="true"><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div class="mini-lang-options" id="miniLangOptions" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">APP LANGUAGE</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
+ <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button id="langToggle" class="lang-toggle" type="button" aria-label="Choose app language" aria-expanded="false" aria-controls="miniLangOptions" aria-haspopup="true"><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div class="mini-lang-options" id="miniLangOptions" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">APP LANGUAGE</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="ar" aria-pressed="false"><b>AR</b><span>العربية</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
 <section class="hero">
  <span class="eyebrow" data-tr="eyebrow">YOUR SIGNALBRIDGE ADVANTAGE</span>
@@ -183,14 +183,26 @@ export const MINI_JS=String.raw`(() => {
 
 
  const fa={eyebrow:'محیط اختصاصی معامله‌گری',hero1:'هر سیگنال.',hero2:'یک پل قدرتمند.',desc:'یک فضای اختصاصی برای هشدارهای تریدینگ‌ویو، سیگنال‌های تلگرام، لایسنس متاتریدر و اشتراک شما؛ همه تحت کنترل خودتان.',command:'مرکز فرمان',privateKey:'کد فعال‌سازی اختصاصی',connect:'اتصال به متاتریدر ۵',advantage:'اشتراک‌های شما',support:'امنیت و پشتیبانی',reveal:'نمایش کد',hide:'مخفی‌کردن کد',copy:'کپی کد فعال‌سازی',guide:'راهنمای MT5 ←',explore:'اشتراک‌ها ←',back:'بازگشت به کد فعال‌سازی ←',pricing:'مشاهده طرح‌ها در سایت ←',website:'باز کردن سایت DrFX ←',refresh:'به‌روزرسانی حساب ↻',navHome:'خانه',navEA:'اکسپرت',navPlans:'اشتراک',navHelp:'راهنما',licenseNote:'کد شخصی EA تا زمان درخواست شما مخفی است. آن را در تصاویر یا پیام‌ها منتشر نکنید.',eaKicker:'اکسپرت متاتریدر',plansKicker:'اشتراک دکتر اف‌ایکس',helpKicker:'پشتیبانی و امنیت حساب',memberCaption:'اشتراک فعلی',privateCaption:'حساب اختصاصی',mt5Caption:'اتصال متاتریدر ۵',eaCaption:'فعال‌سازی EA',memberHint:'از داخل بات رسمی تلگرام وارد شوید',mt5Hint:'حساب معاملاتی هنوز تأیید نشده است',expiryHint:'اعتبار پس از فعال‌سازی آغاز می‌شود',setupTitle:'راه‌اندازی سیگنال‌بریج',step1:'نسخه رسمی و کامپایل‌شده EX5 را در متاتریدر ۵ نصب کنید.',step2:'آدرس https://signalbridge.drfx.online را در تنظیمات Expert Advisors مجاز کنید.',step3:'کد فعال‌سازی شخصی را در اولین ورودی اکسپرت وارد کنید.',step4:'در تب Experts وضعیت تأیید لایسنس را بررسی کنید.',demoOnly:'فقط حساب تمرینی · معاملات با پول واقعی غیرفعال',help1:'مینی‌اپ را از داخل بات رسمی تلگرام برای تأیید هویت باز کنید.',help2:'اتصال حساب ایمیل و تلگرام فقط پس از تأیید مالکیت انجام می‌شود.',help3:'کد فعال‌سازی EA را در تصویر یا پیام عمومی قرار ندهید.',help4:'برای مدیریت کامل حساب از داشبورد سایت استفاده کنید.',premiumNote:'* محصولات پریمیوم به انتشار و مجوز مستقل نیاز دارند. این مینی‌اپ پرداخت دریافت نمی‌کند.',securityTitle:'امنیت حساب شما'};
+ const otherLanguages={
+  ar:{eyebrow:'مساحة التداول الخاصة بك',hero1:'كل إشارة.',hero2:'جسر واحد قوي.',desc:'مساحة خاصة لتنبيهات TradingView وإشارات Telegram وترخيص MT5 واشتراكك.',command:'لوحة التحكم',privateKey:'رمز التنشيط الخاص',connect:'اربط حساب MT5',advantage:'اختر اشتراكك',support:'الأمان والدعم',reveal:'إظهار الرمز',copy:'نسخ الرمز',guide:'دليل MT5',explore:'استكشف الاشتراكات',back:'العودة إلى الرمز',pricing:'عرض الاشتراكات في الموقع',website:'زيارة موقع DrFX',refresh:'تحديث الحساب',navHome:'الرئيسية',navEA:'MT5 EA',navPlans:'الاشتراكات',navHelp:'المساعدة',memberCaption:'اشتراكك الحالي',privateCaption:'حساب خاص',mt5Caption:'اتصال MT5',eaCaption:'تفعيل EA',setupTitle:'إعداد SignalBridge',licenseNote:'رمز EA الخاص محمي. لا تشاركه في الصور أو الرسائل.',demoOnly:'للحسابات التدريبية فقط · التداول بالمال الحقيقي غير متاح',securityTitle:'حماية حسابك'},
+  tr:{eyebrow:'ÖZEL İŞLEM ALANINIZ',hero1:'Her sinyal.',hero2:'Tek güçlü köprü.',desc:'TradingView uyarıları, Telegram sinyalleri, MT5 lisansı ve üyeliğiniz için tek özel panel.',command:'Kontrol paneliniz',privateKey:'Özel aktivasyon kodunuz',connect:'MT5 hesabınızı bağlayın',advantage:'Üyelik seçin',support:'Güvenlik ve destek',reveal:'Kodu göster',copy:'Kodu kopyala',guide:'MT5 kurulum rehberi',explore:'Üyelikleri keşfedin',back:'Aktivasyon koduna dön',pricing:'Web sitesinde planları gör',website:'DrFX sitesini aç',refresh:'Hesabı yenile',navHome:'Ana Sayfa',navEA:'MT5 EA',navPlans:'Planlar',navHelp:'Yardım',memberCaption:'Geçerli üyelik',privateCaption:'Özel hesap',mt5Caption:'MT5 bağlantısı',eaCaption:'EA aktivasyonu',setupTitle:'SignalBridge kurulumu',licenseNote:'EA kodunuz gizlidir. Ekran görüntülerinde veya mesajlarda paylaşmayın.',demoOnly:'Yalnızca alıştırma hesapları · gerçek parayla işlem yok',securityTitle:'Hesabınızı koruyun'},
+  ru:{eyebrow:'ВАШ ЛИЧНЫЙ ТОРГОВЫЙ КАБИНЕТ',hero1:'Каждый сигнал.',hero2:'Один мощный мост.',desc:'Единый кабинет для оповещений TradingView, сигналов Telegram, лицензии MT5 и подписки.',command:'Панель управления',privateKey:'Ваш ключ активации',connect:'Подключите MT5',advantage:'Выберите подписку',support:'Безопасность и поддержка',reveal:'Показать код',copy:'Скопировать код',guide:'Настройка MT5',explore:'Тарифы',back:'К коду активации',pricing:'Тарифы на сайте',website:'Открыть DrFX',refresh:'Обновить данные',navHome:'Главная',navEA:'MT5 EA',navPlans:'Тарифы',navHelp:'Помощь',memberCaption:'Текущая подписка',privateCaption:'Личный кабинет',mt5Caption:'Связь с MT5',eaCaption:'Активация EA',setupTitle:'Настройка SignalBridge',licenseNote:'Ваш код EA конфиденциален. Не публикуйте его в сообщениях и скриншотах.',demoOnly:'Только учебные счета · торговля реальными средствами недоступна',securityTitle:'Защита аккаунта'},
+  hi:{eyebrow:'आपका निजी ट्रेडिंग वर्कस्पेस',hero1:'हर सिग्नल।',hero2:'एक शक्तिशाली ब्रिज।',desc:'TradingView अलर्ट, Telegram सिग्नल, MT5 लाइसेंस और सदस्यता के लिए एक निजी डैशबोर्ड।',command:'आपका डैशबोर्ड',privateKey:'निजी एक्टिवेशन कोड',connect:'MT5 अकाउंट जोड़ें',advantage:'अपना प्लान चुनें',support:'सुरक्षा और सहायता',reveal:'कोड दिखाएँ',copy:'कोड कॉपी करें',guide:'MT5 सेटअप गाइड',explore:'प्लान देखें',back:'एक्टिवेशन कोड पर जाएँ',pricing:'वेबसाइट पर प्लान देखें',website:'DrFX वेबसाइट खोलें',refresh:'अकाउंट रिफ़्रेश करें',navHome:'होम',navEA:'MT5 EA',navPlans:'प्लान',navHelp:'सहायता',memberCaption:'वर्तमान सदस्यता',privateCaption:'निजी अकाउंट',mt5Caption:'MT5 कनेक्शन',eaCaption:'EA एक्टिवेशन',setupTitle:'SignalBridge सेटअप',licenseNote:'आपका EA कोड निजी है। इसे स्क्रीनशॉट या संदेश में साझा न करें।',demoOnly:'केवल अभ्यास अकाउंट · वास्तविक धन से ट्रेडिंग उपलब्ध नहीं',securityTitle:'अपने अकाउंट की सुरक्षा करें'}
+ };
+ const languagePlans={
+  ar:{trial:'شهر مجاني',quarterly:'بريميوم ٣ أشهر',annual:'اشتراك سنوي'},
+  tr:{trial:'1 Ay Ücretsiz',quarterly:'3 Aylık Premium',annual:'Yıllık Elite'},
+  ru:{trial:'1 месяц бесплатно',quarterly:'Премиум на 3 месяца',annual:'Годовой Elite'},
+  hi:{trial:'1 महीना मुफ़्त',quarterly:'3 महीने प्रीमियम',annual:'वार्षिक एलीट'}
+ };
  const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
  let locale='en';
  const ui=(en,faText)=>locale==='fa'?faText:en;
  function language(lang){
-  locale=lang==='fa'?'fa':'en';
+  locale=['en','fa','ar','tr','ru','hi'].includes(lang)?lang:'en';
   document.documentElement.lang=locale;
-  document.documentElement.dir=locale==='fa'?'rtl':'ltr';
-  document.querySelectorAll('[data-tr]').forEach(el=>{const key=el.dataset.tr;el.textContent=locale==='fa'?(fa[key]||english[key]):english[key]});
+  document.documentElement.dir=['fa','ar'].includes(locale)?'rtl':'ltr';
+  document.querySelectorAll('[data-tr]').forEach(el=>{const key=el.dataset.tr;el.textContent=(locale==='fa'?fa[key]:otherLanguages[locale]?.[key])||english[key]});
   $('langToggle').setAttribute('aria-pressed',String(locale==='fa'));
   $('miniLangCurrent').textContent=locale.toUpperCase();
   $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.miniLang===locale)));
@@ -198,7 +210,7 @@ export const MINI_JS=String.raw`(() => {
   else {set('memberPlan',ui('Not signed in','وارد نشده'));set('mt5Status',ui('Not connected','متصل نیست'));}
   $('revealSerial').textContent=state.serialVisible?ui('Hide serial','مخفی‌کردن کد'):ui('Reveal serial','نمایش کد');
  }
- function planLabel(plan){return ({
+ function planLabel(plan){if(languagePlans[locale]?.[plan])return languagePlans[locale][plan];return ({
   trial:ui('1 Month Free','یک ماه رایگان'),quarterly:ui('3 Months Premium','پریمیوم سه‌ماهه'),annual:ui('Annual Elite','الیت سالانه')
  })[plan]||ui('Membership','اشتراک');}
  function closeMiniLanguage(){ $('miniLangOptions').hidden=true;$('langToggle').setAttribute('aria-expanded','false'); }
