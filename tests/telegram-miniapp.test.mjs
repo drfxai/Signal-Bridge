@@ -281,3 +281,16 @@ test('Mini App language popover avoids full-screen native select and preserves s
  assert.ok(!MINI_HTML.includes('<select id="langToggle"'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });
+
+
+test('Mini App preserves six language choices with localized main controls and RTL Arabic',()=>{
+ for(const lang of ['en','fa','ar','tr','ru','hi'])
+   assert.ok(MINI_HTML.includes('data-mini-lang="'+lang+'"'),lang);
+ assert.ok(MINI_HTML.includes('max-height:min(375px,62dvh)'));
+ assert.ok(MINI_JS.includes('const otherLanguages='));
+ assert.ok(MINI_JS.includes('const languagePlans='));
+ assert.ok(MINI_JS.includes("['fa','ar'].includes(locale)"));
+ assert.ok(MINI_JS.includes("otherLanguages[locale]?.[key]"));
+ assert.ok(!MINI_HTML.includes('<select id="langToggle"'));
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+});
