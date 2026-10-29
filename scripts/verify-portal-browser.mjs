@@ -8,7 +8,7 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const dir='artifacts/ui-verification';await mkdir(dir,{recursive:true});
 const user={id:'preview-user',email:'preview@example.test',role:'user',plan:'trial',license_status:'active',expires_at:'2099-01-01 00:00:00',activated_at:'2026-10-29 00:00:00',mt5_account:{login:'DEMO PREVIEW',server:'Preview broker'},activation_code:'',indicator_delivery_ready:false};
 const errors=[];
-for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['website-tablet','/',820,1180],['website-mobile','/',390,844],['telegram-mobile','/telegram',390,844],['website-live','/',390,844],['telegram-live','/telegram',390,844],['website-risk-hit','/',390,844],['telegram-risk-hit','/telegram',390,844]]){
+for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['website-wide','/',1920,1080],['website-small-phone','/',360,800],['website-tablet','/',820,1180],['website-mobile','/',390,844],['telegram-mobile','/telegram',390,844],['telegram-tablet','/telegram',820,1180],['telegram-desktop','/telegram',1440,1000],['website-live','/',390,844],['telegram-live','/telegram',390,844],['website-risk-hit','/',390,844],['telegram-risk-hit','/telegram',390,844]]){
  const page=await browser.newPage({viewport:{width,height}});page.on('pageerror',e=>errors.push(label+': '+e.message));
  let testRequested=0,riskResetRequested=0,riskHit=label.includes('risk-hit'),reportResets=0;
  await page.route('**/api/**',async route=>{
@@ -30,7 +30,31 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['websi
  await page.goto('http://127.0.0.1:4199'+url,{waitUntil:'networkidle'});
  if(url==='/')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
  await page.locator('#startTimedTest').scrollIntoViewIfNeeded();
- await page.locator('#checkConnectionAction').click();await page.waitForFunction(()=>document.getElementById('reportSignals').textContent==='128');await page.locator('#exitTP1').waitFor();await page.evaluate(()=>{const portal=document.querySelector('.portal-content');if(portal)portal.scrollTop=0;const shell=document.querySelector('.portal');if(shell)shell.scrollTop=0;const overlay=document.getElementById('portalOverlay');if(overlay)overlay.scrollTop=0;window.scrollTo(0,0)});await page.screenshot({path:dir+'/'+label+'.png',fullPage:url!=='/'});
+ await page.locator('#checkConnectionAction').click();await page.waitForFunction(()=>document.getElementById('reportSignals').textContent==='128');await page.locator('#exitTP1').waitFor({state:'attached'});await page.evaluate(()=>{const portal=document.querySelector('.portal-content');if(portal)portal.scrollTop=0;const shell=document.querySelector('.portal');if(shell)shell.scrollTop=0;const overlay=document.getElementById('portalOverlay');if(overlay)overlay.scrollTop=0;window.scrollTo(0,0)});await page.screenshot({path:dir+'/'+label+'.png',fullPage:url!=='/'});
+
+ // Verify focused tabs, real CSS sizing and accessible touch inputs at every breakpoint.
+ if(await page.locator('.sb-policy').isVisible()||await page.locator('.sb-routes').isVisible())throw Error('Overview contains setup panels');
+ if(width>700&&url==='/'){
+  const box=await page.locator('#portalOverlay .portal').boundingBox();
+  if(box.width>1231||box.width>=width)throw Error('Desktop workspace is not constrained');
+ }
+ if(width<=700){
+  const box=await page.locator('.sb-kpis').boundingBox();if(box.height>330)throw Error('Mobile KPI stack too tall');
+  if(await page.locator('.sb-stream').isVisible())throw Error('Mobile overview contains signal history');
+ }
+ const nav=width<=700?'.sb-mobile-tabs':'.sb-top nav';
+ for(const tab of ['signals','routes','settings']){
+  await page.locator(nav+' [data-sb-tab='+tab+']').click();
+  const target={signals:'.sb-stream',routes:'.sb-routes',settings:'.sb-policy'}[tab];
+  if(!await page.locator(target).isVisible())throw Error('Tab not reachable: '+tab);
+  if(await page.locator(nav+' [data-sb-tab='+tab+']').getAttribute('aria-pressed')!=='true')throw Error('Tab state not accessible');
+  if(width<=700&&tab==='routes'){
+   const font=await page.locator('#signalPreviewText').evaluate(e=>parseFloat(getComputedStyle(e).fontSize));if(font<16)throw Error('Mobile input would auto-zoom');
+  }
+  await page.screenshot({path:dir+'/'+label+'-'+tab+'.png',fullPage:url!=='/'});
+ }
+ await page.locator(nav+' [data-sb-tab=overview]').click();
+ await page.evaluate(()=>{const p=document.querySelector('.portal-content');if(p)p.scrollTop=0;window.scrollTo(0,0)});
  if(!await page.locator('#startTimedTest').isVisible())throw Error('Test control not visible');
  // Cancellation must not call the trade endpoint.
  if(await page.locator('.sb-actions button').count()!==2)throw Error('Expected exactly two test actions');
@@ -60,5 +84,27 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['websi
  if(overflow)throw Error(label+' has horizontal overflow');
  console.log(JSON.stringify({label,testRequested,overflow,feedback:await page.locator('#executionFeedback').textContent()}));
  await page.close();
+}
+
+// Email and Telegram sign-in, including short landscape and RTL layouts.
+for(const [label,width,height,rtl] of [['phone',390,844,false],['small-phone',360,740,false],['tablet',820,1180,false],['desktop',1440,1000,false],['landscape',844,390,false],['rtl-phone',390,844,true]]){
+ const page=await browser.newPage({viewport:{width,height}});page.on('pageerror',e=>errors.push(label+': '+e.message));
+ await page.route('**/api/**',r=>r.fulfill({json:{ok:true,email:false,telegram:true,licensing:true,payments:false,bot_token_valid:true,bot_username:'PreviewDrfxBot'}}));
+ await page.route(/^https:\/\/(?!127\.0\.0\.1)/,r=>r.abort());
+ await page.goto('http://127.0.0.1:4199/',{waitUntil:'networkidle'});
+ await page.evaluate(rtl=>{document.documentElement.dir=rtl?'rtl':'ltr';document.body.dir=rtl?'rtl':'ltr';show('authOverlay')},rtl);
+ for(const tab of ['email','telegram']){
+  await page.locator('#authOverlay [data-tab='+tab+']').click();
+  const dialog=page.locator('#authOverlay .dialog'),box=await dialog.boundingBox();
+  if(box.width>441||box.x<0||box.y<0||box.y+box.height>height+1)throw Error('Sign-in dialog outside viewport '+label);
+  const input=page.locator(tab==='email'?'#email':'#tgCode');
+  if(await input.evaluate(e=>parseFloat(getComputedStyle(e).fontSize))<16)throw Error('Unreadable sign-in input');
+  await input.fill(tab==='email'?'preview@example.test':'x'.repeat(32));
+  const button=page.locator(tab==='email'?'#verifyEmail':'#loginTelegram');await button.scrollIntoViewIfNeeded();
+  if(!await button.isVisible())throw Error('Sign-in action inaccessible');
+  await dialog.evaluate(e=>e.scrollTop=0);await page.screenshot({path:dir+'/signin-'+label+'-'+tab+'.png'});
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Sign-in page overflow');
+ }
+ await page.close();console.log(JSON.stringify({label:'signin-'+label,ok:true}));
 }
 await browser.close();server.close();if(errors.length)throw Error(errors.join('\n'));

@@ -193,9 +193,9 @@ test('cinematic render loops reuse canvas pixel buffers rather than reallocating
 test('website distinguishes reusable Telegram sign-in password and EA activation serial',async()=>{
  const {DESIGN_HTML}=await import('../site/src/design.mjs');
  assert.ok(DESIGN_HTML.includes('Sign in with your existing Signal Bridge account'));
- assert.ok(DESIGN_HTML.includes('Send <code>/login</code> to retrieve your personal, reusable website code.'));
- assert.ok(DESIGN_HTML.includes('32-character permanent'));
- assert.ok(DESIGN_HTML.includes('43-character EA activation code'));
+ assert.ok(DESIGN_HTML.includes('Send <code>/login</code> to get your website code.'));
+ assert.ok(DESIGN_HTML.includes('32-character website code'));
+ assert.ok(DESIGN_HTML.includes('/code is for MT5 activation.'));
  assert.ok(DESIGN_HTML.includes('id="openLoginBot"'));
  assert.ok(DESIGN_HTML.includes('id="tgCodeHint"'));
  assert.ok(SITE_CSS.includes('.telegram-login-guide'));
