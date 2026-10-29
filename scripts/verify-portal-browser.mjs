@@ -28,7 +28,12 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  });
  await page.route(/^https:\/\/(?!127\.0\.0\.1)/,route=>route.abort());
  await page.goto('http://127.0.0.1:4199'+url,{waitUntil:'networkidle'});
- if(['website-desktop','website-tablet','website-mobile'].includes(label))await page.screenshot({path:dir+'/'+label+'-landing.png',fullPage:true});
+ if(['website-desktop','website-tablet','website-mobile'].includes(label)){
+  await page.locator('#preloader').waitFor({state:'hidden'});
+  await page.evaluate(async()=>{for(let y=0;y<document.documentElement.scrollHeight;y+=innerHeight*.8){scrollTo(0,y);await new Promise(r=>setTimeout(r,90))}scrollTo(0,0)});
+  await page.waitForFunction(()=>[...document.querySelectorAll('.sx-reveal.sx-in,.reveal-cinema.active')].every(e=>Number(getComputedStyle(e).opacity)>.99));
+  await page.screenshot({path:dir+'/'+label+'-landing.png',fullPage:true});
+ }
  if(url==='/')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
  await page.locator('#startTimedTest').scrollIntoViewIfNeeded();
  await page.locator('#checkConnectionAction').click();await page.waitForFunction(()=>document.getElementById('reportSignals').textContent==='128');await page.locator('#exitTP1').waitFor({state:'attached'});await page.evaluate(()=>{const portal=document.querySelector('.portal-content');if(portal)portal.scrollTop=0;const shell=document.querySelector('.portal');if(shell)shell.scrollTop=0;const overlay=document.getElementById('portalOverlay');if(overlay)overlay.scrollTop=0;window.scrollTo(0,0)});await page.screenshot({path:dir+'/'+label+'.png',fullPage:url!=='/'});
@@ -54,6 +59,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   if(width<=700&&tab==='routes'){
    const font=await page.locator('#signalPreviewText').evaluate(e=>parseFloat(getComputedStyle(e).fontSize));if(font<16)throw Error('Mobile input would auto-zoom');
   }
+  await page.waitForFunction(()=>[...document.querySelectorAll('.sb-grid > .sb-card')].every(e=>!e.getClientRects().length||Number(getComputedStyle(e).opacity)>.99));
   await page.screenshot({path:dir+'/'+label+'-'+tab+'.png',fullPage:url!=='/'});
  }
  await page.locator(nav+' [data-sb-tab=overview]').click();
