@@ -31,7 +31,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['websi
  if(!await page.locator('#startTimedTest').isVisible())throw Error('Test control not visible');
  // Cancellation must not call the trade endpoint.
  if(await page.locator('.sb-actions button').count()!==2)throw Error('Expected exactly two test actions');
- await page.locator('#checkConnectionAction').click();if(testRequested!==0)throw Error('Read-only check traded');
+ await page.locator('#checkConnectionAction').click();await page.waitForFunction(()=>document.getElementById('dailySignals').textContent==='42');if(testRequested!==0)throw Error('Read-only check traded');
  if(label.includes('risk-hit')){
   await page.locator('#resetDailyRisk').scrollIntoViewIfNeeded();
   if(!await page.locator('#dailyRiskPanel').evaluate(e=>e.classList.contains('hit')))throw Error('Missing red risk HIT');

@@ -166,7 +166,7 @@ bool WsHandshake(){
     int rest=ArraySize(pending)-e;if(rest>0){uchar tail[];ArrayResize(tail,rest);ArrayCopy(tail,pending,0,e,rest);AppendBytes(g_frameBuf,tail,rest);}
     g_wsReady=true;g_connStage="CONNECTED - WAITING FOR LICENSE";return true;
    }}
-  Sleep(10);
+  RiskCheck();Sleep(10);
  }
  return false;
 }
@@ -218,7 +218,7 @@ bool ResetDailyRisk(double expectedHit){
  g_riskBase=AccountInfoDouble(ACCOUNT_EQUITY);g_riskDay=BrokerDay();g_riskFlow=DayCashFlow();g_dayFlow=g_riskFlow;g_statsTick=0;g_riskHit=false;g_riskDD=0;SaveRisk();g_lastExecution="DAILY DRAWDOWN RESET - ready for new signals";SendHeartbeat();return true;
 }
 void CountSignal(string id){
- string seen=RiskKey("s"+IntegerToString((int)RiskHash(id))+"d"+N64(BrokerDay()));if(GlobalVariableCheck(seen))return;
+ string seen=RiskKey("s"+StringFormat("%08X",RiskHash(id))+N64(BrokerDay()));if(GlobalVariableCheck(seen))return;
  GlobalVariableSet(seen,1);string k=RiskKey("signals"+N64(BrokerDay()));if(!GlobalVariableCheck(k))GlobalVariableSet(k,0);double n=GlobalVariableGet(k);GlobalVariableSetOnCondition(k,n+1,n);GlobalVariablesFlush();g_signalCount=(long)GlobalVariableGet(k);
 }
 void RecordManagedExit(string event){ulong d=trade.ResultDeal();if(d==0)return;double kind=(event=="SL"?2:(event=="TP1"||event=="TP2"||event=="TP3")?1:0);if(kind>0){GlobalVariableSet(RiskKey("deal"+N64((long)d)),kind);GlobalVariablesFlush();g_statsTick=0;}}
