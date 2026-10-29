@@ -119,7 +119,7 @@ test('desktop-mode mobile viewport is recovered only on touch phones',()=>{
 test('Telegram navigation, bilingual mode and license privacy remain functional',()=>{
  for(const token of [
   "document.querySelectorAll('[data-jump]')","document.body.dataset.tab=tab",
-  "tg?.BackButton?.onClick","language($('langToggle').value)",
+  "tg?.BackButton?.onClick","language(b.dataset.miniLang)",
   "document.documentElement.dir=['fa','ar'].includes(locale)?'rtl':'ltr'",
   "state.serialVisible","'/api/auth/telegram/webapp'",
   "'/api/me'","tg?.initData"
@@ -247,7 +247,7 @@ test('Mini App provides safe one-time bot /login code UI without exposing EA sec
 
 test('Mini App exposes private webhook and no-trade connection test for authenticated users',()=>{
  for(const id of ['miniTestConnection','miniConnectionLicense','miniConnectionLast','miniCreateWebhook','miniCopyWebhook','miniRotateWebhook','miniWebhookUrl'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
- assert.ok(MINI_HTML.includes('DEMO XAUUSD Buy 0.01'));
+ assert.ok(MINI_HTML.includes('XAUUSD 0.01 Practice Test'));
  assert.ok(MINI_HTML.includes('disabled title="Requires a newer compiled EA"'));
  assert.ok(MINI_JS.includes("'/api/webhook/create'"));
  assert.ok(MINI_JS.includes("'/api/webhook/rotate'"));
