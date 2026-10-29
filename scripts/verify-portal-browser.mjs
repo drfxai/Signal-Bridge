@@ -28,6 +28,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  });
  await page.route(/^https:\/\/(?!127\.0\.0\.1)/,route=>route.abort());
  await page.goto('http://127.0.0.1:4199'+url,{waitUntil:'networkidle'});
+ if(['website-desktop','website-tablet','website-mobile'].includes(label))await page.screenshot({path:dir+'/'+label+'-landing.png',fullPage:true});
  if(url==='/')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
  await page.locator('#startTimedTest').scrollIntoViewIfNeeded();
  await page.locator('#checkConnectionAction').click();await page.waitForFunction(()=>document.getElementById('reportSignals').textContent==='128');await page.locator('#exitTP1').waitFor({state:'attached'});await page.evaluate(()=>{const portal=document.querySelector('.portal-content');if(portal)portal.scrollTop=0;const shell=document.querySelector('.portal');if(shell)shell.scrollTop=0;const overlay=document.getElementById('portalOverlay');if(overlay)overlay.scrollTop=0;window.scrollTo(0,0)});await page.screenshot({path:dir+'/'+label+'.png',fullPage:url!=='/'});
@@ -47,6 +48,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   await page.locator(nav+' [data-sb-tab='+tab+']').click();
   const target={signals:'.sb-stream',routes:'.sb-routes',settings:'.sb-policy'}[tab];
   if(!await page.locator(target).isVisible())throw Error('Tab not reachable: '+tab);
+  if(tab==='settings'&&await page.locator('.sb-account-group').count()&&await page.locator('.sb-account-group').first().getAttribute('open')!==null)throw Error('Account setup should start collapsed');
   if(width<=700&&tab==='signals'){await page.locator('#signalRows td[data-label=Status]').first().waitFor();if(await page.locator('.sb-table-scroll table').evaluate(e=>getComputedStyle(e).display)!=='block')throw Error('Mobile history must use readable cards');}
   if(await page.locator(nav+' [data-sb-tab='+tab+']').getAttribute('aria-pressed')!=='true')throw Error('Tab state not accessible');
   if(width<=700&&tab==='routes'){
