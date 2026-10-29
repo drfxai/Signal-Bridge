@@ -79,7 +79,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  await page.locator('#confirmTradeTest').click();
  await page.waitForFunction(()=>document.getElementById('executionFeedback').textContent.includes('CLOSED'));
  if(testRequested!==1)throw Error('wrong number of test requests');
- page.once('dialog',d=>d.dismiss());await page.locator('#resetReport').click();if(reportResets!==0)throw Error('Cancelled report reset posted');page.once('dialog',d=>d.accept());await page.locator('#resetReport').click();if(reportResets!==1)throw Error('Report reset not requested');if(riskResetRequested!==0)throw Error('Report reset touched drawdown');
+ page.once('dialog',d=>d.dismiss());await page.locator('#resetReport').click();if(reportResets!==0)throw Error('Cancelled report reset posted');const resetResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/member/report/reset');page.once('dialog',d=>d.accept());await page.locator('#resetReport').click();await resetResponse;if(reportResets!==1)throw Error('Report reset not requested');if(riskResetRequested!==0)throw Error('Report reset touched drawdown');
  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
  if(overflow)throw Error(label+' has horizontal overflow');
  console.log(JSON.stringify({label,testRequested,overflow,feedback:await page.locator('#executionFeedback').textContent()}));
