@@ -90,7 +90,7 @@ test('the existing bot uses Telegram web_app buttons and does not silently merge
 test('mobile-first design is readable, wide, and retains DrFX brand colors',()=>{
  for(const token of [
    '--obsidian:#030406','--gold:#d4af37','--gold-light:#f7e7b4','--emerald:#10b981',
-   'Trade smarter.','Stay connected.','Your dashboard','route-stage',
+   'Every signal.','One powerful bridge.','Your dashboard','route-stage',
    'CONNECTION FLOW · ILLUSTRATION','SignalBridge','TradingView / TG',
    'MT5 EA','data-tr="navHome"','data-tr="navPlans"','id="langToggle"',
    'prefers-reduced-motion:reduce','env(safe-area-inset-bottom)',
@@ -247,7 +247,7 @@ test('Mini App provides safe one-time bot /login code UI without exposing EA sec
 
 test('Mini App exposes private webhook and no-trade connection test for authenticated users',()=>{
  for(const id of ['miniTestConnection','miniConnectionLicense','miniConnectionLast','miniCreateWebhook','miniCopyWebhook','miniRotateWebhook','miniWebhookUrl'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
- assert.ok(MINI_HTML.includes('DEMO XAUUSD Buy 0.01'));
+ assert.ok(MINI_HTML.includes('XAUUSD 0.01 Practice Test'));
  assert.ok(MINI_HTML.includes('disabled title="Requires a newer compiled EA"'));
  assert.ok(MINI_JS.includes("'/api/webhook/create'"));
  assert.ok(MINI_JS.includes("'/api/webhook/rotate'"));
@@ -265,5 +265,19 @@ test('Mini App admin tab and actions are gated by verified server role',()=>{
  assert.ok(MINI_JS.includes("'/api/admin/user'"));
  assert.ok(MINI_JS.includes("select.value"));
  assert.ok(MINI_JS.includes("replaceChildren()"));
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+});
+
+test('Mini App language popover avoids full-screen native select and preserves secure session',()=>{
+ assert.ok(MINI_HTML.includes('id="miniLangPicker"'));
+ assert.ok(MINI_HTML.includes('id="miniLangOptions"'));
+ assert.ok(MINI_HTML.includes('data-mini-lang="en"'));
+ assert.ok(MINI_HTML.includes('data-mini-lang="fa"'));
+ assert.ok(MINI_HTML.includes('One powerful bridge.'));
+ assert.ok(MINI_HTML.includes('PRACTICE ACCOUNTS ONLY'));
+ assert.ok(MINI_JS.includes('function closeMiniLanguage()'));
+ assert.ok(MINI_JS.includes("if(e.key==='Escape')closeMiniLanguage()"));
+ assert.ok(MINI_JS.includes("language(b.dataset.miniLang)"));
+ assert.ok(!MINI_HTML.includes('<select id="langToggle"'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });
