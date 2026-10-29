@@ -78,6 +78,8 @@ test('EA timed recovery runs before blocking cloud reconnect and is persisted be
  const tick=mq.slice(mq.indexOf('void OnTimer()'));assert.ok(tick.indexOf('CloseTimedTest();')<tick.indexOf('EnsureCloud();'));
  const start=mq.slice(mq.indexOf('void HandleTimedTest('),mq.indexOf('void HandleCommand('));assert.ok(start.indexOf('SaveTimedTest()')<start.indexOf('trade.Buy('));
  assert.match(mq,/trade\.PositionClose\(ticket\)/);assert.match(mq,/HistorySelectByPosition/);assert.match(mq,/HELLO_ACK"\|\|p\[0\]=="HB_ACK/);assert.match(mq,/LicenseRemaining/);
+ assert.match(mq,/if\(TimedTestActive\(\)\)g_testDeadlineTick=GetTickCount64\(\)/);
+ assert.match(mq,/CloseTimedTest\(\);if\(!TimedTestActive\(\)\)EnsureCloud\(\)/);
 });
 
 test('license heartbeat refreshes expiry and rejects corrupted expiry dates',async()=>{

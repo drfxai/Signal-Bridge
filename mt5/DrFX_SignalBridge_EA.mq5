@@ -335,6 +335,8 @@ void LoadTimedTest(){
  if(n<5||p[0]==""||StringLen(p[1])!=12||StringToInteger(p[2])<=0){g_testCorrupt=true;return;}
  if(p[3]!="ARMED"&&p[3]!="OPEN"&&p[3]!="CLOSED"&&p[3]!="REJECTED"&&p[3]!="CLOSE_FAILED"){g_testCorrupt=true;return;}
  g_testId=p[0];g_testTag=p[1];g_testDue=StringToInteger(p[2]);g_testPhase=p[3];g_testDetail=p[4];
+ // Restart recovery closes immediately; do not trust a changed wall clock.
+ if(TimedTestActive())g_testDeadlineTick=GetTickCount64();
 }
 bool TimedTestActive(){return g_testId!=""&&(g_testPhase=="ARMED"||g_testPhase=="OPEN"||g_testPhase=="CLOSE_FAILED");}
 void TestPhase(string phase,string detail){g_testPhase=phase;g_testDetail=detail;if(!SaveTimedTest()){g_testCorrupt=true;g_lastExecution="TEST JOURNAL WRITE FAILED";}}
@@ -387,8 +389,9 @@ void HandleTimedTest(string id,string mode,string side,string requested,string t
  if(ok&&(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)){
   RememberPositionFromDeal(tag,trade.ResultDeal());g_testDue=(long)TimeGMT()+5;g_testDeadlineTick=GetTickCount64()+5000;
   TestPhase("OPEN","BUY XAUUSD 0.01; local exit armed");Receipt(id,"FILLED",N64((long)trade.ResultOrder()),rc,"test open; closure is tracked separately");
- }else if(rc==TRADE_RETCODE_TIMEOUT||rc==TRADE_RETCODE_CONNECTION||rc==TRADE_RETCODE_PLACED){g_lastExecution="TEST SUBMISSION UNCERTAIN - RECOVERING";}
- else{TestPhase("REJECTED",trade.ResultRetcodeDescription());Receipt(id,"BROKER_REJECTED","",rc,trade.ResultRetcodeDescription());}
+ }else if(rc==TRADE_RETCODE_REJECT||rc==TRADE_RETCODE_INVALID_VOLUME||rc==TRADE_RETCODE_INVALID_STOPS||rc==TRADE_RETCODE_INVALID_PRICE||rc==TRADE_RETCODE_NO_MONEY||rc==TRADE_RETCODE_MARKET_CLOSED||rc==TRADE_RETCODE_TRADE_DISABLED||rc==TRADE_RETCODE_INVALID_FILL||rc==TRADE_RETCODE_REQUOTE||rc==TRADE_RETCODE_PRICE_OFF||rc==TRADE_RETCODE_PRICE_CHANGED){
+  TestPhase("REJECTED",trade.ResultRetcodeDescription());Receipt(id,"BROKER_REJECTED","",rc,trade.ResultRetcodeDescription());
+ }else{g_lastExecution="TEST SUBMISSION UNCERTAIN - RECOVERING";}
 }
 
 void HandleCommand(string &parts[]){
@@ -454,7 +457,7 @@ void RenderPanel(){
  ChartRedraw(0);
 }
 
-int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.26.0 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Trade execution will remain BLOCKED.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.26.0 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Trade execution will remain BLOCKED.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
 void OnDeinit(const int reason){EventKillTimer();if(g_testLock!=INVALID_HANDLE){FileClose(g_testLock);g_testLock=INVALID_HANDLE;}DisconnectCloud();DeletePanel();ChartRedraw(0);}
 void OnTick(){CloseTimedTest();}
 void OnTimer(){
