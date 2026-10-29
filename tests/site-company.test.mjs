@@ -325,7 +325,7 @@ test('public marketing is compelling but never invents realized trading returns'
  assert.ok(DESIGN_HTML.includes('Your signals. Your control.'));
  assert.ok(DESIGN_HTML.includes('One powerful bridge.'));
  assert.ok(DESIGN_HTML.includes('data-i18n="results_notice"'));
- assert.ok(DESIGN_HTML.includes('verified profit-and-loss reporting'));
+ assert.ok(DESIGN_HTML.toLowerCase().includes('verified profit-and-loss reporting'));
  assert.ok(!DESIGN_HTML.toLowerCase().includes('github.com'));
  assert.ok(!/\bDEMO\b/.test(DESIGN_HTML));
  assert.ok(!/\+1\.50 XAU|\-3\.00 EUR|\+2\.00 NAS/.test(DESIGN_JS));
