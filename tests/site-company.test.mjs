@@ -308,3 +308,19 @@ test('landing copy promotes architecture without invented PnL',()=>{
  assert.ok(!DESIGN_JS.includes('-3.00 EUR SIMULATED'));
  assert.ok(!DESIGN_JS.includes('+2.00 NAS SIMULATED'));
 });
+
+
+test('site language picker preserves six available languages without oversized native mobile select',async()=>{
+ const {DESIGN_HTML}=await import('../site/src/design.mjs');
+ for(const lang of ['en','fa','ar','tr','ru','hi'])
+   assert.ok(DESIGN_HTML.includes('data-site-language="'+lang+'"'),lang);
+ assert.ok(DESIGN_HTML.includes('max-height:min(380px,65dvh)'));
+ assert.ok(SITE_JS.includes("tr.ar="));
+ assert.ok(SITE_JS.includes("tr.tr="));
+ assert.ok(SITE_JS.includes("tr.ru="));
+ assert.ok(SITE_JS.includes("tr.hi="));
+ assert.ok(SITE_JS.includes("marketingLocalized[next]?.[key]"));
+ assert.ok(SITE_JS.includes("['fa','ar'].includes(next)"));
+ assert.ok(!DESIGN_HTML.includes('<select id="lang"'));
+ assert.doesNotThrow(()=>new Function(SITE_JS));
+});
