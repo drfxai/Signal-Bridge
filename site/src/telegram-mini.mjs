@@ -1,3 +1,4 @@
+import { EXECUTION_HTML, EXECUTION_JS } from './portal-execution.mjs';
 // DrFX Telegram Mini App: mobile-first full-width UI, authenticated account state.
 export const MINI_HTML=String.raw`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"><meta name="theme-color" content="#050609"><title>DrFX · SignalBridge Mini App</title>
@@ -118,7 +119,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook" data-tr="createWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" data-tr="copyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" data-tr="rotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
- <button type="button" class="btn subtle mini-wide" disabled title="Requires a newer compiled EA">XAUUSD 0.01 Practice Test · EA update required</button>
+ ${EXECUTION_HTML}
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
@@ -299,6 +300,7 @@ async function refreshMiniConnection(){
  }catch(e){set('miniConnectionInfo','Connection status unavailable: '+e.message);}
 }
 function displayMiniWebhook(w){
+ document.dispatchEvent(new CustomEvent('signalbridge-webhook',{detail:w}));
  const available=!!w?.exists;
  set('miniWebhookUrl',available?w.webhook_url:'No webhook created');
  $('miniCreateWebhook').disabled=available;
@@ -469,4 +471,4 @@ $('miniAdminSearch').addEventListener('change',loadMiniAdmin);
  language(initialLanguage);
  show('home');
  start();
-})();`;
+})();`+EXECUTION_JS;

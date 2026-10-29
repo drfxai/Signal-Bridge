@@ -280,8 +280,8 @@ test('connection check never claims active socket or silently creates a demo tra
  assert.ok(worker.includes("socket.terminal_online===true"));
  assert.ok(SITE_JS.includes("d.live_snapshot_available"));
 
- assert.ok(worker.includes("DEMO_TRADE_TEST_REQUIRES_UPDATED_EA"));
- assert.ok(SITE_HTML.includes('Practice-account test requires EA update'));
+ assert.ok(worker.includes('runConnectionTest(req,env,user)'));
+ assert.ok(SITE_HTML.includes('startTimedTest'));assert.ok(SITE_JS.includes('confirm:true'));
  const p=new Request('https://drfx.company/api/connection/test-demo',{method:'POST',headers:{origin:'https://drfx.company'}});
  const r=await handler.fetch(p,{});
  assert.equal(r.status,503); // no D1 => endpoint cannot trade or authenticate

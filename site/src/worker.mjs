@@ -1,3 +1,5 @@
+import { createAndDispatch } from '../../worker/src/command.mjs';
+import { demoReadiness, makeConnectionTest } from './execution-control.mjs';
 import { SITE_HTML, SITE_CSS, SITE_JS, DESIGN_JS } from './ui.mjs';
 import { TAILWIND_CSS } from './tailwind.mjs';
 import { MINI_HTML, MINI_JS } from './telegram-mini.mjs';
@@ -317,7 +319,7 @@ async function connectionDiagnostic(env,user){
   "WHERE sl.user_id=? LIMIT 1"
  ).bind(user.id).first();
  if(!row)return {license:'missing',mt5_bound:false,last_handshake:null,live_socket_verified:false,trade_executed:false};
- let live=false,terminal=false,connectedAt=null,snapshotAvailable=false;
+ let live=false,terminal=false,connectedAt=null,snapshotAvailable=false,fresh=false,mt5Mode=null,capabilities=[];
  if(env.AGENT_HUB){
   try{
    const hub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(row.agent_id));
@@ -328,18 +330,52 @@ async function connectionDiagnostic(env,user){
     const socket=(state.clients||[]).find(c=>c.agent_id===row.agent_id&&c.client_type==='ea');
     const matches=!!socket&&!!row.account_login&&!!row.account_server&&
       socket.account?.login===row.account_login&&socket.account?.server===row.account_server;
-    live=matches;terminal=matches&&socket.terminal_online===true;
+    fresh=matches&&Number.isFinite(Date.parse(socket.last_seen_at))&&Date.now()-Date.parse(socket.last_seen_at)>=0&&Date.now()-Date.parse(socket.last_seen_at)<90000;
+     live=matches&&fresh;terminal=matches&&socket.terminal_online===true&&fresh;
+     mt5Mode=matches?socket.account?.mode:null;capabilities=matches?(socket.capabilities||[]):[];
     connectedAt=matches?socket.connected_at||null:null;
    }
   }catch{ /* A failed read-only snapshot never counts as an online EA. */ }
  }
- return {license:row.status,agent_status:row.agent_status,plan:row.plan,
+ return {agent_id:row.agent_id,license:row.status,agent_status:row.agent_status,plan:row.plan,
   mt5_bound:!!(row.account_login&&row.account_server),
   mt5_account:row.account_login?{login:row.account_login,server:row.account_server}:null,
   last_handshake:row.last_connected_at||null,activated_at:row.activated_at||null,
   live_socket_verified:live,terminal_online:terminal,live_snapshot_available:snapshotAvailable,
-  connected_at:connectedAt,trade_executed:false,
+  connected_at:connectedAt,fresh,mt5_mode:mt5Mode,capabilities,
+   license_unexpired:!!row.expires_at&&Date.parse(row.expires_at.replace(' ','T')+'Z')>Date.now(),trade_executed:false,
   note:snapshotAvailable?'Live Durable Object EA snapshot; no order was placed.':'Live socket could not be independently verified. Database history shown only.'};
+}
+async function setWebhookMode(req,env,user){
+ const b=await readBody(req);
+ if(!['dry_run','demo_execute'].includes(b.mode))return fail('INVALID_EXECUTION_MODE');
+ if(b.mode==='demo_execute'){
+  if(b.confirm!==true)return fail('EXPLICIT_CONFIRMATION_REQUIRED');
+  const reason=demoReadiness(await connectionDiagnostic(env,user));if(reason)return fail(reason,409);
+ }
+ const result=await env.DB.prepare("UPDATE ingress_connections SET delivery_mode=? WHERE tenant_id=? AND id=(SELECT connection_id FROM site_tradingview_webhooks WHERE user_id=?) AND status='active'").bind(b.mode,user.id,user.id).run();
+ if(result.meta?.changes!==1)return fail('WEBHOOK_NOT_CREATED',404);
+ await audit(env,user.id,'tv_execution_mode',user.id,b.mode);
+ return json({ok:true,webhook:await userWebhook(env,user)});
+}
+async function runConnectionTest(req,env,user){
+ const b=await readBody(req);if(b.confirm!==true)return fail('EXPLICIT_CONFIRMATION_REQUIRED');
+ if(!await limited(req,env,'demo:test:'+user.id,1))return fail('RATE_LIMITED',429);
+ const d=await connectionDiagnostic(env,user),reason=demoReadiness(d,{timedTest:true});
+ if(reason)return fail(reason,409);
+ const id=uid('test'),commandId=crypto.randomUUID();
+ const inserted=await env.DB.prepare("INSERT INTO connection_tests (id,user_id,agent_id,command_id) VALUES (?,?,?,?) ON CONFLICT DO NOTHING").bind(id,user.id,d.agent_id,commandId).run();
+ if(inserted.meta?.changes!==1)return fail('TEST_ALREADY_PENDING',409);
+ await audit(env,user.id,'demo_connection_test',user.id,id);
+ // Persist before dispatch. An uncertain dispatch must never be blindly repeated.
+ const dispatch=await createAndDispatch(env,{tenantId:user.id,agentId:d.agent_id,sourceType:'test',sourceRef:id,commandId,signal:makeConnectionTest(id),mode:'demo_execute'});
+ return json({ok:true,test_id:id,command_id:dispatch.command_id,status:dispatch.status,trade_executed:false},202);
+}
+async function testStatus(req,env,user){
+ const id=new URL(req.url).searchParams.get('id');
+ const test=await env.DB.prepare("SELECT t.id,t.status,t.broker_ticket,t.detail,t.updated_at,c.status AS command_status FROM connection_tests t LEFT JOIN commands c ON c.id=t.command_id WHERE t.id=? AND t.user_id=?").bind(id,user.id).first();
+ if(!test)return fail('TEST_NOT_FOUND',404);
+ return json({ok:true,test});
 }
 async function adminUpdate(req,env,admin){
  const b=await readBody(req);if(!ADMIN_ACTIONS.has(b.action)||!/^usr_[0-9a-f]{32}$/.test(b.user_id||''))return fail('INVALID_ACTION');
@@ -606,7 +642,9 @@ async function api(req,env){
  if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
  if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);
  if(path==='/api/connection/check'&&req.method==='GET')return json({ok:true,diagnostic:await connectionDiagnostic(env,user)});
- if(path==='/api/connection/test-demo'&&req.method==='POST')return fail('DEMO_TRADE_TEST_REQUIRES_UPDATED_EA',409);
+ if(path==='/api/connection/test-demo'&&req.method==='POST')return runConnectionTest(req,env,user);
+ if(path==='/api/connection/test-status'&&req.method==='GET')return testStatus(req,env,user);
+ if(path==='/api/webhook/mode'&&req.method==='POST')return setWebhookMode(req,env,user);
  if(path==='/api/checkout'&&req.method==='POST')return createCheckout(req,env,user);
  if(path==='/api/orders'&&req.method==='GET'){
   const rows=await env.DB.prepare('SELECT id,plan,amount_usd,status,invoice_url,created_at,paid_at FROM site_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 30').bind(user.id).all();

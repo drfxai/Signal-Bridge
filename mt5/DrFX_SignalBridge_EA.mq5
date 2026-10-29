@@ -5,8 +5,8 @@
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
 #property strict
-#property version   "0.251"
-#property description "SignalBridge EA v0.25.1: clearer connection and license diagnostics."
+#property version   "0.260"
+#property description "SignalBridge EA v0.26.0: clearer connection and license diagnostics."
 #property description "DEMO execution only. Live accounts are always refused."
 #property description "Enter your private activation code in the first EA input. No compilation required for EX5 users."
 
@@ -24,6 +24,7 @@ input int InpReconnectMs=1000;
 
 input group "=== DEMO Execution Safety ==="
 input bool InpEnableDemoExecution=false;
+input bool InpEnableConnectionTest=false; // Explicitly allow BUY XAUUSD 0.01 / local 5-second exit
 input long InpMagic=770425;
 input double InpMaxLot=0.10;
 input double InpMaxRiskPercent=1.00;
@@ -42,7 +43,7 @@ input int InpPanelX=16;
 input int InpPanelY=22;
 input int InpPanelWidth=390;
 
-#define SBP "SB251_"
+#define SBP "SB260_"
 #define MAX_PENDING 32
 #define MAX_RECEIPTS 64
 CTrade trade;
@@ -55,10 +56,19 @@ string g_lastSignal="WAITING",g_lastExecution="NO COMMAND",g_lastTicket="-";
 ulong g_lastConnectTry=0,g_lastHb=0,g_lastReconcile=0,g_lastPing=0,g_pingStarted=0,g_lastUiUpdate=0;
 double g_cloudRttMs=0;
 bool g_compact=false;
+long g_serverMs=0,g_licenseExpiryMs=0;
+ulong g_licenseVerifiedTick=0;
+string g_testId="",g_testTag="",g_testPhase="",g_testDetail="";
+long g_testDue=0;
+ulong g_testDeadlineTick=0,g_testRetryTick=0;
+bool g_testCorrupt=false;
+int g_testLock=INVALID_HANDLE;
+
+string g_lastSource="WAITING",g_lastStrategy="";
 string g_connStage="ACTIVATION CODE REQUIRED";
 string g_pendingTag[MAX_PENDING],g_pendingId[MAX_PENDING];
 string g_receiptId[MAX_RECEIPTS],g_receiptStatus[MAX_RECEIPTS],g_receiptTicket[MAX_RECEIPTS],g_receiptRetcode[MAX_RECEIPTS],g_receiptDetail[MAX_RECEIPTS];
-color C_BG=C'9,15,25',C_BG2=C'15,25,42',C_BORDER=C'43,65,93',C_TEXT=C'234,245,255',C_MUTED=C'139,160,184',C_CYAN=C'82,215,255',C_GREEN=C'69,213,161',C_AMBER=C'243,189,98',C_RED=C'255,111,125';
+color C_BG=C'0,0,0',C_BG2=C'6,26,45',C_BORDER=C'23,68,109',C_TEXT=C'234,245,255',C_MUTED=C'139,160,184',C_CYAN=C'82,215,255',C_GREEN=C'69,213,161',C_AMBER=C'243,189,98',C_RED=C'255,111,125';
 
 string N64(long v){return IntegerToString(v);}
 string F2(double v){return DoubleToString(v,2);}
@@ -112,11 +122,11 @@ bool WsSendFrame(int opcode,string text){
 }
 bool WsSendText(string text){return WsSendFrame(1,text);}
 bool SendLine(string line){return WsSendText(line);}
-void DisconnectCloud(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_socket=INVALID_HANDLE;}g_wsReady=false;g_licenseActive=false;g_licenseExpires="";ArrayResize(g_frameBuf,0);}
+void DisconnectCloud(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_socket=INVALID_HANDLE;}g_wsReady=false;g_licenseActive=false;g_licenseExpires="";g_licenseExpiryMs=0;ArrayResize(g_frameBuf,0);}
 bool WsHandshake(){
  uchar nonce[];ArrayResize(nonce,16);for(int i=0;i<16;i++)nonce[i]=(uchar)(MathRand()&255);
  string key=Base64(nonce,16);
- string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.25.1\r\n\r\n";
+ string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.26.0\r\n\r\n";
  if(!TlsSendString(req))return false;
  uchar pending[];ulong until=GetTickCount64()+5000;
  while(GetTickCount64()<until&&!IsStopped()){
@@ -147,8 +157,8 @@ bool WsHandshake(){
  }
  return false;
 }
-void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions()));g_lastHb=GetTickCount64();}
-void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)))g_lastHb=GetTickCount64();}
+void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+((g_testLock!=INVALID_HANDLE&&InpEnableConnectionTest&&InpEnableDemoExecution)?"timed-test-v1":""));g_lastHb=GetTickCount64();}
+void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+((g_testLock!=INVALID_HANDLE&&InpEnableConnectionTest&&InpEnableDemoExecution)?"timed-test-v1":"")))g_lastHb=GetTickCount64();}
 void EnsureCloud(){
  if(CloudConnected())return;ulong now=GetTickCount64();int retry=InpReconnectMs;if(retry<250)retry=250;if(retry>10000)retry=10000;if(now-g_lastConnectTry<(ulong)retry)return;g_lastConnectTry=now;DisconnectCloud();
  if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";return;}
@@ -298,14 +308,110 @@ void HandleManage(string id,string mode,string event,string tag){
  Receipt(id,(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)?"FILLED":"SUBMITTED",N64((long)trade.ResultDeal()),rc,detail);
 }
 
+// UTC from the authenticated server, advanced with a monotonic timer.
+long LicenseNowMs(){return g_serverMs+(long)(GetTickCount64()-g_licenseVerifiedTick);}
+bool LicenseReady(){return g_licenseActive&&g_licenseExpiryMs>LicenseNowMs()&&GetTickCount64()-g_licenseVerifiedTick<90000;}
+string LicenseRemaining(){
+ if(!g_licenseActive)return "UNVERIFIED";
+ long sec=(g_licenseExpiryMs-LicenseNowMs())/1000;if(sec<=0)return "EXPIRED";
+ return N64(sec/86400)+"d "+N64((sec%86400)/3600)+"h "+N64((sec%3600)/60)+"m";
+}
+string TimedTestFile(){
+ uint h=2166136261;string server=AccountInfoString(ACCOUNT_SERVER);
+ for(int i=0;i<StringLen(server);i++)h=(h^(uint)StringGetCharacter(server,i))*16777619;
+ return "SignalBridge_test_"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"_"+N64((long)h)+"_"+N64(InpMagic)+".txt";
+}
+bool SaveTimedTest(){
+ int h=FileOpen(TimedTestFile(),FILE_COMMON|FILE_WRITE|FILE_TXT|FILE_ANSI);
+ if(h==INVALID_HANDLE)return false;
+ uint written=FileWriteString(h,g_testId+"|"+g_testTag+"|"+N64(g_testDue)+"|"+g_testPhase+"|"+Safe(g_testDetail)+"\r\n");
+ FileFlush(h);FileClose(h);return written>0;
+}
+void LoadTimedTest(){
+ if(!FileIsExist(TimedTestFile(),FILE_COMMON))return;
+ int h=FileOpen(TimedTestFile(),FILE_COMMON|FILE_READ|FILE_TXT|FILE_ANSI);
+ if(h==INVALID_HANDLE){g_testCorrupt=true;return;}
+ string line=FileReadString(h);FileClose(h);string p[];int n=StringSplit(line,StringGetCharacter("|",0),p);
+ if(n<5||p[0]==""||StringLen(p[1])!=12||StringToInteger(p[2])<=0){g_testCorrupt=true;return;}
+ if(p[3]!="ARMED"&&p[3]!="OPEN"&&p[3]!="CLOSED"&&p[3]!="REJECTED"&&p[3]!="CLOSE_FAILED"){g_testCorrupt=true;return;}
+ g_testId=p[0];g_testTag=p[1];g_testDue=StringToInteger(p[2]);g_testPhase=p[3];g_testDetail=p[4];
+ // Restart recovery closes immediately; do not trust a changed wall clock.
+ if(TimedTestActive())g_testDeadlineTick=GetTickCount64();
+}
+bool TimedTestActive(){return g_testId!=""&&(g_testPhase=="ARMED"||g_testPhase=="OPEN"||g_testPhase=="CLOSE_FAILED");}
+void TestPhase(string phase,string detail){g_testPhase=phase;g_testDetail=detail;if(!SaveTimedTest()){g_testCorrupt=true;g_lastExecution="TEST JOURNAL WRITE FAILED";}}
+void SendTestStatus(){
+ if(g_testId==""||!CloudConnected())return;
+ SendLine("TEST_STATUS|"+g_testId+"|"+g_testPhase+"||"+Safe(g_testDetail));
+}
+void CloseTimedTest(){
+ if(!TimedTestActive())return;
+ if(g_testDeadlineTick>0){if(GetTickCount64()<g_testDeadlineTick)return;}
+ else if((long)TimeGMT()<g_testDue)return;
+ if(GetTickCount64()-g_testRetryTick<1000)return;g_testRetryTick=GetTickCount64();
+ // Never close by symbol; recover the exact correlation-tagged position.
+ if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO){TestPhase("CLOSE_FAILED","demo account required for recovery");return;}
+ ulong ticket=0;string sym="";double vol=0,open=0,sl=0,tp=0;
+ if(!FindPosition(g_testTag,ticket,sym,vol,open,sl,tp)){
+  ulong deal=0;
+  if(HistoryHasTag(g_testTag,deal)){
+   long pid=HistoryDealGetInteger(deal,DEAL_POSITION_ID);bool stillOpen=false;
+   for(int i=0;i<PositionsTotal();i++){ulong t=PositionGetTicket(i);if(t>0&&PositionSelectByTicket(t)&&PositionGetInteger(POSITION_IDENTIFIER)==pid)stillOpen=true;}
+   // Require broker exit evidence, not merely an empty local position list.
+   bool exited=false;
+   if(!stillOpen&&pid>0&&HistorySelectByPosition((ulong)pid))for(int i=0;i<HistoryDealsTotal();i++){
+    ulong d=HistoryDealGetTicket(i);if(d>0&&(HistoryDealGetInteger(d,DEAL_ENTRY)==DEAL_ENTRY_OUT||HistoryDealGetInteger(d,DEAL_ENTRY)==DEAL_ENTRY_OUT_BY))exited=true;
+   }
+   if(exited){TestPhase("CLOSED","broker history confirms test exit");return;}
+  }
+  g_lastExecution="TEST RECOVERY: awaiting broker evidence";return;
+ }
+ trade.SetExpertMagicNumber(InpMagic);trade.SetTypeFillingBySymbol(sym);trade.SetDeviationInPoints(InpSlippagePoints);
+ bool ok=trade.PositionClose(ticket);long rc=(long)trade.ResultRetcode();
+ if(ok&&rc==TRADE_RETCODE_DONE&&!PositionSelectByTicket(ticket))TestPhase("CLOSED","test position closed by local timer");
+ else {TestPhase("CLOSE_FAILED","close retry: "+trade.ResultRetcodeDescription());g_lastExecution="TEST CLOSE RETRY REQUIRED";}
+}
+void HandleTimedTest(string id,string mode,string side,string requested,string tag,double lots,long expiresMs){
+ if(g_testId==id){SendTestStatus();return;}
+ if(g_testLock==INVALID_HANDLE||g_testCorrupt||g_testId!=""){Receipt(id,"REJECTED","",0,"previous test awaiting durable completion");return;}
+ if(!InpEnableConnectionTest||mode!="demo_execute"||side!="BUY"||requested!="XAUUSD"||MathAbs(lots-0.01)>0.0000001||expiresMs<=LicenseNowMs()){Receipt(id,"REJECTED","",0,"invalid or disabled timed test");return;}
+ if(!DemoGate(id))return;
+ string sym=ResolveSymbol("XAUUSD");MqlTick tick;
+ if(sym==""||HasAnyPositionOnSymbol(sym)||CountMyPositions()>=InpMaxOpenTrades||!SymbolInfoTick(sym,tick)||tick.ask<=0||tick.bid<=0){Receipt(id,"REJECTED","",0,"test symbol busy or unavailable");return;}
+ if(MathAbs(NormalizeVolume(sym,0.01)-0.01)>0.0000001){Receipt(id,"REJECTED","",0,"broker cannot trade exactly 0.01 lots");return;}
+ double point=SymbolInfoDouble(sym,SYMBOL_POINT);
+ if(point<=0||InpMaxSpreadPoints<=0||(tick.ask-tick.bid)/point>InpMaxSpreadPoints){Receipt(id,"REJECTED","",0,"test spread limit");return;}
+ // Write the exit intent BEFORE submitting. A restart must never resubmit it.
+ g_testId=id;g_testTag=tag;g_testDue=(long)TimeGMT()+5;g_testDeadlineTick=GetTickCount64()+5000;g_testPhase="ARMED";g_testDetail="test submitted; exit intent saved";
+ if(!SaveTimedTest()){g_testCorrupt=true;Receipt(id,"REJECTED","",0,"cannot persist test exit intent");return;}
+ trade.SetExpertMagicNumber(InpMagic);trade.SetTypeFillingBySymbol(sym);trade.SetDeviationInPoints(InpSlippagePoints);
+ bool ok=trade.Buy(0.01,sym,0,0,0,"SB:"+tag);long rc=(long)trade.ResultRetcode();
+ if(ok&&(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)){
+  RememberPositionFromDeal(tag,trade.ResultDeal());g_testDue=(long)TimeGMT()+5;g_testDeadlineTick=GetTickCount64()+5000;
+  TestPhase("OPEN","BUY XAUUSD 0.01; local exit armed");Receipt(id,"FILLED",N64((long)trade.ResultOrder()),rc,"test open; closure is tracked separately");
+ }else if(rc==TRADE_RETCODE_REJECT||rc==TRADE_RETCODE_INVALID_VOLUME||rc==TRADE_RETCODE_INVALID_STOPS||rc==TRADE_RETCODE_INVALID_PRICE||rc==TRADE_RETCODE_NO_MONEY||rc==TRADE_RETCODE_MARKET_CLOSED||rc==TRADE_RETCODE_TRADE_DISABLED||rc==TRADE_RETCODE_INVALID_FILL||rc==TRADE_RETCODE_REQUOTE||rc==TRADE_RETCODE_PRICE_OFF||rc==TRADE_RETCODE_PRICE_CHANGED){
+  TestPhase("REJECTED",trade.ResultRetcodeDescription());Receipt(id,"BROKER_REJECTED","",rc,trade.ResultRetcodeDescription());
+ }else{g_lastExecution="TEST SUBMISSION UNCERTAIN - RECOVERING";}
+}
+
 void HandleCommand(string &parts[]){
  if(ArraySize(parts)<16)return;
- if(!g_licenseActive){Receipt(parts[1],"REJECTED","",0,"activation not confirmed");return;}string id=parts[1],mode=parts[2],action=parts[3],event=parts[4],side=parts[5],requested=parts[6],tag=parts[7],volumeMode=parts[8];double volumeValue=StringToDouble(parts[9]),referencePrice=StringToDouble(parts[10]),sl=StringToDouble(parts[11]),tp1=StringToDouble(parts[12]),tp2=StringToDouble(parts[13]),tp3=StringToDouble(parts[14]);long expiresMs=(long)StringToInteger(parts[15]);if(StringLen(tag)!=12){Receipt(id,"REJECTED","",0,"invalid correlation tag");return;}g_lastSignal=action+" "+event+" "+side+" "+requested;
+ if(!LicenseReady()){Receipt(parts[1],"REJECTED","",0,"activation not confirmed");return;}string id=parts[1],mode=parts[2],action=parts[3],event=parts[4],side=parts[5],requested=parts[6],tag=parts[7],volumeMode=parts[8];double volumeValue=StringToDouble(parts[9]),referencePrice=StringToDouble(parts[10]),sl=StringToDouble(parts[11]),tp1=StringToDouble(parts[12]),tp2=StringToDouble(parts[13]),tp3=StringToDouble(parts[14]);long expiresMs=(long)StringToInteger(parts[15]);if(StringLen(tag)!=12){Receipt(id,"REJECTED","",0,"invalid correlation tag");return;}g_lastSource=ArraySize(parts)>16?parts[16]:"unknown";g_lastStrategy=ArraySize(parts)>17?parts[17]:"";g_lastSignal=action+" "+event+" "+side+" "+requested;
+ if(action=="TEST"){HandleTimedTest(id,mode,side,requested,tag,volumeValue,expiresMs);return;}
+ if(TimedTestActive()){Receipt(id,"REJECTED","",0,"connection test recovery in progress");return;}
  if(action=="OPEN"){HandleOpen(id,mode,side,requested,tag,volumeMode,volumeValue,referencePrice,sl,tp1,tp2,tp3,expiresMs);return;}if(action=="MANAGE"){HandleManage(id,mode,event,tag);return;}Receipt(id,"REJECTED","",0,"unsupported command action");
 }
 void ProcessLine(string line){
  string p[];ushort sep=StringGetCharacter("|",0);int n=StringSplit(line,sep,p);if(n<=0)return;
- if(p[0]=="HELLO_ACK"&&n>=3){g_licenseActive=true;g_licenseExpires=p[2];g_connStage="LICENSE ACTIVE";Print("SignalBridge: EA license verified for DEMO testing.");return;}
+ if((p[0]=="HELLO_ACK"||p[0]=="HB_ACK")&&n>=3){
+  long server=(long)StringToInteger(p[1]);string expiryText=p[2];StringReplace(expiryText,"-",".");datetime expiry=StringToTime(expiryText);
+  if(server<=0||expiry<=0||(long)expiry*1000<=server){g_licenseActive=false;g_connStage="LICENSE EXPIRED / INVALID";return;}
+  g_serverMs=server;g_licenseVerifiedTick=GetTickCount64();g_licenseExpiryMs=(long)expiry*1000;
+  g_licenseActive=true;g_licenseExpires=p[2];g_connStage="LICENSE ACTIVE";SendTestStatus();return;
+ }
+ if(p[0]=="TEST_ACK"&&n>=3&&p[1]==g_testId&&p[2]==g_testPhase&&(p[2]=="CLOSED"||p[2]=="REJECTED")){
+  if(FileDelete(TimedTestFile(),FILE_COMMON)){g_testId="";g_testTag="";g_testPhase="";g_testDeadlineTick=0;}return;
+ }
  if(p[0]=="ERR"){g_licenseActive=false;g_connStage="ACTIVATION REJECTED";g_lastExecution="ACTIVATION: "+(n>=2?p[1]:"DENIED");Print("SignalBridge: activation rejected: ",n>=2?p[1]:"DENIED");DisconnectCloud();return;}
  if(p[0]=="CMD"){HandleCommand(p);return;}
  if(p[0]=="RACK"&&n>=4){if(p[3]=="1"){ClearReceipt(p[1],p[2]);if(FinalReceiptAckClearsPending(p[2]))ClearPendingById(p[1]);}return;}
@@ -326,12 +432,41 @@ void PumpCloud(){
  if(!CloudConnected())return;for(int k=0;k<4;k++){uchar chunk[];int got=SocketTlsReadAvailable(g_socket,chunk,32768);if(got<0){DisconnectCloud();return;}if(got==0)break;AppendBytes(g_frameBuf,chunk,got);}ParseFrames();
 }
 
-void RenderPanel(){if(!InpShowPanel){DeletePanel();return;}int x=InpPanelX,y=InpPanelY,w=MathMax(370,InpPanelWidth),h=g_compact?132:300;Rect("root",x,y,w,h,C_BG,C_BORDER);Rect("head",x+1,y+1,w-2,44,C_BG2,C_BORDER);Label("title",x+12,y+8,"SignalBridge EA v0.25.1 · "+_Symbol,10,C_TEXT);Label("acct",x+12,y+25,AccountInfoString(ACCOUNT_SERVER)+" · #"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+" · "+MarginMode(),7,C_MUTED,"Consolas");Label("conn",x+w-124,y+9,g_licenseActive?"● LICENSE ACTIVE":"● LOCKED / OFFLINE",8,g_licenseActive?C_GREEN:C_RED,"Consolas");Button("compact",x+w-102,y+24,88,17,g_compact?"EXPAND":"COMPACT");if(g_compact){Label("c1",x+12,y+58,"Equity  "+F2(AccountInfoDouble(ACCOUNT_EQUITY)),9,C_TEXT,"Consolas");Label("c2",x+12,y+80,"Last  "+g_lastSignal,8,C_CYAN,"Consolas");Label("c3",x+12,y+102,"Exec  "+g_lastExecution,8,C_MUTED,"Consolas");ChartRedraw(0);return;}int yy=y+58;Label("k1",x+12,yy,"BALANCE",7,C_MUTED,"Consolas");Label("v1",x+12,yy+16,F2(AccountInfoDouble(ACCOUNT_BALANCE)),11,C_TEXT,"Consolas");Label("k2",x+110,yy,"EQUITY",7,C_MUTED,"Consolas");Label("v2",x+110,yy+16,F2(AccountInfoDouble(ACCOUNT_EQUITY)),11,C_TEXT,"Consolas");Label("k3",x+205,yy,"FLOAT",7,C_MUTED,"Consolas");Label("v3",x+205,yy+16,F2(AccountInfoDouble(ACCOUNT_PROFIT)),11,AccountInfoDouble(ACCOUNT_PROFIT)>=0?C_GREEN:C_RED,"Consolas");Label("k4",x+298,yy,"OPEN",7,C_MUTED,"Consolas");Label("v4",x+298,yy+16,IntegerToString(CountMyPositions()),11,C_CYAN,"Consolas");yy+=68;Label("l1",x+14,yy,"Latest signal",8,C_MUTED);Label("r1",x+130,yy,g_lastSignal,8,C_CYAN,"Consolas");Label("l2",x+14,yy+23,"Execution",8,C_MUTED);Label("r2",x+130,yy+23,g_lastExecution,8,C_TEXT,"Consolas");Label("l3",x+14,yy+46,"Ticket",8,C_MUTED);Label("r3",x+130,yy+46,g_lastTicket,8,C_TEXT,"Consolas");Label("l4",x+14,yy+69,"Account",8,C_MUTED);Label("r4",x+130,yy+69,AccountMode()+" · "+MarginMode(),8,AccountMode()=="DEMO"?C_GREEN:C_AMBER,"Consolas");Label("l5",x+14,yy+92,"Demo execution",8,C_MUTED);Label("r5",x+130,yy+92,InpEnableDemoExecution?"ENABLED":"LOCKED",8,InpEnableDemoExecution?C_AMBER:C_GREEN,"Consolas");Rect("foot",x+12,y+h-42,w-24,28,C_BG2,C_BORDER);Label("foot_t",x+22,y+h-34,g_licenseActive?"LICENSE ACTIVE · expires "+g_licenseExpires:g_connStage,7,g_licenseActive?C_GREEN:C_AMBER,"Consolas");ChartRedraw(0);}
+void RenderPanel(){
+ if(!InpShowPanel){DeletePanel();return;}
+ int x=InpPanelX,y=InpPanelY,w=(int)MathMax(430,InpPanelWidth),h=g_compact?170:408;
+ color gold=C'255,204,98',stateColor=LicenseReady()?C_GREEN:C_RED;
+ Rect("root",x,y,w,h,C_BG,C_BORDER);Rect("head",x+1,y+1,w-2,54,C_BG2,C_BORDER);
+ Label("title",x+16,y+11,"DrFX / SIGNALBRIDGE",12,gold);
+ Label("version",x+16,y+33,"EA 0.26.0  ·  DIRECT CLOUD  /  "+AccountMode(),7,C_MUTED,"Consolas");
+ Button("compact",x+w-104,y+17,88,24,g_compact?"EXPAND":"COMPACT");
+ Label("status",x+16,y+69,LicenseReady()?"● VERIFIED LICENSE":"● "+g_connStage,9,stateColor);
+ Label("expiry",x+16,y+93,"Remaining  "+LicenseRemaining(),10,gold,"Consolas");
+ if(g_compact){Label("compact_signal",x+16,y+120,g_lastSource+" / "+g_lastSignal,8,C_CYAN,"Consolas");Label("compact_test",x+16,y+144,g_testId!=""?"TEST / "+g_testPhase:g_lastExecution,8,C_MUTED,"Consolas");ChartRedraw(0);return;}
+ int col=(w-44)/2,top=y+126;
+ Rect("balance_card",x+14,top,col,52,C_BG2,C_BORDER);Label("balance_k",x+24,top+8,"BALANCE",7,C_MUTED,"Consolas");Label("balance_v",x+24,top+25,F2(AccountInfoDouble(ACCOUNT_BALANCE)),12,C_TEXT,"Consolas");
+ Rect("equity_card",x+col+28,top,col,52,C_BG2,C_BORDER);Label("equity_k",x+col+38,top+8,"EQUITY",7,C_MUTED,"Consolas");Label("equity_v",x+col+38,top+25,F2(AccountInfoDouble(ACCOUNT_EQUITY)),12,gold,"Consolas");
+ Label("account",x+16,y+191,"#"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"  /  "+AccountInfoString(ACCOUNT_SERVER),8,C_MUTED,"Consolas");
+ Label("telemetry",x+16,y+214,"OPEN "+IntegerToString(CountMyPositions())+"   P/L "+F2(AccountInfoDouble(ACCOUNT_PROFIT))+"   RTT "+F2(g_cloudRttMs)+"ms",8,C_CYAN,"Consolas");
+ Label("source",x+16,y+240,"SOURCE  "+g_lastSource+" / "+g_lastStrategy,8,gold,"Consolas");
+ Label("signal",x+16,y+263,g_lastSignal,8,C_CYAN,"Consolas");
+ Label("execution",x+16,y+286,g_lastExecution,8,C_TEXT,"Consolas");
+ Label("test",x+16,y+309,g_testCorrupt?"TEST JOURNAL ERROR - CHECK EXPERTS":g_testId!=""?"CONNECTION TEST / "+g_testPhase:"CONNECTION TEST / "+(InpEnableConnectionTest?"READY":"DISABLED"),8,TimedTestActive()?C_AMBER:C_MUTED,"Consolas");
+ Label("valid_until",x+16,y+333,"UTC expiry / "+(g_licenseExpires==""?"UNVERIFIED":g_licenseExpires),8,C_MUTED,"Consolas");
+ Rect("foot",x+14,y+365,w-28,28,C_BG2,C_BORDER);Label("foot_t",x+24,y+373,"DEMO ONLY  /  "+(InpEnableDemoExecution?"EXECUTION ENABLED":"EXECUTION LOCKED"),8,InpEnableDemoExecution?C_AMBER:C_GREEN,"Consolas");
+ ChartRedraw(0);
+}
 
-int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.25.1 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Trade execution will remain BLOCKED.");g_compact=InpCompact;PendingLoad();ReceiptLoad();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
-void OnDeinit(const int reason){EventKillTimer();DisconnectCloud();DeletePanel();ChartRedraw(0);}
-void OnTick(){}
-void OnTimer(){EnsureCloud();PumpCloud();ulong now=GetTickCount64();if(CloudConnected()&&now-g_lastHb>30000)SendHeartbeat();if(CloudConnected()&&now-g_lastPing>60000){g_lastPing=now;g_pingStarted=now;SendLine("PING|"+N64((long)now));}if(CloudConnected()&&now-g_lastReconcile>2000){g_lastReconcile=now;FlushReceipts();if(HasPending())ReconcilePending();}if(now-g_lastUiUpdate>=750){g_lastUiUpdate=now;RenderPanel();}}
+int OnInit(){MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.26.0 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Trade execution will remain BLOCKED.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+void OnDeinit(const int reason){EventKillTimer();if(g_testLock!=INVALID_HANDLE){FileClose(g_testLock);g_testLock=INVALID_HANDLE;}DisconnectCloud();DeletePanel();ChartRedraw(0);}
+void OnTick(){CloseTimedTest();}
+void OnTimer(){
+ CloseTimedTest();
+ // During the five-second test/recovery, avoid blocking reconnects and socket writes.
+ if(TimedTestActive()){if(GetTickCount64()-g_lastUiUpdate>=750){g_lastUiUpdate=GetTickCount64();RenderPanel();}return;}
+ EnsureCloud();PumpCloud();
+ if(g_licenseActive&&!LicenseReady()){g_licenseActive=false;g_connStage="LICENSE EXPIRED / RECHECK REQUIRED";}
+ ulong now=GetTickCount64();if(CloudConnected()&&now-g_lastHb>30000)SendHeartbeat();if(CloudConnected()&&now-g_lastPing>60000){g_lastPing=now;g_pingStarted=now;SendLine("PING|"+N64((long)now));}if(CloudConnected()&&now-g_lastReconcile>2000){g_lastReconcile=now;FlushReceipts();if(HasPending())ReconcilePending();}if(now-g_lastUiUpdate>=750){g_lastUiUpdate=now;RenderPanel();}}
 void OnTradeTransaction(const MqlTradeTransaction &trans,const MqlTradeRequest &request,const MqlTradeResult &result){
  if(trans.type!=TRADE_TRANSACTION_DEAL_ADD||trans.deal==0)return;if(!HistoryDealSelect(trans.deal))return;if((long)HistoryDealGetInteger(trans.deal,DEAL_MAGIC)!=InpMagic)return;
  string comment=HistoryDealGetString(trans.deal,DEAL_COMMENT);if(StringFind(comment,"SB:")!=0&&StringFind(request.comment,"SB:")==0)comment=request.comment;if(StringFind(comment,"SB:")!=0)return;
