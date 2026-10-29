@@ -9,7 +9,18 @@ button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:
 .container{position:relative;margin:0 auto;max-width:680px;width:100%;padding:0 16px}
 .brand-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 0 16px;border-bottom:1px solid #ffffff12}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}.mark{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:11px;border:1px solid #bc9c5f;background:linear-gradient(140deg,#423522,#141316 70%);box-shadow:inset 0 1px #fff2,0 0 15px #cb9c4423;color:#f5d592;font-size:15px;font-weight:900;letter-spacing:-.1em}.brandname{min-width:0}.brandname .name{display:block;font-weight:800;letter-spacing:.01em;font-size:16px;line-height:1.1;white-space:nowrap}.brandname .name em{color:var(--gold-light);font-style:normal}.brandname small{display:block;color:#b0a88f;font-size:10px;font-weight:700;letter-spacing:.1em;margin-top:5px}
-.header-actions{display:flex;align-items:center;gap:8px}.lang-toggle{height:36px;min-width:46px;border:1px solid #716044;border-radius:9px;background:#15130f;color:#f6dea4;font-size:11px;font-weight:800}.chip{display:flex;align-items:center;gap:6px;max-width:122px;border-radius:9px;background:#1b1913;border:1px solid #8b744550;color:#d8c18b;padding:8px 9px;font-size:10px;font-weight:800;line-height:1.1;letter-spacing:.01em;text-align:center}.chip::before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:#dbac50;box-shadow:0 0 8px #dbac50}.chip.verified{background:#10251e;border-color:#296c4f;color:#97edc4}.chip.verified::before{background:#4bebac;box-shadow:0 0 7px #4bebac}
+.header-actions{display:flex;align-items:center;gap:8px}.lang-toggle{height:39px;min-width:58px;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid #a2865480;border-radius:10px;background:linear-gradient(130deg,#2b2116,#111419);color:#f6dea4;font-size:12px;font-weight:800}
+.mini-lang-picker{position:relative;z-index:80;direction:ltr}
+.mini-lang-chevron{color:#a9aabd;font-size:20px;line-height:1}
+.lang-toggle[aria-expanded=true] .mini-lang-chevron{transform:rotate(180deg)}
+.mini-lang-options{position:absolute;top:calc(100% + 10px);right:0;width:188px;border-radius:12px;border:1px solid #9f82536e;background:#14161def;box-shadow:0 18px 40px #000d;backdrop-filter:blur(16px);padding:8px;z-index:90}
+.mini-lang-options[hidden]{display:none}
+.mini-lang-title{font:750 10px/1.4 ui-monospace,monospace;letter-spacing:.06em;color:#bca276;padding:9px 9px 8px}
+.mini-lang-options button{display:flex;align-items:center;gap:9px;width:100%;min-height:47px;border-radius:8px;border:1px solid transparent;background:transparent;color:#e3e5ec;font-size:14px;padding:9px}
+.mini-lang-options button b{font-size:10px;border:1px solid #98764050;color:#ebcc89;border-radius:5px;padding:5px}
+.mini-lang-options button i{margin-left:auto;font-style:normal;opacity:0;color:#7ee5b1}
+.mini-lang-options button[aria-pressed=true]{border-color:#b994514d;background:#f2c66a18;color:#ffdf9c}
+.mini-lang-options button[aria-pressed=true] i{opacity:1}.chip{display:flex;align-items:center;gap:6px;max-width:122px;border-radius:9px;background:#1b1913;border:1px solid #8b744550;color:#d8c18b;padding:8px 9px;font-size:10px;font-weight:800;line-height:1.1;letter-spacing:.01em;text-align:center}.chip::before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:#dbac50;box-shadow:0 0 8px #dbac50}.chip.verified{background:#10251e;border-color:#296c4f;color:#97edc4}.chip.verified::before{background:#4bebac;box-shadow:0 0 7px #4bebac}
 .hero{padding:23px 1px 16px}.eyebrow{display:flex;align-items:center;gap:8px;color:#e5bd6c;font-size:11px;font-weight:800;letter-spacing:.09em}.eyebrow::before{content:"";height:7px;width:7px;border-radius:2px;transform:rotate(45deg);background:#edc96e;box-shadow:0 0 8px #edc96e90}
 .hero h1{font:800 clamp(29px,8.5vw,42px)/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:-.045em;margin:11px 0 10px}.hero h1 em{font-style:normal;color:#ebc77d}.desc{margin:0;color:#c2c1c8;font-size:14px;line-height:1.6;max-width:560px}
 .hero-kicker{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px}.hero-kicker span{border:1px solid #ffffff1a;background:#ffffff09;border-radius:6px;padding:5px 8px;font-size:10px;color:#bab6ad;font-weight:700}.hero-kicker i{display:inline-block;margin-right:5px;background:#43daa1;width:6px;height:6px;border-radius:50%}
@@ -58,12 +69,12 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
- <div class="header-actions"><button id="langToggle" class="lang-toggle" type="button" aria-label="Change language" aria-pressed="false">FA</button><span id="connection" class="chip">Checking</span></div>
+ <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button id="langToggle" class="lang-toggle" type="button" aria-label="Choose app language" aria-expanded="false" aria-controls="miniLangOptions" aria-haspopup="true"><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div class="mini-lang-options" id="miniLangOptions" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">APP LANGUAGE</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
 <section class="hero">
- <span class="eyebrow" data-tr="eyebrow">YOUR TRADING WORKSPACE</span>
- <h1><span data-tr="hero1">Trade smarter.</span><br><em data-tr="hero2">Stay connected.</em></h1>
- <p class="desc" data-tr="desc">Your membership, MT5 Expert Advisor and private activation key — together in one secure dashboard.</p>
+ <span class="eyebrow" data-tr="eyebrow">YOUR SIGNALBRIDGE ADVANTAGE</span>
+ <h1><span data-tr="hero1">Every signal.</span><br><em data-tr="hero2">One powerful bridge.</em></h1>
+ <p class="desc" data-tr="desc">One private workspace for your TradingView alerts, Telegram signals, MT5 license and membership. Built to keep you in control.</p>
  <div class="hero-kicker"><span><i></i> Private license</span><span>Telegram verified sign-in</span></div>
 </section>
 <div class="route-stage" aria-label="Illustrative route from alerts through SignalBridge to MetaTrader 5">
@@ -107,14 +118,14 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
- <button type="button" class="btn subtle mini-wide" disabled title="Requires a newer compiled EA">DEMO XAUUSD Buy 0.01 → Close 5s · EA update required</button>
+ <button type="button" class="btn subtle mini-wide" disabled title="Requires a newer compiled EA">XAUUSD 0.01 Practice Test · Requires EA upgrade</button>
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
  <p class="tab-kicker" data-tr="eaKicker">EXPERT ADVISOR</p><h2 class="section-title" data-tr="connect">Connect your <span>MT5 account</span></h2>
  <div class="card gold"><div class="micro">ONE EA · ONE PRIVATE CODE</div><h2 style="font-size:22px;margin-top:10px" data-tr="setupTitle">Set up SignalBridge</h2>
   <ol class="list"><li data-tr="step1">Install the official compiled DrFX EX5 Expert Advisor in MetaTrader 5.</li><li data-tr="step2">Allow https://signalbridge.drfx.online in MT5 Expert Advisors.</li><li data-tr="step3">Enter your activation code as the first EA setting.</li><li data-tr="step4">Check the MT5 Experts tab for the verified license state.</li></ol>
-  <span class="inline-tag" data-tr="demoOnly">DEMO ACCOUNT ONLY · LIVE TRADING DISABLED</span>
+  <span class="inline-tag" data-tr="demoOnly">PRACTICE ACCOUNTS ONLY · LIVE-MONEY TRADING UNAVAILABLE</span>
  </div><button class="btn primary" type="button" data-jump="home" data-tr="back">View activation code ↗</button>
 </section>
 <section class="tab-panel" data-panel="plans" id="panel-plans" hidden>
@@ -143,7 +154,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <div id="miniAdminUsers" class="mini-admin-users"></div></div>
  <p id="miniAdminStatus" class="mini-note" role="status"></p>
  </section>
-<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
+<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Interactive routing illustration; not independently verified trading results.</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
  <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Home</span></button>
@@ -171,7 +182,7 @@ export const MINI_JS=String.raw`(() => {
  normalizeViewport();
 
 
- const fa={eyebrow:'محیط اختصاصی معامله‌گری',hero1:'دقت بالا.',hero2:'در هر حرکت.',desc:'مرکز فرمان شخصی شما؛ هویت امن تلگرام، اشتراک سیگنال‌بریج و فعال‌سازی متاتریدر ۵ در یک محیط.',command:'مرکز فرمان',privateKey:'کد فعال‌سازی اختصاصی',connect:'اتصال به متاتریدر ۵',advantage:'اشتراک‌های شما',support:'امنیت و پشتیبانی',reveal:'نمایش کد',hide:'مخفی‌کردن کد',copy:'کپی کد فعال‌سازی',guide:'راهنمای MT5 ←',explore:'اشتراک‌ها ←',back:'بازگشت به کد فعال‌سازی ←',pricing:'مشاهده طرح‌ها در سایت ←',website:'باز کردن سایت DrFX ←',refresh:'به‌روزرسانی حساب ↻',navHome:'خانه',navEA:'اکسپرت',navPlans:'اشتراک',navHelp:'راهنما',licenseNote:'کد شخصی EA تا زمان درخواست شما مخفی است. آن را در تصاویر یا پیام‌ها منتشر نکنید.',eaKicker:'اکسپرت متاتریدر',plansKicker:'اشتراک دکتر اف‌ایکس',helpKicker:'پشتیبانی و امنیت حساب',memberCaption:'اشتراک فعلی',privateCaption:'حساب اختصاصی',mt5Caption:'اتصال متاتریدر ۵',eaCaption:'فعال‌سازی EA',memberHint:'از داخل بات رسمی تلگرام وارد شوید',mt5Hint:'حساب معاملاتی هنوز تأیید نشده است',expiryHint:'اعتبار پس از فعال‌سازی آغاز می‌شود',setupTitle:'راه‌اندازی سیگنال‌بریج',step1:'نسخه رسمی و کامپایل‌شده EX5 را در متاتریدر ۵ نصب کنید.',step2:'آدرس https://signalbridge.drfx.online را در تنظیمات Expert Advisors مجاز کنید.',step3:'کد فعال‌سازی شخصی را در اولین ورودی اکسپرت وارد کنید.',step4:'در تب Experts وضعیت تأیید لایسنس را بررسی کنید.',demoOnly:'فقط حساب دمو · معاملات واقعی غیرفعال',help1:'مینی‌اپ را از داخل بات رسمی تلگرام برای تأیید هویت باز کنید.',help2:'اتصال حساب ایمیل و تلگرام فقط پس از تأیید مالکیت انجام می‌شود.',help3:'کد فعال‌سازی EA را در تصویر یا پیام عمومی قرار ندهید.',help4:'برای مدیریت کامل حساب از داشبورد سایت استفاده کنید.',premiumNote:'* محصولات پریمیوم به انتشار و مجوز مستقل نیاز دارند. این مینی‌اپ پرداخت دریافت نمی‌کند.',securityTitle:'امنیت حساب شما'};
+ const fa={eyebrow:'محیط اختصاصی معامله‌گری',hero1:'هر سیگنال.',hero2:'یک پل قدرتمند.',desc:'یک فضای اختصاصی برای هشدارهای تریدینگ‌ویو، سیگنال‌های تلگرام، لایسنس متاتریدر و اشتراک شما؛ همه تحت کنترل خودتان.',command:'مرکز فرمان',privateKey:'کد فعال‌سازی اختصاصی',connect:'اتصال به متاتریدر ۵',advantage:'اشتراک‌های شما',support:'امنیت و پشتیبانی',reveal:'نمایش کد',hide:'مخفی‌کردن کد',copy:'کپی کد فعال‌سازی',guide:'راهنمای MT5 ←',explore:'اشتراک‌ها ←',back:'بازگشت به کد فعال‌سازی ←',pricing:'مشاهده طرح‌ها در سایت ←',website:'باز کردن سایت DrFX ←',refresh:'به‌روزرسانی حساب ↻',navHome:'خانه',navEA:'اکسپرت',navPlans:'اشتراک',navHelp:'راهنما',licenseNote:'کد شخصی EA تا زمان درخواست شما مخفی است. آن را در تصاویر یا پیام‌ها منتشر نکنید.',eaKicker:'اکسپرت متاتریدر',plansKicker:'اشتراک دکتر اف‌ایکس',helpKicker:'پشتیبانی و امنیت حساب',memberCaption:'اشتراک فعلی',privateCaption:'حساب اختصاصی',mt5Caption:'اتصال متاتریدر ۵',eaCaption:'فعال‌سازی EA',memberHint:'از داخل بات رسمی تلگرام وارد شوید',mt5Hint:'حساب معاملاتی هنوز تأیید نشده است',expiryHint:'اعتبار پس از فعال‌سازی آغاز می‌شود',setupTitle:'راه‌اندازی سیگنال‌بریج',step1:'نسخه رسمی و کامپایل‌شده EX5 را در متاتریدر ۵ نصب کنید.',step2:'آدرس https://signalbridge.drfx.online را در تنظیمات Expert Advisors مجاز کنید.',step3:'کد فعال‌سازی شخصی را در اولین ورودی اکسپرت وارد کنید.',step4:'در تب Experts وضعیت تأیید لایسنس را بررسی کنید.',demoOnly:'فقط حساب تمرینی · معاملات با پول واقعی غیرفعال',help1:'مینی‌اپ را از داخل بات رسمی تلگرام برای تأیید هویت باز کنید.',help2:'اتصال حساب ایمیل و تلگرام فقط پس از تأیید مالکیت انجام می‌شود.',help3:'کد فعال‌سازی EA را در تصویر یا پیام عمومی قرار ندهید.',help4:'برای مدیریت کامل حساب از داشبورد سایت استفاده کنید.',premiumNote:'* محصولات پریمیوم به انتشار و مجوز مستقل نیاز دارند. این مینی‌اپ پرداخت دریافت نمی‌کند.',securityTitle:'امنیت حساب شما'};
  const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
  let locale='en';
  const ui=(en,faText)=>locale==='fa'?faText:en;
@@ -181,7 +192,8 @@ export const MINI_JS=String.raw`(() => {
   document.documentElement.dir=locale==='fa'?'rtl':'ltr';
   document.querySelectorAll('[data-tr]').forEach(el=>{const key=el.dataset.tr;el.textContent=locale==='fa'?(fa[key]||english[key]):english[key]});
   $('langToggle').setAttribute('aria-pressed',String(locale==='fa'));
-  $('langToggle').textContent=locale==='fa'?'EN / FA':'FA / EN';
+  $('miniLangCurrent').textContent=locale.toUpperCase();
+  $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.miniLang===locale)));
   if(state.user){set('memberPlan',planLabel(state.user.plan));set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected',state.user.mt5_account?'متصل':'متصل نیست'));set('licenseBadge',ui(state.user.license_status==='active'?'ACTIVE':'INACTIVE',state.user.license_status==='active'?'فعال':'غیرفعال'));set('activationDate',ui(state.user.activated_at?'Activated':'Not started',state.user.activated_at?'فعال شده':'شروع نشده'));}
   else {set('memberPlan',ui('Not signed in','وارد نشده'));set('mt5Status',ui('Not connected','متصل نیست'));}
   $('revealSerial').textContent=state.serialVisible?ui('Hide serial','مخفی‌کردن کد'):ui('Reveal serial','نمایش کد');
@@ -189,7 +201,11 @@ export const MINI_JS=String.raw`(() => {
  function planLabel(plan){return ({
   trial:ui('1 Month Free','یک ماه رایگان'),quarterly:ui('3 Months Premium','پریمیوم سه‌ماهه'),annual:ui('Annual Elite','الیت سالانه')
  })[plan]||ui('Membership','اشتراک');}
- $('langToggle').addEventListener('click',()=>{language(locale==='en'?'fa':'en');tg?.HapticFeedback?.selectionChanged?.()});
+ function closeMiniLanguage(){ $('miniLangOptions').hidden=true;$('langToggle').setAttribute('aria-expanded','false'); }
+ $('langToggle').addEventListener('click',()=>{const open=$('miniLangOptions').hidden;$('miniLangOptions').hidden=!open;$('langToggle').setAttribute('aria-expanded',String(open));});
+ $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.addEventListener('click',()=>{language(b.dataset.miniLang);closeMiniLanguage();tg?.HapticFeedback?.selectionChanged?.();}));
+ document.addEventListener('click',e=>{if(!$('miniLangPicker').contains(e.target))closeMiniLanguage()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMiniLanguage()});
 
  async function offerBotLaunch(){
   $('launchHint').hidden=false;
