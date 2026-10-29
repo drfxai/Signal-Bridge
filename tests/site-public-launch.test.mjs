@@ -35,8 +35,8 @@ test('All website and Mini App language keys have complete translations in 6 loc
   for(const key of [...siteKeys,...miniKeys])assert.ok(TRANSLATIONS[lang][key],lang+'/'+key);
  }
  assert.match(I18N_JS,/window\.DrFXI18N/);
- assert.ok(SITE_HTML.includes('<select id="lang"')&&SITE_HTML.includes('<option value="hi">HI</option>'));
- assert.ok(MINI_HTML.includes('<select id="langToggle"')&&MINI_HTML.includes('<option value="hi">HI</option>'));
+ assert.ok(SITE_HTML.includes('id="lang"')&&SITE_HTML.includes('data-site-language="hi"'));
+ assert.ok(MINI_HTML.includes('id="langToggle"')&&MINI_HTML.includes('data-mini-lang="hi"'));
  assert.match(SITE_HTML,/\/assets\/i18n\.js/);
  assert.match(MINI_HTML,/\/assets\/i18n\.js/);
  assert.match(SITE_JS,/document\.documentElement\.dir=\['fa','ar'\]/);
@@ -47,7 +47,7 @@ test('All website and Mini App language keys have complete translations in 6 loc
 });
 test('Three premium promotional image assets render without fake PnL, fills or execution metrics',async()=>{
  assert.deepEqual([...PROMO_NAMES].sort(),['admin.svg','dashboard.svg','mobile.svg']);
- assert.ok(SITE_HTML.includes('<select id="lang"')&&SITE_HTML.includes('<option value="hi">HI</option>'));
+ assert.ok(SITE_HTML.includes('id="lang"')&&SITE_HTML.includes('data-site-language="hi"'));
  for(const name of PROMO_NAMES){
   const svg=PROMO_ASSETS[name];
   assert.match(svg,/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);

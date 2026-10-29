@@ -66,8 +66,8 @@ test('Telegram bot exposes admin user lookup, grant and suspension operations be
 
 
 test('supplied cinematic design is wired to production actions',()=>{
- assert.ok(SITE_HTML.includes('Precision.'));
- assert.ok(SITE_HTML.includes('Without compromise.'));
+ assert.ok(SITE_HTML.includes('Your signals. Your control.'));
+ assert.ok(SITE_HTML.includes('One powerful bridge.'));
  assert.ok(SITE_HTML.includes('id="signalEngineCanvas"'));
  assert.ok(SITE_HTML.includes('id="globeCanvas"'));
  assert.ok(SITE_HTML.includes('id="network"'));
@@ -159,9 +159,9 @@ test('approved HTML is production-ready with self-hosted Tailwind and real membe
  assert.ok(!DESIGN_JS.includes('regenerateSerialKey'));
  assert.ok(SITE_HTML.includes('data-plan="quarterly"'));
  assert.ok(SITE_HTML.includes('data-plan="annual"'));
- assert.ok(SITE_HTML.includes('SIMULATED'));
- assert.ok(SITE_HTML.includes('DEMO CHART'));
- assert.ok(DESIGN_JS.includes('DEMO · XAUUSD BUY'));
+ assert.ok(SITE_HTML.includes('VISUAL PREVIEW'));
+ assert.ok(SITE_HTML.includes('CHART PREVIEW'));
+ assert.ok(DESIGN_JS.includes('XAUUSD BUY · PREVIEW'));
  const response=await handler.fetch(new Request('https://drfx.company/assets/tailwind.css'),{});
  assert.equal(response.status,200);
  assert.match(response.headers.get('content-type'),/text\/css/);
@@ -281,7 +281,7 @@ test('connection check never claims active socket or silently creates a demo tra
  assert.ok(SITE_JS.includes("d.live_snapshot_available"));
 
  assert.ok(worker.includes("DEMO_TRADE_TEST_REQUIRES_UPDATED_EA"));
- assert.ok(SITE_HTML.includes('DEMO · Coming with EA update'));
+ assert.ok(SITE_HTML.includes('Practice-account test requires EA update'));
  const p=new Request('https://drfx.company/api/connection/test-demo',{method:'POST',headers:{origin:'https://drfx.company'}});
  const r=await handler.fetch(p,{});
  assert.equal(r.status,503); // no D1 => endpoint cannot trade or authenticate
@@ -318,4 +318,19 @@ test('unknown reusable credentials are denied without an account login',async()=
  assert.equal((await res.json()).error,'INVALID_LOGIN_CREDENTIAL');
  assert.ok(queries.some(q=>q.includes('site_permanent_logins')));
  assert.ok(!queries.some(q=>q.includes('site_sessions')));
+});
+
+test('public marketing is compelling but never invents realized trading returns',async()=>{
+ const {DESIGN_HTML,DESIGN_JS}=await import('../site/src/design.mjs');
+ assert.ok(DESIGN_HTML.includes('Your signals. Your control.'));
+ assert.ok(DESIGN_HTML.includes('One powerful bridge.'));
+ assert.ok(DESIGN_HTML.includes('data-i18n="results_notice"'));
+ assert.ok(DESIGN_HTML.toLowerCase().includes('verified profit-and-loss reporting'));
+ assert.ok(!DESIGN_HTML.toLowerCase().includes('github.com'));
+ assert.ok(!/\bDEMO\b/.test(DESIGN_HTML));
+ assert.ok(!/\+1\.50 XAU|\-3\.00 EUR|\+2\.00 NAS/.test(DESIGN_JS));
+ assert.ok(DESIGN_JS.includes('XAUUSD BUY · PREVIEW'));
+ assert.ok(DESIGN_HTML.includes('dfx-globe-icon'));
+ assert.ok(DESIGN_HTML.includes('data-site-language="fa"'));
+ assert.ok(DESIGN_HTML.includes('data-site-language="hi"'));
 });
