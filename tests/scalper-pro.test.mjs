@@ -76,3 +76,25 @@ test('Scalper checkout fails closed without the signing secret',async()=>{
  assert.equal((await (await f.request('/api/scalper')).json()).configured,false);
  f.db.close();
 });
+
+test('Scalper Pro is on the website, in the portal and in the Mini App',async()=>{
+ const {SITE_HTML,SITE_JS,SITE_CSS}=await import('../site/src/ui.mjs');
+ const {MINI_HTML,MINI_JS}=await import('../site/src/telegram-mini.mjs');
+ const fs=await import('node:fs');
+ for(const id of ['scalper','suite','sxVideo','sxTour','sxPricing','scalperPanel','spLogin','spPay','spKeys','spOrders','spDownload'])assert.ok(SITE_HTML.includes('id="'+id+'"'),id);
+ assert.ok(SITE_HTML.includes('<button data-sb-tab="scalper">'),'desktop portal tab');
+ assert.ok(SITE_HTML.includes('<button data-sb-tab="scalper">◎<span>Scalper</span>'),'mobile portal tab');
+ assert.ok(SITE_HTML.includes('href="#scalper"'));
+ assert.ok(SITE_HTML.includes('$19')&&SITE_HTML.includes('$49'));
+ assert.ok(SITE_JS.includes("'/api/scalper/checkout'")&&SITE_JS.includes("'/api/scalper'"));
+ assert.ok(SITE_CSS.includes('.sb-tab-scalper'));
+ assert.doesNotThrow(()=>new Function(SITE_JS));
+ for(const id of ['panel-scalper','sxmKeys','sxmBuy','sxmVideo'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
+ assert.ok(MINI_HTML.includes('data-tab="scalper"')&&MINI_HTML.includes('data-jump="scalper"'));
+ assert.ok(MINI_JS.includes("'scalper'")&&MINI_JS.includes('window.sxMiniLoad'));
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+ for(const f of ['promo.mp4','poster.jpg','scan.webp','setups.webp','live.webp','trial.webp','taken.webp'])assert.ok(fs.existsSync(new URL('../site/public/media/scalper/'+f,import.meta.url)),f);
+ const worker=fs.readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
+ assert.equal((worker.match(/media-src 'self'/g)||[]).length,2);
+ assert.ok(fs.readFileSync(new URL('../site/wrangler.jsonc',import.meta.url),'utf8').includes('"directory": "./public"'));
+});

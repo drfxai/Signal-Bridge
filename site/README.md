@@ -92,3 +92,30 @@ Each verified Telegram member has exactly one long-lived, 32-character high-entr
 `/resetlogin` replaces the credential and invalidates website sessions; users then sign back in with the new code. Treat this code as a password: do not paste it into support chats, screenshots, public logs, git or TradingView alerts. The website browser session cookie expires after 7 days, but this does **not** expire the permanent login code. The initial legacy 16-character OTPs are accepted only until their original 10-minute expiry to support migration.
 
 D1 migration `site/migrations/0009_permanent_telegram_logins.sql` must be applied to the shared production D1 **before** deployment. Only the website Worker changes; SignalBridge EA ingress and existing Telegram webhook must not be replaced. The Telegram bot's command-menu descriptions are updated in `scripts/configure-company-telegram-bot.mjs`; running that script requires the existing secure environment credentials and modifies the menu/webhook, so avoid re-running it unnecessarily.
+
+## Scalper Pro
+
+DrFX Scalper Pro licences are sold and delivered from the member portal (website **Scalper Pro** tab) and listed in the Telegram Mini App. Keys are minted by `src/scalper.mjs` with the same offline HMAC-SHA256 format as the EA (`DRFX-` + 8 groups of 5).
+
+**One-time setup**
+
+1. Apply the new migration: `npx wrangler d1 migrations apply signalbridge-ingress --remote` (adds `scalper_orders` and `scalper_keys`).
+2. Set the signing secret. It must be the exact `DRFX_SECRET` the EA was compiled with:
+   `npx wrangler secret put SCALPER_LICENSE_SECRET`
+3. Optional: the download link shown to members, e.g. a private release asset or R2 URL:
+   `npx wrangler secret put SCALPER_DOWNLOAD_URL`
+4. Deploy: `npx wrangler deploy` from `site/`. Static media in `site/public/` (promo video, screenshots) is uploaded as Workers static assets and served at `/media/scalper/…`.
+
+Checkout uses the existing NOWPayments keys (`NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET`). Orders use the `sco_` prefix; the IPN handler issues exactly one key per paid order, stores it encrypted with `LICENSE_VAULT_KEY`, and sends it to the member's linked Telegram chat.
+
+**Endpoints**
+
+- `GET /api/scalper` – the member's keys (decrypted), orders, plans and download link.
+- `POST /api/scalper/checkout` `{plan:"scalper_1m"|"scalper_3m", account_login:"51234567"}` – returns a NOWPayments `invoice_url`.
+
+**Admin**
+
+- Portal Operations Center: pick **grant scalper 1m** or **grant scalper 3m** for a customer and enter their MT5 account number.
+- Telegram: `/scalperkey MT5_LOGIN 1m|3m [usr_…]`. Members can type `/scalper` to see their keys.
+
+Without `SCALPER_LICENSE_SECRET` the portal shows "Online purchase opens soon" and checkout fails closed.

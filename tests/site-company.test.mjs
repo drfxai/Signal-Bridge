@@ -85,7 +85,8 @@ test('supplied cinematic design is wired to production actions',()=>{
  assert.doesNotThrow(()=>new Function(DESIGN_JS));
 });
 test('first animation removed and second reimplemented at native display resolution',async()=>{
- assert.equal((SITE_HTML.match(/<video /g)||[]).length,0);
+ // The only video is the Scalper Pro promo, served as a static asset.
+ assert.deepEqual((SITE_HTML.match(/<video [^>]*src="[^"]*"/g)||[]).map(v=>v.match(/src="([^"]*)"/)[1]),['/media/scalper/promo.mp4']);
  assert.ok(!SITE_HTML.includes('48356-globe.mp4'));
  assert.ok(!SITE_HTML.includes('48355-connections.mp4'));
  assert.ok(!worker.includes("from './media.mjs'"));
