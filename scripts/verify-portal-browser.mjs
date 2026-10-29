@@ -16,7 +16,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1100],['websi
   let data={ok:true};
   if(path==='/api/me')data={ok:true,user};
   if(path==='/api/config')data={ok:true,email:true,telegram:true,licensing:true,payments:false};
-  if(path==='/api/connection/check')data={ok:true,diagnostic:{license:'active',expires_at:'2099-01-01 00:00:00',mt5_mode:label.includes('live')?'LIVE':'DEMO',mt5_account:{login:'PREVIEW',server:'TEST'},telemetry:{equity:1000},live_snapshot_available:true,live_socket_verified:true,terminal_online:true}};
+  if(path==='/api/connection/check')data={ok:true,diagnostic:{license:'active',capabilities:['timed-test-v2','live-test-v2'],expires_at:'2099-01-01 00:00:00',mt5_mode:label.includes('live')?'LIVE':'DEMO',mt5_account:{login:'PREVIEW',server:'TEST'},telemetry:{equity:1000},live_snapshot_available:true,live_socket_verified:true,terminal_online:true}};
   if(path==='/api/webhook'||path==='/api/webhook/mode')data={ok:true,webhook:{exists:true,webhook_url:'https://example.test/PREVIEW-NOT-A-CREDENTIAL',mode:'dry_run',received:0}};
   if(path==='/api/connection/test'){testRequested++;data={ok:true,test_id:'preview-test',command_id:'preview-command',status:'DELIVERED'}};
   if(path==='/api/connection/test-status')data={ok:true,test:{id:'preview-test',status:'CLOSED',detail:'UI preview only · no broker order',command_status:'FILLED'}};

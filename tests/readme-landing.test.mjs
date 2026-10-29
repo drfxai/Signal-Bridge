@@ -29,7 +29,7 @@ test('README advertises exact launch pricing',()=>{
 });
 
 test('README advertises current direct-EA metadata',()=>{
- assert.match(readme,/EA v0\.27\.0/);
+ assert.match(readme,/EA v0\.27\.1/);
  assert.match(readme,/\/v1\/ea\/ws/);
  assert.equal(rootPkg.version,'3.0.0');
 });
