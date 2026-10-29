@@ -53,12 +53,13 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 @media(max-width:360px){.container{padding:0 12px}.brandname .name{font-size:14px}.chip{font-size:9px;padding:7px}.hero h1{font-size:29px}.card{padding:15px}.grid{gap:8px}.small{padding:12px 11px}.micro{font-size:10px}.action-grid{grid-template-columns:1fr}.route-head{padding:11px 11px 4px}}
 @media(min-width:681px){nav.bottom{padding-inline:max(16px,calc((100% - 660px)/2))}.container{padding-inline:22px}.hero{padding-top:33px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+.mini-lang-picker{position:relative;z-index:80;direction:ltr}.mini-lang-chevron{font-size:19px;color:#aaaeaf}.lang-toggle[aria-expanded=true] .mini-lang-chevron{transform:rotate(180deg)}.mini-lang-options{position:absolute;top:calc(100% + 10px);right:0;max-height:min(370px,62dvh);overflow-y:auto;overscroll-behavior:contain;width:190px;z-index:90;border-radius:13px;border:1px solid #b39a637a;background:#10141cf7;box-shadow:0 20px 55px #000c;padding:8px;backdrop-filter:blur(15px)}.mini-lang-options[hidden]{display:none!important}.mini-lang-title{padding:8px;color:#ae9d80;font:750 10px ui-monospace,monospace;letter-spacing:.06em}.mini-lang-options button{display:flex;align-items:center;gap:9px;width:100%;min-height:46px;background:none;color:#e6e7eb;padding:8px;border:1px solid transparent;border-radius:8px;font-size:14px}.mini-lang-options button b{padding:5px;border:1px solid #a284465f;border-radius:5px;font-size:10px;color:#edd092}.mini-lang-options button i{margin-left:auto;color:#7ddfb5;font-style:normal;opacity:0}.mini-lang-options button[aria-pressed=true]{color:#ffe5b0;background:#d4af371d;border-color:#cfad6b37}.mini-lang-options button[aria-pressed=true] i{opacity:1}
 </style>
 <script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
- <div class="header-actions"><select id="langToggle" class="lang-toggle" aria-label="Choose language"><option value="en">EN</option><option value="fa">FA</option><option value="ar">AR</option><option value="tr">TR</option><option value="ru">RU</option><option value="hi">HI</option></select><span id="connection" class="chip">Checking</span></div>
+ <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button type="button" id="langToggle" class="lang-toggle" aria-label="Choose app language" aria-expanded="false" aria-haspopup="true" aria-controls="miniLangOptions"><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div id="miniLangOptions" class="mini-lang-options" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">LANGUAGE / زبان</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="ar" aria-pressed="false"><b>AR</b><span>العربية</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
 <section class="hero">
  <span class="eyebrow" data-tr="eyebrow">YOUR TRADING WORKSPACE</span>
@@ -107,14 +108,14 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook" data-tr="createWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" data-tr="copyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" data-tr="rotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
- <button type="button" class="btn subtle mini-wide" disabled title="Requires a newer compiled EA">DEMO XAUUSD Buy 0.01 → Close 5s · EA update required</button>
+ <button type="button" class="btn subtle mini-wide" disabled title="Requires a newer compiled EA">XAUUSD 0.01 Practice Test · EA update required</button>
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
  <p class="tab-kicker" data-tr="eaKicker">EXPERT ADVISOR</p><h2 class="section-title" data-tr="connect">Connect your <span>MT5 account</span></h2>
  <div class="card gold"><div class="micro">ONE EA · ONE PRIVATE CODE</div><h2 style="font-size:22px;margin-top:10px" data-tr="setupTitle">Set up SignalBridge</h2>
   <ol class="list"><li data-tr="step1">Install the official compiled DrFX EX5 Expert Advisor in MetaTrader 5.</li><li data-tr="step2">Allow https://signalbridge.drfx.online in MT5 Expert Advisors.</li><li data-tr="step3">Enter your activation code as the first EA setting.</li><li data-tr="step4">Check the MT5 Experts tab for the verified license state.</li></ol>
-  <span class="inline-tag" data-tr="demoOnly">DEMO ACCOUNT ONLY · LIVE TRADING DISABLED</span>
+  <span class="inline-tag" data-tr="demoOnly">PRACTICE ACCOUNTS ONLY · LIVE-MONEY TRADING UNAVAILABLE</span>
  </div><button class="btn primary" type="button" data-jump="home" data-tr="back">View activation code ↗</button>
 </section>
 <section class="tab-panel" data-panel="plans" id="panel-plans" hidden>
@@ -190,7 +191,9 @@ export const MINI_JS=String.raw`(() => {
    const key=el.dataset.tr;
    el.textContent=dictionary[locale]?.[key]||english[key];
   });
-  $('langToggle').value=locale;
+  $('miniLangCurrent').textContent=locale.toUpperCase();
+  $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.miniLang===locale)));
+  closeMiniLanguage();
   if(state.user){
    set('memberPlan',planLabel(state.user.plan));
    set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected','متصل نیست'));
@@ -207,7 +210,11 @@ export const MINI_JS=String.raw`(() => {
   const name={trial:'oneMonth',quarterly:'threeMonth',annual:'annualElite'}[plan];
   return dictionary[locale]?.[name]||dictionary.en?.[name]||'Membership';
  }
- $('langToggle').addEventListener('change',()=>{language($('langToggle').value);tg?.HapticFeedback?.selectionChanged?.()});
+ function closeMiniLanguage(){$('miniLangOptions').hidden=true;$('langToggle').setAttribute('aria-expanded','false');}
+ $('langToggle').addEventListener('click',()=>{const open=$('miniLangOptions').hidden;$('miniLangOptions').hidden=!open;$('langToggle').setAttribute('aria-expanded',String(open));});
+ $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.addEventListener('click',()=>{language(b.dataset.miniLang);tg?.HapticFeedback?.selectionChanged?.();}));
+ document.addEventListener('click',e=>{if(!$('miniLangPicker').contains(e.target))closeMiniLanguage()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMiniLanguage()});
 
  async function offerBotLaunch(){
   $('launchHint').hidden=false;
