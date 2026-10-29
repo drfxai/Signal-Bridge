@@ -14,7 +14,7 @@ test('management command carries correlation and event',()=>{
 });
 test('agent/EA wire protocol includes management event and deterministic trade tag',()=>{
  const agent=fs.readFileSync(new URL('../agent-windows/agent.mjs',import.meta.url),'utf8');
- const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA_v0.21.mq5',import.meta.url),'utf8');
+ const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA.mq5',import.meta.url),'utf8');
  assert.match(agent,/createHash\('sha256'\)/);assert.match(agent,/management_event/);assert.match(ea,/ArraySize\(parts\)<16/);assert.match(ea,/HandleManage/);assert.match(ea,/HistoryHasTag/);
 });
 test('AgentHub enforces one socket and replays pending commands',()=>{

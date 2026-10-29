@@ -1,5 +1,5 @@
 # SignalBridge — V3 Technical Architecture
-Version 0.4 · Direct-EA beta · 2026-10-28
+Version 0.4 · Direct-EA beta · 2026-10-29
 
 ## Product rule
 
@@ -29,7 +29,7 @@ flowchart TD
  DASH[Web Dashboard / Telegram Web App] --> W
  W --> DB[(D1)]
  W --> HUB[Durable Object execution hub]
- HUB <-->|Direct TLS/WebSocket| EA[MT5 SignalBridge EA v0.24]
+ HUB <-->|Direct TLS/WebSocket| EA[MT5 SignalBridge EA v0.26.0]
  HUB <-->|Read-only WebSocket| DASH
  EA --> BROKER[Broker DEMO]
  BROKER --> EA
@@ -105,9 +105,7 @@ The live dashboard remains backend-backed. It observes the execution hub through
 
 ## Release gates
 
-Before v0.24 can be called release-certified:
-
-- compile in a real Windows MetaEditor;
+EA v0.26.0 has passed official Windows MetaEditor compilation. Before full broker release certification:
 - run direct TLS/WebSocket handshake against Production;
 - validate reconnect + replay on DEMO;
 - validate broker-rejection receipt recovery;

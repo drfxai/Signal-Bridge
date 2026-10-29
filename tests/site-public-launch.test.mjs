@@ -15,9 +15,9 @@ test('Public release has license, security policy and no misleading open-source 
  const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8');
  assert.match(readme,/DEMO-only execution/);
  assert.match(readme,/Product Gallery/);
- assert.match(readme,/assets\/promo\/dashboard\.svg/);
- assert.match(readme,/assets\/promo\/mobile\.svg/);
- assert.match(readme,/assets\/promo\/admin\.svg/);
+ assert.match(readme,/assets\/readme\/signalbridge-hero\.jpg/);
+ assert.match(readme,/assets\/readme\/signalbridge-everywhere\.jpg/);
+ assert.match(readme,/assets\/readme\/signalbridge-direct-ea\.jpg/);
 });
 test('All website and Mini App language keys have complete translations in 6 locales',()=>{
  assert.deepEqual(LOCALES,['en','fa','ar','tr','ru','hi']);

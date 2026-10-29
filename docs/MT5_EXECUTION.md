@@ -1,5 +1,5 @@
 # SignalBridge — MT5 Execution
-Version 0.24 direct-cloud beta · 2026-10-28
+Version 0.26.0 direct-cloud beta · 2026-10-29
 
 ## Standard user path
 
@@ -8,7 +8,7 @@ The standard V3 installation uses a single MetaTrader 5 EA.
 ```text
 SignalBridge Cloud
       ⇅ TLS/WebSocket
-DrFX_SignalBridge_EA v0.24
+DrFX_SignalBridge_EA v0.26.0
       ↓
 Broker DEMO
 ```
@@ -59,4 +59,6 @@ with fail-closed terminal outcomes such as BROKER_REJECTED, REJECTED, ACCOUNT_MI
 
 ## Current release gate
 
-The v0.24 source has not yet been certified by an actual Windows MetaEditor compile in this repository workflow. It must not be described as compile-certified until that external test passes.
+EA v0.26.0 passed official Windows MetaEditor compilation with zero errors.
+Actual DEMO broker execution, timing and restart/replay certification remain required.
+See [the validated build](https://github.com/drfxai/Signal-Bridge/actions/runs/40847595192) and [current controls](EA_V026_CONNECTION_CONTROLS.md).

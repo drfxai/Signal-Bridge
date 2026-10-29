@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {EXPERIENCE_HTML,EXPERIENCE_CSS,EXPERIENCE_JS,TELEGRAM_APP_PREVIEW_HTML,TELEGRAM_BOT_PREVIEW_HTML} from '../worker/src/experience-ui.mjs';
 
 const worker=fs.readFileSync(new URL('../worker/src/index.mjs',import.meta.url),'utf8');
-const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA_v0.24.mq5',import.meta.url),'utf8');
+const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA.mq5',import.meta.url),'utf8');
 const canonical=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA.mq5',import.meta.url),'utf8');
 
 test('premium responsive previews are served through isolated endpoints',()=>{
