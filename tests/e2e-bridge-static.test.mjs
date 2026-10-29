@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA_v0.24.mq5',import.meta.url),'utf8');
+const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA.mq5',import.meta.url),'utf8');
 const index=fs.readFileSync(new URL('../worker/src/index.mjs',import.meta.url),'utf8');
 const hub=fs.readFileSync(new URL('../worker/src/agent-hub.mjs',import.meta.url),'utf8');
 const ui=fs.readFileSync(new URL('../worker/src/test-ui.mjs',import.meta.url),'utf8');

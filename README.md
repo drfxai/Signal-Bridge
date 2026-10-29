@@ -8,20 +8,20 @@
 The public repository is not an open-source license grant. Read [LICENSE](LICENSE),
 [SECURITY.md](SECURITY.md) and the [Public Release Checklist](docs/PUBLIC_RELEASE_CHECKLIST.md).
 
+![DrFX SignalBridge — Your signals. One powerful bridge.](assets/readme/signalbridge-hero.jpg)
+
 ### Product Gallery
 
-The following original promotional renders are **illustrative UI concepts**;
-they do not demonstrate verified latency, uptime, profitability or broker fills.
+These original promotional images are **illustrative product concepts**, not
+screenshots or verified evidence of trading performance.
 
-| SignalBridge Dashboard | Telegram & Website | Admin Operations |
-|:--:|:--:|:--:|
-| [![SignalBridge routing UI](https://drfx.company/assets/promo/dashboard.svg)](https://drfx.company) | [![Member Mini App UI](https://drfx.company/assets/promo/mobile.svg)](https://drfx.company/telegram) | [![Administration concept](https://drfx.company/assets/promo/admin.svg)](https://drfx.company) |
+| Direct MT5 connection | Website & Telegram workspace |
+|:--:|:--:|
+| ![One EA. One Webhook.](assets/readme/signalbridge-direct-ea.jpg) | ![Your workspace. Everywhere.](assets/readme/signalbridge-everywhere.jpg) |
 
 **Languages:** English · فارسی · العربية · Türkçe · Русский · हिन्दी.
 Language selection is available on the website, Telegram Mini App and in bot
 messages. Persian and Arabic use right-to-left layout.
-
-
 
 **One licensed EA. One personal TradingView webhook. DEMO-first routing.**
 
@@ -33,8 +33,6 @@ messages. Persian and Arabic use right-to-left layout.
 [**Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**V3 Design Preview**](https://signalbridge.drfx.online/experience/) · [**Test Panel**](https://signalbridge.drfx.online/test) · [**Download ZIP**](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)
 
 </div>
-
-![SignalBridge realtime command center](assets/readme/signalbridge-hero.svg)
 
 SignalBridge is a premium realtime bridge for traders who want **TradingView and Telegram signals delivered into MetaTrader 5 with minimal setup**. The V3 architecture removes the Windows companion Agent from the standard user flow: the MT5 EA connects directly to SignalBridge Cloud over TLS/WebSocket.
 
@@ -81,7 +79,11 @@ For source/beta testing, the canonical source is:
 mt5/DrFX_SignalBridge_EA.mq5
 ```
 
-Current direct-cloud source: **EA v0.24**.
+Current direct-cloud source: **EA v0.26.0**. Only the latest EA source is kept in
+`mt5/`; earlier versions are available through Git history.
+
+See [EA setup and version details](mt5/README.md) and
+[connection test / license controls](docs/EA_V026_CONNECTION_CONTROLS.md).
 
 ### 2. Enter your SignalBridge Key
 
@@ -110,6 +112,8 @@ Create a TradingView Alert and paste your private SignalBridge webhook:
 ```text
 https://signalbridge.drfx.online/v1/ingress/tradingview/<YOUR_PRIVATE_CONNECTION_TOKEN>
 ```
+
+![Three-step SignalBridge setup](assets/readme/signalbridge-quickstart.svg)
 
 That is the standard installation flow.
 
@@ -216,7 +220,8 @@ The current EA remains conservative by default:
 - duplicate/replay protection;
 - broker-history reconciliation before blind retry.
 
-A real Windows MetaEditor compile and DEMO broker E2E certification are still required before treating EA v0.24 as release-certified.
+EA v0.26.0 has passed [official Windows MetaEditor compilation](https://github.com/drfxai/Signal-Bridge/actions/runs/40847595192) with zero errors.
+Actual DEMO broker E2E certification remains a release gate.
 
 ## UI previews
 
@@ -224,6 +229,21 @@ A real Windows MetaEditor compile and DEMO broker E2E certification are still re
 - Telegram Web App: `design/telegram-webapp.html`
 - Telegram Bot UX: `design/telegram-bot-flow.html`
 - MT5 command-center reference: `design/mt5-command-center.html`
+
+## Repository map
+
+| Path | Purpose |
+| --- | --- |
+| [`mt5/`](mt5/) | Single current EA source and installation guide |
+| [`site/`](site/) | Website, member/admin portals and Telegram Mini App |
+| [`worker/`](worker/) | Signal ingress, licensing, realtime delivery and database migrations |
+| [`tests/`](tests/) | Regression and integration coverage for the current implementation |
+| [`scripts/`](scripts/) | Development, provisioning and verification tools |
+| [`design/`](design/) | Active product design previews and approved references |
+| [`assets/readme/`](assets/readme/) | Repository-hosted promotional images and setup artwork |
+| [`docs/`](docs/) | Architecture, security and deployment guidance |
+
+Historical EA snapshots are recovered from Git history instead of duplicated in the working tree.
 
 ## Documentation
 

@@ -62,7 +62,7 @@ test('direct EA endpoint and line protocol exist alongside legacy rollback trans
 
 
 test('direct EA persists broker receipts locally until cloud acknowledgement',()=>{
- const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA_v0.24.mq5',import.meta.url),'utf8');
+ const ea=fs.readFileSync(new URL('../mt5/DrFX_SignalBridge_EA.mq5',import.meta.url),'utf8');
  assert.match(ea,/MAX_RECEIPTS 64/);
  assert.match(ea,/ReceiptFile\(\)/);
  assert.match(ea,/ReceiptSave\(\)/);

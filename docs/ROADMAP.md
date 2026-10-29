@@ -1,5 +1,5 @@
 # SignalBridge Roadmap
-Updated 2026-10-28
+Updated 2026-10-29
 
 ## Now — V3 beta
 
@@ -13,7 +13,7 @@ Updated 2026-10-28
 
 ## Validation gates
 
-- Compile EA v0.24 in real Windows MetaEditor.
+- Completed: EA v0.26.0 compiled in official Windows MetaEditor (zero errors).
 - Direct WebSocket Production handshake test.
 - TradingView → DEMO broker E2E.
 - Telegram → DEMO broker E2E.

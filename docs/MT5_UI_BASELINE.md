@@ -43,17 +43,20 @@ Account binding, Agent credentials, risk caps, spread/deviation/slippage guards,
 ### Telegram Hub
 Authorized chats/channels, deterministic parsing, normalized preview, revision handling and the same downstream Risk → MT5 route.
 
-## Current milestone
-`mt5/DrFX_SignalBridge_EA.mq5` implements the native chart-panel foundation with actual local account telemetry and `OnTradeTransaction` events. It deliberately does not connect to Cloudflare or submit orders yet.
+## Current implementation
 
-`design/mt5-command-center.html` is the approved executable reference for the Command Center, settings, Telegram and chart-panel composition.
+`mt5/DrFX_SignalBridge_EA.mq5` is the single current EA source (v0.26.0).
+It connects directly over TLS/WebSocket, validates personal licensing, displays
+server-based remaining license time and routes demo-only orders with durable
+receipts and broker reconciliation. The optional local timed connection test
+has its own restart recovery journal.
 
-## Next gates
-1. Compile/visual QA in MetaEditor/MT5 on Windows.
-2. Implement the Windows SignalBridge Agent and Agent Hub transport.
-3. Bind live Agent telemetry into the web Command Center.
-4. Add authenticated enrollment/account binding.
-5. Implement command receipt/reconciliation before demo execution.
-6. Demo-broker E2E tests on hedging and netting accounts.
+`design/mt5-command-center.html` remains the approved design reference.
+The native EA panel is an implementation of the current demo product; the HTML
+reference is not a screenshot of a running terminal.
 
-No live trading is enabled by this UI milestone.
+## Remaining validation
+
+Official Windows MetaEditor compilation has passed. Visual verification in a
+running MT5 terminal and actual broker E2E/timing/restart tests are separate
+release gates. See [current controls and deployment](EA_V026_CONNECTION_CONTROLS.md).

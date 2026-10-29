@@ -1,14 +1,14 @@
 name: Build MT5 EA v0.26.0 (DEMO)
 on:
   push:
-    branches: [main, build/ea-v025-compiled-demo]
+    branches: [main]
     paths:
       - mt5/DrFX_SignalBridge_EA.mq5
-      - .github/workflows/build-ea-v025.yml
+      - .github/workflows/build-ea.yml
   pull_request:
     paths:
       - mt5/DrFX_SignalBridge_EA.mq5
-      - .github/workflows/build-ea-v025.yml
+      - .github/workflows/build-ea.yml
   workflow_dispatch:
 permissions:
   contents: read
