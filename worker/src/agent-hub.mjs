@@ -13,7 +13,7 @@ function eaCorrelationTag(value){
 }
 function encodeEaCommand(c){
  const o=c.order||{},t=Array.isArray(o.take_profits)?o.take_profits:[],expiry=c.expires_at?Date.parse(c.expires_at):0;
- return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0,safe(c.source?.type||'unknown',24),safe(c.source?.strategy||'',80)].join('|');
+ return ['CMD',safe(c.command_id,64),safe(c.execution_mode,32),safe(c.action,16),safe(c.management_event||'ENTRY',16),safe(c.side||'',8),safe(c.symbol||'',32),safe(c.correlation_tag||eaCorrelationTag(c.correlation_id||c.command_id),12),safe(o.volume?.mode||'FIXED_LOTS',24),Number(o.volume?.value||0),Number(o.reference_price||0),Number(o.stop_loss||0),Number(t[0]||0),Number(t[1]||0),Number(t[2]||t[t.length-1]||0),Number.isFinite(expiry)?expiry:0,safe(c.source?.type||'unknown',24),safe(c.source?.strategy||'',80),safe(c.test_account?.mode||'',12),safe(c.test_account?.login||'',64),safe(c.test_account?.server||'',120)].join('|');
 }
 
 export class AgentHub{
@@ -58,7 +58,7 @@ export class AgentHub{
   a.expectedLogin=row.account_login;a.expectedServer=row.account_server;a.licenseExpires=row.expires_at;
   return true;
  }
- sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(cmd.action==='TEST'&&(a.role!=='ea'||!a.capabilities?.includes('timed-test-v1')))return false;if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}))}
+ sendCommand(ws,cmd,replay=false){const a=ws.deserializeAttachment()||{};if(cmd.action==='TEST'&&(a.role!=='ea'||!(a.capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c))))return false;if(a.role==='ea')ws.send(encodeEaCommand(cmd));else ws.send(JSON.stringify({type:'command',...cmd,replay}))}
  async bindEaAccount(a,account,ws){
   if(a.role==='ea')return this.bindEaLicense(a,account,ws);
   if(a.expectedLogin&&a.expectedLogin!==account.login){ws.send('ERR|ACCOUNT_MISMATCH');ws.close(1008,'account mismatch');return false}
@@ -83,7 +83,7 @@ export class AgentHub{
    const account={login:safe(p[1],64),server:safe(p[2],120),mode:safe(p[3],32),balance:Number.isFinite(Number(p[4]))?Number(p[4]):null,equity:Number.isFinite(Number(p[5]))?Number(p[5]):null,positions:Number.isFinite(Number(p[6]))?Number(p[6]):null,cloud_rtt_ms:Number.isFinite(Number(p[7]))?Math.max(0,Math.min(60000,Number(p[7]))):null};
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
-   a.capabilities=p[8]==='timed-test-v1'?['timed-test-v1']:[];
+   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c));
    const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;ws.serializeAttachment(a);
    this.broadcast({type:p[0]==='HELLO'?'terminal_state':'account_telemetry',agent_online:true,ea_online:true,terminal_online:true,account,server_time:new Date().toISOString()});
    ws.send((p[0]==='HELLO'?'HELLO_ACK':'HB_ACK')+'|'+Date.now()+'|'+(a.licenseExpires||''));
@@ -113,7 +113,7 @@ export class AgentHub{
     await this.env.DB.prepare("UPDATE commands SET status='EXPIRED',last_error='expired before reconnect replay',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('PENDING','DELIVERED')").bind(row.id).run();
     continue;
    }
-   if(cmd.action==='TEST'&&!attachment.capabilities?.includes('timed-test-v1'))continue;
+   if(cmd.action==='TEST'&&!(attachment.capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c)))continue;
    if(ws.readyState===WebSocket.OPEN){
     if(!await this.licenseIsValid(ws.deserializeAttachment()||{}))return;
     this.sendCommand(ws,cmd,true);
@@ -146,7 +146,7 @@ export class AgentHub{
    return new Response(null,{status:101,webSocket:client,headers:selected?{'sec-websocket-protocol':selected}:{}});
   }
   if(url.pathname==='/dispatch'&&request.method==='POST'){
-   const body=await request.json().catch(()=>null);if(!body||body.protocol!=='signalbridge-command/1'||!body.command_id)return json({error:'BAD_COMMAND'},400);
+   const body=await request.json().catch(()=>null);if(!body||body.protocol!=='signalbridge-command/1'||!body.command_id||(body.execution_mode==='test_execute'&&body.action!=='TEST'))return json({error:'BAD_COMMAND'},400);
    const sockets=this.currentExecutionSockets();if(!sockets.length)return json({ok:true,delivered:0,reason:'EA_OFFLINE'});
    const socket=sockets.find(ws=>terminalReadyAttachment(ws.deserializeAttachment()||{}));
    if(!socket)return json({ok:true,delivered:0,reason:'TERMINAL_OFFLINE'});
@@ -154,7 +154,7 @@ export class AgentHub{
     try{socket.close(1008,'license inactive')}catch{}
     return json({ok:true,delivered:0,reason:'LICENSE_INACTIVE'});
    }
-   if(body.action==='TEST'&&!(socket.deserializeAttachment()||{}).capabilities?.includes('timed-test-v1'))return json({ok:true,delivered:0,reason:'EA_UPDATE_REQUIRED'});
+   if(body.action==='TEST'&&!((socket.deserializeAttachment()||{}).capabilities||[]).some(c=>['timed-test-v1','timed-test-v2','live-test-v2'].includes(c)))return json({ok:true,delivered:0,reason:'EA_UPDATE_REQUIRED'});
    this.sendCommand(socket,body,false);this.broadcast({type:'command_delivery',command_id:body.command_id,action:body.action,management_event:body.management_event||null,symbol:body.symbol||null,execution_mode:body.execution_mode});return json({ok:true,delivered:1,reason:null});
   }
   if(url.pathname==='/snapshot'&&request.method==='GET'){

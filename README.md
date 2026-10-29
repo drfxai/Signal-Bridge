@@ -4,7 +4,7 @@
 
 ### TradingView + Telegram → MetaTrader 5
 
-**Commercial source-available software · DEMO-only execution at present.**
+**Commercial source-available software · DEMO-only automatic signals; separately opted-in DEMO/LIVE connection tests.**
 The public repository is not an open-source license grant. Read [LICENSE](LICENSE),
 [SECURITY.md](SECURITY.md) and the [Public Release Checklist](docs/PUBLIC_RELEASE_CHECKLIST.md).
 
@@ -79,7 +79,7 @@ For source/beta testing, the canonical source is:
 mt5/DrFX_SignalBridge_EA.mq5
 ```
 
-Current direct-cloud source: **EA v0.26.0**. Only the latest EA source is kept in
+Current direct-cloud source: **EA v0.27.0**. Only the latest EA source is kept in
 `mt5/`; earlier versions are available through Git history.
 
 See [EA setup and version details](mt5/README.md) and
@@ -220,7 +220,7 @@ The current EA remains conservative by default:
 - duplicate/replay protection;
 - broker-history reconciliation before blind retry.
 
-EA v0.26.0 has passed [official Windows MetaEditor compilation](https://github.com/drfxai/Signal-Bridge/actions/runs/40847595192) with zero errors.
+The current EA is compiled by the [official Windows MetaEditor workflow](https://github.com/drfxai/Signal-Bridge/actions/workflows/build-ea.yml).
 Actual DEMO broker E2E certification remains a release gate.
 
 ## UI previews
@@ -262,3 +262,5 @@ Historical EA snapshots are recovered from Git history instead of duplicated in 
 **1 month free · 3 months $47 · 1 year $165**
 
 </div>
+
+Latest redesign: [EA 0.27.0 compact panel and controlled DEMO/LIVE tests](docs/EA_V027_LUXURY_TESTS.md).

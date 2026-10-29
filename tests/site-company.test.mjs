@@ -181,7 +181,7 @@ test('live feature readiness is reflected honestly in account and checkout UI',a
  assert.ok(SITE_HTML.includes('loaderFallback'));
  const r=await handler.fetch(new Request('https://drfx.company/api/config'),{DB:{},LICENSE_VAULT_KEY:'configured-but-not-shared'});
  assert.equal(r.status,200);
- assert.deepEqual(await r.json(),{ok:true,email:false,telegram:false,payments:false,licensing:true,ea_hub:false,release:'signalbridge-connectivity-20261029.1'});
+ assert.deepEqual(await r.json(),{ok:true,email:false,telegram:false,payments:false,licensing:true,ea_hub:false,release:'signalbridge-design-20261029.2'});
 });
 test('cinematic render loops reuse canvas pixel buffers rather than reallocating at every frame',()=>{
  assert.match(DESIGN_JS,/indCanvas\.width !== wpx/);

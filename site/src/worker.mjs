@@ -1,5 +1,5 @@
 import { createAndDispatch } from '../../worker/src/command.mjs';
-import { demoReadiness, makeConnectionTest } from './execution-control.mjs';
+import { demoReadiness, testReadiness, makeConnectionTest } from './execution-control.mjs';
 import { SITE_HTML, SITE_CSS, SITE_JS, DESIGN_JS } from './ui.mjs';
 import { TAILWIND_CSS } from './tailwind.mjs';
 import { MINI_HTML, MINI_JS } from './telegram-mini.mjs';
@@ -319,7 +319,7 @@ async function connectionDiagnostic(env,user){
   "WHERE sl.user_id=? LIMIT 1"
  ).bind(user.id).first();
  if(!row)return {license:'missing',mt5_bound:false,last_handshake:null,live_socket_verified:false,trade_executed:false};
- let live=false,terminal=false,connectedAt=null,snapshotAvailable=false,fresh=false,mt5Mode=null,capabilities=[];
+ let live=false,terminal=false,connectedAt=null,snapshotAvailable=false,fresh=false,mt5Mode=null,capabilities=[],telemetry=null;
  if(env.AGENT_HUB){
   try{
    const hub=env.AGENT_HUB.get(env.AGENT_HUB.idFromName(row.agent_id));
@@ -332,7 +332,7 @@ async function connectionDiagnostic(env,user){
       socket.account?.login===row.account_login&&socket.account?.server===row.account_server;
     fresh=matches&&Number.isFinite(Date.parse(socket.last_seen_at))&&Date.now()-Date.parse(socket.last_seen_at)>=0&&Date.now()-Date.parse(socket.last_seen_at)<90000;
      live=matches&&fresh;terminal=matches&&socket.terminal_online===true&&fresh;
-     mt5Mode=matches?socket.account?.mode:null;capabilities=matches?(socket.capabilities||[]):[];
+     telemetry=matches?socket.account:null;mt5Mode=matches?socket.account?.mode:null;capabilities=matches?(socket.capabilities||[]):[];
     connectedAt=matches?socket.connected_at||null:null;
    }
   }catch{ /* A failed read-only snapshot never counts as an online EA. */ }
@@ -342,7 +342,7 @@ async function connectionDiagnostic(env,user){
   mt5_account:row.account_login?{login:row.account_login,server:row.account_server}:null,
   last_handshake:row.last_connected_at||null,activated_at:row.activated_at||null,
   live_socket_verified:live,terminal_online:terminal,live_snapshot_available:snapshotAvailable,
-  connected_at:connectedAt,fresh,mt5_mode:mt5Mode,capabilities,
+  expires_at:row.expires_at,telemetry:live?telemetry:null,connected_at:connectedAt,fresh,mt5_mode:mt5Mode,capabilities,
    license_unexpired:!!row.expires_at&&Date.parse(row.expires_at.replace(' ','T')+'Z')>Date.now(),trade_executed:false,
   note:snapshotAvailable?'Live Durable Object EA snapshot; no order was placed.':!env.AGENT_HUB?'EA hub binding is missing from the site deployment.':'Live socket could not be independently verified. Database history shown only.'};
 }
@@ -358,18 +358,20 @@ async function setWebhookMode(req,env,user){
  await audit(env,user.id,'tv_execution_mode',user.id,b.mode);
  return json({ok:true,webhook:await userWebhook(env,user)});
 }
-async function runConnectionTest(req,env,user){
+async function runConnectionTest(req,env,user,legacy=false){
  const b=await readBody(req);if(b.confirm!==true)return fail('EXPLICIT_CONFIRMATION_REQUIRED');
  if(!env.AGENT_HUB)return fail('EA_HUB_NOT_CONFIGURED',503);
- const d=await connectionDiagnostic(env,user),reason=demoReadiness(d,{timedTest:true});
+ const d=await connectionDiagnostic(env,user),reason=legacy?demoReadiness(d,{timedTest:true}):testReadiness(d);
  if(reason)return fail(reason,409);
+ if(!legacy&&(b.account_mode!==d.mt5_mode||b.account_login!==d.mt5_account?.login||b.account_server!==d.mt5_account?.server))return fail('TEST_ACCOUNT_CHANGED',409);
+ if(d.mt5_mode==='LIVE'&&b.confirm_live!=='CONFIRM LIVE TEST')return fail('LIVE_CONFIRMATION_REQUIRED',400);
  if(!await limited(req,env,'demo:test:'+user.id,1))return fail('RATE_LIMITED',429);
  const id=uid('test'),commandId=crypto.randomUUID();
- const inserted=await env.DB.prepare("INSERT INTO connection_tests (id,user_id,agent_id,command_id) VALUES (?,?,?,?) ON CONFLICT DO NOTHING").bind(id,user.id,d.agent_id,commandId).run();
+ const inserted=await env.DB.prepare("INSERT INTO connection_tests (id,user_id,agent_id,command_id,account_mode,account_login,account_server) VALUES (?,?,?,?,?,?,?) ON CONFLICT DO NOTHING").bind(id,user.id,d.agent_id,commandId,d.mt5_mode,d.mt5_account?.login,d.mt5_account?.server).run();
  if(inserted.meta?.changes!==1)return fail('TEST_ALREADY_PENDING',409);
- await audit(env,user.id,'demo_connection_test',user.id,id);
+ await audit(env,user.id,'connection_test',user.id,id+' '+d.mt5_mode);
  // Persist before dispatch. An uncertain dispatch must never be blindly repeated.
- const dispatch=await createAndDispatch(env,{tenantId:user.id,agentId:d.agent_id,sourceType:'test',sourceRef:id,commandId,signal:makeConnectionTest(id),mode:'demo_execute'});
+ const dispatch=await createAndDispatch(env,{tenantId:user.id,agentId:d.agent_id,sourceType:'test',sourceRef:id,commandId,signal:makeConnectionTest(id,Date.now(),legacy?null:{mode:d.mt5_mode,...d.mt5_account}),mode:legacy?'demo_execute':'test_execute'});
  return json({ok:true,test_id:id,command_id:dispatch.command_id,status:dispatch.status,trade_executed:false},202);
 }
 async function testStatus(req,env,user){
@@ -610,7 +612,7 @@ async function api(req,env){
  const u=new URL(req.url),path=u.pathname;
  if(path==='/api/telegram/webhook'&&req.method==='POST')return telegramWebhook(req,env);
  if(path==='/api/payments/ipn'&&req.method==='POST')return ipnHandler(req,env);
- if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY,ea_hub:!!env.AGENT_HUB,release:'signalbridge-connectivity-20261029.1'});
+ if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY,ea_hub:!!env.AGENT_HUB,release:'signalbridge-design-20261029.2'});
  if(path==='/api/telegram/health'&&req.method==='GET'){
   if(!await limited(req,env,'public:telegram-health',5))return fail('RATE_LIMITED',429);
   return json(await telegramHealth(env));
@@ -643,7 +645,8 @@ async function api(req,env){
  if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
  if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);
  if(path==='/api/connection/check'&&req.method==='GET')return json({ok:true,diagnostic:await connectionDiagnostic(env,user)});
- if(path==='/api/connection/test-demo'&&req.method==='POST')return runConnectionTest(req,env,user);
+ if(path==='/api/connection/test-demo'&&req.method==='POST')return runConnectionTest(req,env,user,true);
+ if(path==='/api/connection/test'&&req.method==='POST')return runConnectionTest(req,env,user);
  if(path==='/api/connection/test-status'&&req.method==='GET')return testStatus(req,env,user);
  if(path==='/api/webhook/mode'&&req.method==='POST')return setWebhookMode(req,env,user);
  if(path==='/api/checkout'&&req.method==='POST')return createCheckout(req,env,user);

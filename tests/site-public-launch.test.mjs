@@ -13,7 +13,7 @@ test('Public release has license, security policy and no misleading open-source 
  assert.match(license,/source-available/);
  assert.match(license,/All rights reserved/);
  const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8');
- assert.match(readme,/DEMO-only execution/);
+ assert.match(readme,/DEMO-only automatic signals/);
  assert.match(readme,/Product Gallery/);
  assert.match(readme,/assets\/readme\/signalbridge-hero\.jpg/);
  assert.match(readme,/assets\/readme\/signalbridge-everywhere\.jpg/);

@@ -1,6 +1,6 @@
 const POSITIVE=v=>typeof v==='number'&&Number.isFinite(v)&&v>0;
 const SYMBOL=/^[A-Z0-9][A-Z0-9._-]{0,31}$/;
-const MODES=new Set(['dry_run','demo_execute']);
+const MODES=new Set(['dry_run','demo_execute','test_execute']);
 
 export function normalizeExecutionMode(value){return MODES.has(value)?value:'dry_run';}
 
@@ -36,7 +36,7 @@ export function makeCommand({tenantId,agentId,sourceType,sourceRef,signal,mode,c
   source:{type:sourceType,ref:sourceRef||null,strategy:signal.metadata?.strategy||null},
   correlation_id:String(signal.correlation_id||signal.external_signal_id||commandId),
   correlation_tag:correlationTag(signal.correlation_id||signal.external_signal_id||commandId),
-  execution_mode:normalizeExecutionMode(mode),action:signal.action,
+  execution_mode:mode==='test_execute'&&signal.action!=='TEST'?'dry_run':normalizeExecutionMode(mode),action:signal.action,test_account:signal.test_account||null,
   management_event:signal.management_event||null,side:signal.side||null,symbol:signal.symbol||null,order:signal.order||null,
   occurred_at:signal.occurred_at||new Date().toISOString(),expires_at:signal.expires_at||null};
 }

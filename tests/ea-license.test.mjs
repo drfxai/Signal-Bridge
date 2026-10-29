@@ -56,16 +56,16 @@ test('active EA sockets lose command access after personal code rotation',async(
 });
 
 
-test('EA v0.26.0 reports activation and connectivity errors without exposing the code',()=>{
+test('EA v0.27.0 reports activation and connectivity errors without exposing the code',()=>{
  const mq5=readFileSync('mt5/DrFX_SignalBridge_EA.mq5','utf8');
- assert.match(mq5,/#property version\s+"0\.260"/);
+ assert.match(mq5,/#property version\s+"0\.270"/);
  assert.match(mq5,/bool ValidActivationCode\(string code\)/);
  assert.match(mq5,/ACTIVATION CODE REQUIRED/);
  assert.match(mq5,/WEBSOCKET REFUSED \(HTTP\)/);
  assert.match(mq5,/INVALID WEBSOCKET RESPONSE/);
  assert.match(mq5,/CANNOT CONNECT TO CLOUD/);
  assert.match(mq5,/g_connStage/);
- assert.match(mq5,/if\(now-g_lastUiUpdate>=750\)/);
+ assert.match(mq5,/if\(now-g_lastUiUpdate>=\(ulong\)UiRefresh\(\)\)/);
  assert.match(mq5,/if\(AccountInfoInteger\(ACCOUNT_TRADE_MODE\)!=ACCOUNT_TRADE_MODE_DEMO\)/);
  assert.match(mq5,/InpEnableDemoExecution=false/);
  assert.match(mq5,/AccountInfoInteger\(ACCOUNT_TRADE_MODE\)!=ACCOUNT_TRADE_MODE_DEMO/);

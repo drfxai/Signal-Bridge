@@ -248,7 +248,7 @@ test('Mini App provides safe one-time bot /login code UI without exposing EA sec
 test('Mini App exposes private webhook and no-trade connection test for authenticated users',()=>{
  for(const id of ['miniTestConnection','miniConnectionLicense','miniConnectionLast','miniCreateWebhook','miniCopyWebhook','miniRotateWebhook','miniWebhookUrl'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
  assert.ok(MINI_HTML.includes('startTimedTest'));
- assert.ok(MINI_JS.includes('/api/connection/test-demo'));
+ assert.ok(MINI_JS.includes('/api/connection/test'));
  assert.ok(MINI_JS.includes("'/api/webhook/create'"));
  assert.ok(MINI_JS.includes("'/api/webhook/rotate'"));
  assert.ok(MINI_JS.includes("'/api/connection/check'"));
