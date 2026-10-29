@@ -66,8 +66,8 @@ test('Telegram bot exposes admin user lookup, grant and suspension operations be
 
 
 test('supplied cinematic design is wired to production actions',()=>{
- assert.ok(SITE_HTML.includes('Precision.'));
- assert.ok(SITE_HTML.includes('Without compromise.'));
+ assert.ok(SITE_HTML.includes('Own every signal.'));
+ assert.ok(SITE_HTML.includes('Trade on your terms.'));
  assert.ok(SITE_HTML.includes('id="signalEngineCanvas"'));
  assert.ok(SITE_HTML.includes('id="globeCanvas"'));
  assert.ok(SITE_HTML.includes('id="network"'));
@@ -159,9 +159,9 @@ test('approved HTML is production-ready with self-hosted Tailwind and real membe
  assert.ok(!DESIGN_JS.includes('regenerateSerialKey'));
  assert.ok(SITE_HTML.includes('data-plan="quarterly"'));
  assert.ok(SITE_HTML.includes('data-plan="annual"'));
- assert.ok(SITE_HTML.includes('SIMULATED'));
- assert.ok(SITE_HTML.includes('DEMO CHART'));
- assert.ok(DESIGN_JS.includes('DEMO · XAUUSD BUY'));
+ assert.ok(SITE_HTML.includes('INTERACTIVE FLOW'));
+ assert.ok(SITE_HTML.includes('INTERACTIVE CHART'));
+ assert.ok(DESIGN_JS.includes('TRADINGVIEW → EDGE → MT5'));
  const response=await handler.fetch(new Request('https://drfx.company/assets/tailwind.css'),{});
  assert.equal(response.status,200);
  assert.match(response.headers.get('content-type'),/text\/css/);
@@ -271,7 +271,7 @@ test('connection check never claims active socket or silently creates a demo tra
  assert.ok(worker.includes("path==='/api/connection/check'"));
  assert.ok(worker.includes("live_socket_verified:false,trade_executed:false"));
  assert.ok(worker.includes("DEMO_TRADE_TEST_REQUIRES_UPDATED_EA"));
- assert.ok(SITE_HTML.includes('DEMO · Coming with EA update'));
+ assert.ok(SITE_HTML.includes('Practice-account test coming with EA update'));
  const p=new Request('https://drfx.company/api/connection/test-demo',{method:'POST',headers:{origin:'https://drfx.company'}});
  const r=await handler.fetch(p,{});
  assert.equal(r.status,503); // no D1 => endpoint cannot trade or authenticate
@@ -284,4 +284,27 @@ test('last connection ATTEMPT is never misrepresented as live broker execution',
  assert.ok(SITE_JS.includes('d.last_connection_attempt'));
  assert.ok(SITE_JS.includes('Last recorded EA connection attempt'));
  assert.ok(SITE_JS.includes("$('personalWebhookUrl').textContent='No webhook created'"));
+});
+
+test('website language picker is custom-sized, accessible and functional without Android native select',async()=>{
+ const {DESIGN_HTML}=await import('../site/src/design.mjs');
+ assert.ok(DESIGN_HTML.includes('id="siteLanguagePicker"'));
+ assert.ok(DESIGN_HTML.includes('id="siteLanguageOptions"'));
+ assert.ok(DESIGN_HTML.includes('data-site-language="fa"'));
+ assert.ok(DESIGN_HTML.includes('data-site-language="en"'));
+ assert.ok(!DESIGN_HTML.includes('href="https://github.com/drfxai/Signal-Bridge"'));
+ assert.ok(DESIGN_HTML.includes('Every signal.')===false);
+ assert.ok(SITE_JS.includes("function applySiteLanguage(next)"));
+ assert.ok(SITE_JS.includes("if(e.key==='Escape')closeLanguageMenu()"));
+ assert.ok(SITE_JS.includes("hero_desc"));
+ assert.doesNotThrow(()=>new Function(SITE_JS));
+});
+test('landing copy promotes architecture without invented PnL',()=>{
+ assert.ok(SITE_HTML.includes('Own every signal.'));
+ assert.ok(SITE_HTML.includes('Trade on your terms.'));
+ assert.ok(SITE_HTML.includes('Your signals. Your terminal. Your control.'));
+ assert.ok(SITE_HTML.includes('not broker fills or verified trading returns'));
+ assert.ok(!DESIGN_JS.includes('+1.50 XAU SIMULATED'));
+ assert.ok(!DESIGN_JS.includes('-3.00 EUR SIMULATED'));
+ assert.ok(!DESIGN_JS.includes('+2.00 NAS SIMULATED'));
 });
