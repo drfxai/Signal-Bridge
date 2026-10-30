@@ -51,6 +51,15 @@ export const SETUP_CSS=String.raw`
 @media(max-width:360px){.su-path>button{padding:10px 7px}.su-path b{font-size:11px}.su-path small{font-size:9px}.su-card{padding:13px}.su-product b{font-size:12px}.su-product{gap:8px}.su-card a{font-size:10px;padding:8px 10px}}
 @media(min-width:701px) and (max-height:950px){.su-heading{margin-bottom:12px}.su-heading p{display:none}.su-heading h2{font-size:28px!important}.su-path{margin-bottom:10px}.su-path>button{min-height:68px;padding:12px 15px;gap:11px}.su-path .su-brand{width:30px;height:30px}.su-coach{padding:9px 13px;margin-bottom:14px}.su-card{padding:16px}.su-card>header{margin-bottom:12px}.su-product{padding:10px 0}.su-card label{margin-top:10px}.su-card .su-help{font-size:11px;line-height:1.55}.su-card details{margin-top:10px;padding-top:9px}.su-scalper{margin-top:10px}.su-footer{margin-top:12px}}
 @media(prefers-reduced-motion:reduce){.su-page *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.su-card{box-shadow:0 8px 24px #00000012}.su-path>button[aria-pressed=true]{box-shadow:inset 0 2px #f0ce89}
+@media(max-width:700px){
+.su-heading .sb-section-label,.su-heading p{display:none}.su-heading h2{font-size:24px!important}.su-heading{margin-bottom:10px}
+.su-path>button{min-height:74px;padding:9px 8px;gap:5px}.su-path .su-brand{width:22px;height:22px}.su-path b{font-size:11px}.su-path small{font-size:9px}.su-path em{top:9px}
+.su-coach{padding:8px 10px;margin-bottom:10px}.su-coach span:not(.su-coach-icon){display:none}.su-coach>button{min-height:40px}
+.su-card{padding:12px}.su-card>header{margin-bottom:8px}.su-card h3{font-size:15px!important}.su-product{padding:8px 0}.su-product b{font-size:12px}.su-card label{margin:9px 0 5px;font-size:11px}.su-symbol{padding:8px 10px;display:flex;flex-wrap:wrap;gap:5px 10px}.su-symbol strong{font-size:22px}
+.su-scalper{margin-top:9px}.su-keys{max-height:80px;font-size:10px;line-height:1.4}.su-card details{margin-top:8px;padding-top:7px}.su-card summary{min-height:36px;font-size:11px}.su-footer{margin-top:6px}.su-footer #setupStatus{font-size:10px}
+}
+
 `;
 function mountSetup(){
  const root=document.getElementById('memberSetup');if(!root?.querySelector)return;
