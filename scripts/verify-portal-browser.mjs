@@ -89,6 +89,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   await page.locator('[data-setup-step='+step+']').click();
   if(!await page.locator('#'+step).isVisible())throw Error('Setup step inaccessible: '+step);
   if(width<=700&&await page.locator('.su-grid > article:visible').count()!==1)throw Error('Mobile setup stacks all panels');
+  await page.locator('#'+step).evaluate(e=>Promise.all(e.getAnimations().map(a=>a.finished)));
   await page.screenshot({path:dir+'/'+label+'-'+step+'.png',fullPage:url!=='/'});
  }
  await page.locator('#setupChannel').selectOption('-1001');
@@ -172,6 +173,7 @@ for(const [label,url,width,height] of [['offline-web-phone','/',390,844],['offli
  await page.locator('#testSymbolFix').waitFor({state:'visible'});
  if(!await page.locator('#testSymbolFix').evaluate(e=>e.parentElement.classList.contains('sb-tests')))throw Error('Diagnostic trapped in narrow action column');
  if((await page.locator('.sb-chart').boundingBox()).height>220)throw Error('Diagnostic stretches empty chart');
+ if(await page.locator('.sb-grid').evaluate(e=>e.scrollWidth>e.clientWidth+1))throw Error('Offline grid overflows its container');
  if(await page.locator('#resetDailyRisk').evaluate(e=>e.scrollHeight>e.clientHeight+2))throw Error('Risk status clipped');
  await page.screenshot({path:dir+'/'+label+'.png',fullPage:url!=='/'});
  await page.locator('.sb-chart-connect button').click();

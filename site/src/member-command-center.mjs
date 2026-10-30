@@ -29,14 +29,14 @@ export const COMMAND_CENTER_CSS=String.raw`
 .sb-risk-ring .sb-donut{z-index:1;isolation:isolate}
 .sb-console #resetDailyRisk:disabled{opacity:1;color:#c5d2e3;background:#1a293e;border-color:#3b506a;white-space:normal;height:auto;overflow:visible}
 .sb-risk-body>div:last-child{min-width:0;max-width:140px}
-.sb-console.sb-tab-overview[data-history=empty] .sb-grid{grid-template-areas:'tests chart' 'risk chart' 'stream active';grid-template-columns:minmax(310px,1fr) minmax(0,1.8fr)}
+.sb-console.sb-tab-overview[data-history=empty] .sb-grid{grid-template-areas:'chart tests' 'risk tests' 'stream active';grid-template-columns:minmax(0,1.8fr) minmax(310px,1fr)}
 .sb-console[data-history=empty] .sb-chart{align-self:start}
 .sb-console[data-history=empty] .sb-chart-connect{min-height:82px}
 @media(max-width:700px){
 .sb-console{padding:12px;background:#0b1220;border-radius:14px}
 .sb-premium-eyebrow{display:none}.sb-command-heading h2{font-size:23px!important}
 .sb-kpis article:nth-child(n){min-height:72px;padding:9px 11px;gap:2px}.sb-kpis article:nth-child(n) strong{font-size:24px;min-height:27px}
-.sb-console.sb-tab-overview .sb-grid{grid-template-columns:1fr 1fr;grid-template-areas:'tests tests' 'risk risk' 'stream active' 'chart chart';gap:8px}
+.sb-console.sb-tab-overview .sb-grid,.sb-console.sb-tab-overview[data-history=empty] .sb-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'tests tests' 'risk risk' 'stream active' 'chart chart';gap:8px}
 .sb-tests .sb-actions{flex-direction:row;gap:8px}.sb-tests .sb-action button{min-height:44px;border-radius:9px}.sb-tests .sb-action p{font-size:10px}
 .sb-tests .sb-card-title{font-size:13px}.sb-risk{flex-direction:row;align-items:center;padding:10px 12px}.sb-risk-body{margin:0;gap:10px}.sb-risk-ring{width:46px;height:46px}.sb-risk-body button{max-width:110px;font-size:11px;min-height:34px}
 .sb-risk-ring .sb-donut strong{font-size:10px}.sb-risk-body>div:last-child{max-width:110px}.sb-card-head>div{min-width:0}
