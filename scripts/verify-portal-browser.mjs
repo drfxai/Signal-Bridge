@@ -39,6 +39,26 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   if(headBox.y+headBox.height>gridBox.y+1)throw Error('Showcase heading overlaps previews');
   await page.locator('#product-gallery').screenshot({path:dir+'/'+label+'-showcase.png'});
   await page.locator('#plans').screenshot({path:dir+'/'+label+'-membership.png'});
+  await page.evaluate(()=>document.querySelector('#suite').scrollIntoView({block:'center',behavior:'instant'}));
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  if(label==='website-desktop'){
+   const card=page.locator('.sx-product').first(),box=await card.boundingBox();
+   await page.mouse.move(box.x+box.width*.8,box.y+box.height*.3);
+   await page.waitForFunction(()=>document.querySelector('.sx-product').classList.contains('sx-pointer-active'));
+   await page.waitForTimeout(300);
+   if(!await card.evaluate(e=>getComputedStyle(e).transform.startsWith('matrix3d(')))throw Error('Reveal style overrides product 3D tilt');
+   if(await card.evaluate(e=>getComputedStyle(e,':before').opacity)!=='1')throw Error('Pointer spotlight is hidden');
+   await page.locator('#suite').screenshot({path:dir+'/'+label+'-suite-hover.png'});
+   await page.mouse.move(0,0);await page.waitForTimeout(300);
+   if(await card.evaluate(e=>e.classList.contains('sx-pointer-active')||e.style.getPropertyValue('--rx')!=='0deg'))throw Error('Tilt does not reset');
+   await page.emulateMedia({reducedMotion:'reduce'});
+   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.sx-product')).transform==='none');
+   await page.emulateMedia({reducedMotion:'no-preference'});
+  }
+  await page.locator('#suite').screenshot({path:dir+'/'+label+'-suite.png'});
+  if(await page.locator('.sx-flow').evaluate(e=>getComputedStyle(e,':before').content)!=='none')throw Error('Installation line still crosses cards');
+  await page.locator('.sx-flow').screenshot({path:dir+'/'+label+'-install-steps.png'});
+
   await page.screenshot({path:dir+'/'+label+'-landing.png',fullPage:true});
  }
  if(url==='/')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});

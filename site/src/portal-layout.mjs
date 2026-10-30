@@ -63,6 +63,6 @@ export const ACCOUNT_LAYOUT_CSS = String.raw`
 export const REPAIR_CSS=String.raw`
 .sb-console,.portal-content{min-width:0}.sb-mobile-tabs{transform:none!important;filter:none!important}
 @media(max-width:700px){.sx-sp-grid{grid-template-columns:minmax(0,1fr)}.sx-sp-hero{grid-template-columns:auto minmax(0,1fr)}.sx-sp-card{padding:16px}.sx-sp-guide{grid-template-columns:1fr}.sx-sp-plans{gap:8px}.sx-sp-input input{font-size:16px}#portalOverlay .sb-top nav{display:none!important}}
-.sx-reveal{animation:repairVisible 0s 4s forwards}@keyframes repairVisible{to{opacity:1;transform:none;visibility:visible}}
+.sx-reveal{animation:repairVisible 0s 4s forwards}@keyframes repairVisible{to{opacity:1;visibility:visible}}
 @media(prefers-reduced-motion:reduce){.sx-reveal{opacity:1!important;transform:none!important}}
 `;
