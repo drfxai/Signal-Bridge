@@ -1,7 +1,7 @@
 import {DEFAULT_POLICY,validatePolicy} from '../../worker/src/member-policy.mjs';
 import {parseSignalMessage} from '../../worker/src/signal-adapters.mjs';
 const reply=(b,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{'content-type':'application/json','cache-control':'no-store'}});
-export async function memberSettings(env,user){const r=await env.DB.prepare('SELECT * FROM member_signal_settings WHERE user_id=?').bind(user.id).first();return {policy:r?JSON.parse(r.policy_json):{...DEFAULT_POLICY},telegram_chat_id:r?.telegram_chat_id||user.telegram_id||'',telegram_verified:!!r?.telegram_verified,tv_to_telegram:!!r?.tv_to_telegram,telegram_to_mt5:!!r?.telegram_to_mt5,default_lots:r?.default_lots||0.01,report_since:r?.report_since||null};}
+export async function memberSettings(env,user){await env.DB.prepare('INSERT INTO member_signal_settings(user_id,policy_json,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5,default_lots) VALUES (?,?,?,?,1,1,0.01) ON CONFLICT(user_id) DO NOTHING').bind(user.id,JSON.stringify(DEFAULT_POLICY),user.telegram_id||null,user.telegram_id?1:0).run();const r=await env.DB.prepare('SELECT * FROM member_signal_settings WHERE user_id=?').bind(user.id).first();return {policy:r?JSON.parse(r.policy_json):{...DEFAULT_POLICY},telegram_chat_id:r?.telegram_chat_id||user.telegram_id||'',telegram_verified:!!r?.telegram_verified,tv_to_telegram:!!r?.tv_to_telegram,telegram_to_mt5:!!r?.telegram_to_mt5,default_lots:r?.default_lots||0.01,report_since:r?.report_since||null};}
 export async function memberControls(path,b,env,user,diagnostic){
  if(path==='/api/member/settings'&&b===undefined)return reply({ok:true,settings:await memberSettings(env,user)});
  if(path==='/api/member/settings'){

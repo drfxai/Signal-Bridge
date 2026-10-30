@@ -74,7 +74,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  if(await page.locator('.sb-kpis article').count()!==4)throw Error('Overview should have four primary metrics');
  if(width>700&&url==='/'){
   const box=await page.locator('#portalOverlay .portal').boundingBox();
-  if(box.width>1440||box.width>=width)throw Error('Desktop workspace is not constrained');
+  if(Math.abs(box.width-width)>2)throw Error('Desktop workspace must fill the viewport');
  }
  if(width<=700){
   const box=await page.locator('.sb-kpis').boundingBox();if(box.height>210)throw Error('Mobile KPI stack too tall');
