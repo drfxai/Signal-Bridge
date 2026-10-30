@@ -115,8 +115,19 @@ async function getOrCreateEmail(env,email){
 }
 async function getOrCreateTelegram(env,id,username){
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(id).first();
- if(user)return user;
- const userId=uid('usr'),role=env.ADMIN_TELEGRAM_ID&&safeEq(id,env.ADMIN_TELEGRAM_ID)?'admin':'user';
+ const verifiedAdmin=!!(env.ADMIN_TELEGRAM_ID&&safeEq(id,String(env.ADMIN_TELEGRAM_ID).trim()));
+ if(user){
+  // ADMIN_TELEGRAM_ID may be configured *after* the member first joined.
+  // A verified matching numeric Telegram principal can be promoted; never
+  // promote using a username, bot handle or a client-supplied account ID.
+  if(verifiedAdmin&&user.role!=='admin'){
+   await env.DB.prepare("UPDATE site_users SET role='admin',updated_at=CURRENT_TIMESTAMP WHERE id=? AND telegram_id=?").bind(user.id,id).run();
+   user={...user,role:'admin'};
+   await audit(env,user.id,'verified_telegram_admin_granted',user.id);
+  }
+  return user;
+ }
+ const userId=uid('usr'),role=verifiedAdmin?'admin':'user';
  await env.DB.prepare("INSERT OR IGNORE INTO site_users (id,telegram_id,telegram_name,role) VALUES (?,?,?,?)").bind(userId,id,safeText(username,80),role).run();
  user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(userId).first();
  return user;
