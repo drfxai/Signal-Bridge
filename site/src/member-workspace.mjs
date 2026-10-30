@@ -11,9 +11,9 @@ export function composeWorkspace(html){
  <article><div class="sb-metric-label"><small>Signals received</small>${icon('signals')}</div><strong id="reportSignals">—</strong><div class="sb-target-totals"><span>TP1 <b id="reportTP1">—</b></span><span>TP2 <b id="reportTP2">—</b></span><span>SL <b id="reportStops">—</b></span></div></article>
  <article><div class="sb-metric-label"><small>Floating P/L</small>${icon('pulse')}</div><strong id="reportFloating">—</strong><span>Open positions · account scope</span></article></div>`;
  html=html.slice(0,begin)+metrics+html.slice(end);
- html=html.replace('<h2>Account overview','<h2>Trading cockpit');
+ html=html.replace('<h2>Account overview','<h2>Daily overview');
  html=html.replace('<button type="button" data-sb-tab="signals">View all signals ↗</button>',`<div class="sb-workspace-tools"><span id="workspaceSyncAge" aria-live="off">Syncing…</span><button id="workspaceRefresh" type="button" aria-label="Refresh account telemetry" title="Refresh account telemetry">${icon('refresh')}</button><button id="workspaceAccount" type="button" aria-label="Account and membership" title="Account and membership">${icon('settings')}</button></div>`);
- html=html.replace('<div class="sb-kpis">',`<div class="sb-flight-path" aria-label="Connection overview"><div class="sb-flight-terminal"><i aria-hidden="true"></i><div><strong id="workspaceHealth">Connecting to EA</strong><span id="workspaceHealthHint">Checking your terminal</span></div></div><div class="sb-flight-visual" aria-hidden="true"><span>TV / TG</span><i></i><span>EDGE</span><i></i><span>MT5</span></div><button type="button" data-sb-tab="routes"><span id="workspaceRoutes">Configure routes</span> ↗</button></div><div class="sb-kpis">`);
+ html=html.replace('<div class="sb-kpis">',`<div class="sb-flight-path" aria-label="Connection overview"><div class="sb-flight-terminal"><i aria-hidden="true"></i><div><strong id="workspaceHealth">Connecting to EA</strong><span id="workspaceHealthHint">Checking your terminal</span></div></div><div class="sb-flight-visual" aria-hidden="true"><span>TV / TG</span><i></i><span>EDGE</span><i></i><span>MT5</span></div><button type="button" data-sb-tab="setup"><span id="workspaceRoutes">Open setup</span> ↗</button></div><div class="sb-kpis">`);
  html=html.replace('<h3>Performance · 14 days</h3>',`<div class="sb-chart-heading"><h3>Performance · 14 days</h3></div>`);
  html=html.replace('<select id="reportPeriod"', '<select id="reportPeriod"');
  html=html.replace('<span id="performanceCaption">Waiting for broker history</span></div>',`<span id="performanceCaption">Waiting for broker history</span><div class="sb-chart-toggle" role="group" aria-label="Chart display"><button type="button" data-chart-mode="cumulative" aria-pressed="true">Curve</button><button type="button" data-chart-mode="daily" aria-pressed="false">Daily</button></div></div>`);
@@ -31,5 +31,7 @@ export function composeWorkspace(html){
  html=html.replace('<button data-sb-tab="signals">☷ Signals</button>', '<button type="button" data-sb-tab="setup"><span>Setup</span></button><button data-sb-tab="signals">☷ Signals</button>');
  html=html.replace('<button data-sb-tab="signals">☷<span>Signals</span></button>', '<button type="button" data-sb-tab="setup">⚡<span>Setup</span></button><button data-sb-tab="signals">☷<span>Signals</span></button>');
  html=html.replace('<div class="sb-mobile-tabs">',SETUP_HTML+'<div class="sb-mobile-tabs">');
+ html=html.replace(/<span class="sb-eyebrow">([^<]*)<\/span>/,'<span class="sb-eyebrow" hidden>$1</span><span class="sb-premium-eyebrow">YOUR DAILY COMMAND CENTER</span>');
+ html=html.replace('<div class="sb-chart-axis">','<div class="sb-chart-connect"><span id="workspaceHistoryHint">No broker history yet. Connect your EA to begin.</span><button type="button" data-sb-tab="setup">Set up your EA ↗</button></div><div class="sb-chart-axis">');
  return html;
 }
