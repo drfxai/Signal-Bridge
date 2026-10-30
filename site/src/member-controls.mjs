@@ -1,17 +1,18 @@
 import {DEFAULT_POLICY,validatePolicy} from '../../worker/src/member-policy.mjs';
 import {parseSignalMessage} from '../../worker/src/signal-adapters.mjs';
 const reply=(b,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{'content-type':'application/json','cache-control':'no-store'}});
-export async function memberSettings(env,user){await env.DB.prepare('INSERT INTO member_signal_settings(user_id,policy_json,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5,default_lots) VALUES (?,?,?,?,1,1,0.01) ON CONFLICT(user_id) DO NOTHING').bind(user.id,JSON.stringify(DEFAULT_POLICY),user.telegram_id||null,user.telegram_id?1:0).run();const r=await env.DB.prepare('SELECT * FROM member_signal_settings WHERE user_id=?').bind(user.id).first();return {policy:r?JSON.parse(r.policy_json):{...DEFAULT_POLICY},telegram_chat_id:r?.telegram_chat_id||user.telegram_id||'',telegram_verified:!!r?.telegram_verified,tv_to_telegram:!!r?.tv_to_telegram,telegram_to_mt5:!!r?.telegram_to_mt5,default_lots:r?.default_lots||0.01,report_since:r?.report_since||null};}
+export async function memberSettings(env,user){await env.DB.prepare('INSERT INTO member_signal_settings(user_id,policy_json,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5,default_lots) VALUES (?,?,?,?,1,1,0.01) ON CONFLICT(user_id) DO NOTHING').bind(user.id,JSON.stringify(DEFAULT_POLICY),user.telegram_id||null,user.telegram_id?1:0).run();const r=await env.DB.prepare('SELECT * FROM member_signal_settings WHERE user_id=?').bind(user.id).first();return {policy:r?JSON.parse(r.policy_json):{...DEFAULT_POLICY},telegram_chat_id:r?.telegram_chat_id||user.telegram_id||'',telegram_verified:!!r?.telegram_verified,tv_to_mt5:r?.tv_to_mt5!==0,tv_to_telegram:!!r?.tv_to_telegram,telegram_to_mt5:!!r?.telegram_to_mt5,default_lots:r?.default_lots||0.01,report_since:r?.report_since||null};}
 export async function memberControls(path,b,env,user,diagnostic){
  if(path==='/api/member/settings'&&b===undefined)return reply({ok:true,settings:await memberSettings(env,user)});
  if(path==='/api/member/settings'){
   if(typeof b.tv_to_telegram!=='boolean'||typeof b.telegram_to_mt5!=='boolean')return reply({error:'INVALID_ROUTE'},400);
   let policy;try{policy=validatePolicy(b.policy)}catch(e){return reply({error:e.message},400)}
   if(!Number.isFinite(b.default_lots)||b.default_lots<=0||b.default_lots>100)return reply({error:'INVALID_LOTS'},400);
-  const old=await memberSettings(env,user),enabled=!!b.tv_to_telegram||!!b.telegram_to_mt5;
+  const old=await memberSettings(env,user),enabled=(!!b.tv_to_telegram&&!old.tv_to_telegram)||(!!b.telegram_to_mt5&&!old.telegram_to_mt5);
   if(enabled&&!old.telegram_verified)return reply({error:'TELEGRAM_VERIFICATION_REQUIRED'},409);
   if(b.telegram_to_mt5&&b.confirm!==true)return reply({error:'EXPLICIT_CONFIRMATION_REQUIRED'},400);
-  await env.DB.prepare("INSERT INTO member_signal_settings(user_id,policy_json,default_lots,tv_to_telegram,telegram_to_mt5) VALUES (?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET policy_json=excluded.policy_json,default_lots=excluded.default_lots,tv_to_telegram=excluded.tv_to_telegram,telegram_to_mt5=excluded.telegram_to_mt5,updated_at=CURRENT_TIMESTAMP").bind(user.id,JSON.stringify(policy),b.default_lots,b.tv_to_telegram?1:0,b.telegram_to_mt5?1:0).run();
+  if(b.tv_to_mt5!==undefined&&typeof b.tv_to_mt5!=='boolean')return reply({error:'INVALID_ROUTE'},400);
+  await env.DB.prepare("INSERT INTO member_signal_settings(user_id,policy_json,default_lots,tv_to_mt5,tv_to_telegram,telegram_to_mt5) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET policy_json=excluded.policy_json,default_lots=excluded.default_lots,tv_to_mt5=excluded.tv_to_mt5,tv_to_telegram=excluded.tv_to_telegram,telegram_to_mt5=excluded.telegram_to_mt5,updated_at=CURRENT_TIMESTAMP").bind(user.id,JSON.stringify(policy),b.default_lots,(b.tv_to_mt5??old.tv_to_mt5)?1:0,b.tv_to_telegram?1:0,b.telegram_to_mt5?1:0).run();
   return reply({ok:true,settings:await memberSettings(env,user),note:'Policy applies to new positions. EA 0.29.0 required.'});
  }
  if(path==='/api/member/telegram/verify'){
