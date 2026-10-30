@@ -14,6 +14,9 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  await page.route('**/api/**',async route=>{
   const path=new URL(route.request().url()).pathname;
   let data={ok:true};
+  if(path==='/api/downloads')data={ok:true,signalbridge:{version:'0.29.1',url:'https://example.test/ea.ex5'}};
+  if(path==='/api/scalper')data={ok:true,keys:[],download_url:'https://example.test/scalper.ex5'};
+  if(path==='/api/channels')data={ok:true,telegram_linked:true,chats:[{chat_id:'-1001',title:'Gold channel',can_post:true,webhook:{url:'https://example.test/gold'}},{chat_id:'-1002',title:'FX channel',can_post:true,webhook:{url:'https://example.test/fx'}}]};
   if(path==='/api/me')data={ok:true,user};
   if(path==='/api/config')data={ok:true,email:true,telegram:true,licensing:true,payments:false};
   if(path==='/api/connection/check')data={ok:true,diagnostic:{license:'active',capabilities:['timed-test-v2','live-test-v2','test-config-v1','risk-v1','reports-v1','exit-policy-v1'],expires_at:'2099-01-01 00:00:00',mt5_mode:label.includes('live')?'LIVE':'DEMO',mt5_account:{login:'PREVIEW',server:'TEST'},telemetry:{report:{signals:reportResets?0:128,tp1:reportResets?0:34,tp2:reportResets?0:22,tp3:0,stops:reportResets?0:9,profit:reportResets?0:240,loss:reportResets?0:-84,net:reportResets?0:156,floating:0,since:Math.floor(Date.now()/1000)-3600,series:[2,3,-2,1,6,-2,4]},equity:1000,test_symbol:'EURUSD.p',test_lots:0.01,risk:{state:riskHit?'HIT':'READY',hit_id:'12345',drawdown_pct:riskHit?10:0,limit_pct:10,daily_profit:riskHit?-100:20,signals:42,targets:3,stops:1}},live_snapshot_available:true,live_socket_verified:true,terminal_online:true}};
@@ -75,11 +78,23 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  }
  if(width<=700){
   const box=await page.locator('.sb-kpis').boundingBox();if(box.height>210)throw Error('Mobile KPI stack too tall');
-  if(await page.locator('.sb-stream').isVisible())throw Error('Mobile overview contains signal history');
+  if(await page.locator('.sb-stream .sb-table-scroll').isVisible())throw Error('Mobile overview contains full signal history');
  }
  const nav=width<=700?'.sb-mobile-tabs':'.sb-top nav';
+ await page.locator(nav+' [data-sb-tab=setup]').click();
+ await page.waitForFunction(()=>document.getElementById('setupChannel').options.length===3);
+ if(!await page.locator('#memberSetup').isVisible())throw Error('Setup missing');
+ if(await page.locator('#setupLicense').getAttribute('type')!=='password')throw Error('License exposed by default');
+ await page.locator('#setupChannel').selectOption('-1001');
+ if(await page.locator('#setupChannelHook').inputValue()!=='https://example.test/gold')throw Error('Wrong gold channel link');
+ await page.locator('#setupChannel').selectOption('-1002');
+ if(await page.locator('#setupChannelHook').inputValue()!=='https://example.test/fx')throw Error('Channel switching kept old link');
+ if(await page.locator('#setupMt5Hook').inputValue()==='https://example.test/fx')throw Error('Channel hook overwrote MT5 hook');
+ if(await page.locator('#setupBridgeDownload').getAttribute('aria-disabled')!=='false')throw Error('Compiled EA download inaccessible');
+ await page.screenshot({path:dir+'/'+label+'-setup.png',fullPage:url!=='/'});
  for(const tab of ['signals','routes','settings']){
-  await page.locator(nav+' [data-sb-tab='+tab+']').click();
+  if(tab==='signals'){await page.locator(nav+' [data-sb-tab=overview]').click();await page.locator('.sb-all-activity').click();}
+  else{await page.locator(nav+' [data-sb-tab=setup]').click();await page.locator('.su-footer [data-sb-tab='+tab+']').click();}
   const target={signals:'.sb-stream',routes:'.sb-routes',settings:'.sb-policy'}[tab];
   if(!await page.locator(target).isVisible())throw Error('Tab not reachable: '+tab);
   if(tab==='settings'&&await page.locator('.sb-account-group').count()&&await page.locator('.sb-account-group').first().getAttribute('open')!==null)throw Error('Account setup should start collapsed');

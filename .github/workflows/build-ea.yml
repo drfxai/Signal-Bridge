@@ -1,4 +1,4 @@
-name: Build MT5 EA v0.29.0 (opt-in tests)
+name: Build MT5 EA v0.29.1 (opt-in tests)
 on:
   push:
     branches: [main]
@@ -15,6 +15,8 @@ permissions:
 jobs:
   compile-ex5:
     runs-on: windows-latest
+    permissions:
+      contents: write
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +40,7 @@ jobs:
           }
           if(-not $meta){throw "MetaEditor was not installed"}
           "METAEDITOR_PATH=$($meta.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-      - name: Compile v0.29.0 EA and validate EX5
+      - name: Compile v0.29.1 EA and validate EX5
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
@@ -64,20 +66,39 @@ jobs:
           Write-Host "Compiling with standard include root: $includeDir"
           $p=Start-Process -FilePath $meta -ArgumentList @(('/compile:"'+$target+'"'),('/include:"'+$includeDir+'"'),'/log') -PassThru -Wait
           $log=[System.IO.Path]::ChangeExtension($target,'.log')
-          if(Test-Path $log){Get-Content $log | Select-Object -Last 80 | Out-Host}
+          if(-not (Test-Path $log)){throw 'MetaEditor compile log missing'}
+          $compileLog=Get-Content $log -Raw
+          $compileLog | Out-Host
+          if($compileLog -notmatch '\b0 errors,'){throw 'MetaEditor did not confirm zero compilation errors'}
           $compiled=[System.IO.Path]::ChangeExtension($target,'.ex5')
           if(-not (Test-Path $compiled)){throw "No EX5 generated (MetaEditor exit: $($p.ExitCode))"}
           $info=Get-Item $compiled
           if($info.Length -lt 4096){throw "EX5 unexpectedly small"}
           New-Item -ItemType Directory 'dist' -Force | Out-Null
-          Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.29.0_CONTROLLED_TESTS.ex5'
+          Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.29.1_CONTROLLED_TESTS.ex5'
           $hash=(Get-FileHash $compiled -Algorithm SHA256).Hash
-          @("SignalBridge EA v0.29.0 - CONTROLLED CONNECTION TESTS","SHA256: $hash","Size: $($info.Length) bytes","Automatic signals DEMO-only; LIVE position test requires separate explicit opt-in.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
+          @("SignalBridge EA v0.29.1 - CONTROLLED CONNECTION TESTS","SHA256: $hash","Size: $($info.Length) bytes","Automatic signals DEMO-only; LIVE position test requires separate explicit opt-in.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
           Write-Host "Binary built: $($info.Length) bytes; SHA256 $hash"
       - name: Upload actual EX5 for download
         uses: actions/upload-artifact@v4
         with:
-          name: DrFX_SignalBridge_EA_v0.29.0_CONTROLLED_TESTS_EX5
+          name: DrFX_SignalBridge_EA_v0.29.1_CONTROLLED_TESTS_EX5
           path: dist/
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish current compiled EA for the Setup download
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          Copy-Item 'dist/DrFX_SignalBridge_EA_v0.29.1_CONTROLLED_TESTS.ex5' 'dist/DrFX_SignalBridge_EA.ex5'
+          gh release view ea-latest --repo $env:GITHUB_REPOSITORY 2>$null
+          if($LASTEXITCODE -ne 0){
+            gh release create ea-latest --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "SignalBridge EA — current compiled build" --notes "Compiled by MetaEditor from main. See README.txt for version and SHA256."
+            if($LASTEXITCODE -ne 0){throw 'Release creation failed'}
+          }
+          gh release upload ea-latest 'dist/DrFX_SignalBridge_EA.ex5' 'dist/README.txt' --clobber --repo $env:GITHUB_REPOSITORY
+          if($LASTEXITCODE -ne 0){throw 'Release upload failed'}

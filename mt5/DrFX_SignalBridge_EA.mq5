@@ -5,15 +5,16 @@
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
 #property strict
-#property version   "0.290"
-#property description "SignalBridge EA v0.29.0: animated command-center panel, live telemetry and account-bound connection tests."
+#property version   "0.291"
+#property description "SignalBridge EA v0.29.1: animated command-center panel, live telemetry and account-bound connection tests."
 #property description "Signals remain DEMO-only. Explicitly confirmed, opt-in account-bound LIVE tests are supported."
 #property description "Enter your private activation code in the first EA input. No compilation required for EX5 users."
 
 #include <Trade\Trade.mqh>
 
-input group "=== 01 | PERSONAL ACTIVATION ==="
-input string InpActivationCode=""; // Private one-user license key (enter after attaching to a chart)
+input group "=== START HERE | 1 LICENSE / 2 BROKER SYMBOL ==="
+input string InpActivationCode=""; // 1. LICENSE | Copy from your personal Setup page
+input string InpGoldSymbol="XAUUSD"; // 2. BROKER SYMBOL | e.g. XAUUSD.p or GOLD (Market Watch)
 
 input group "=== 02 | SignalBridge Cloud ==="
 input string InpCloudHost="signalbridge.drfx.online";
@@ -37,7 +38,6 @@ input int InpMaxOpenTrades=4;
 input int InpMaxSpreadPoints=80;
 input int InpSlippagePoints=20;
 input group "=== Broker Symbol Settings | XAUUSD.p / GOLD ==="
-input string InpGoldSymbol=""; // Exact broker gold symbol for XAUUSD signals AND tests, e.g. XAUUSD.p
 input string InpTestSymbol="XAUUSD"; // Test instrument; change to EURUSD, GBPUSD or exact broker symbol
 input double InpDefaultLots=0.01; // Default test lots; explicit signal volume is preserved
 input string InpSymbolPrefix=""; // Prefix for other signal symbols, e.g. m
@@ -154,7 +154,7 @@ void DisconnectCloud(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_sock
 bool WsHandshake(){
  uchar nonce[];ArrayResize(nonce,16);for(int i=0;i<16;i++)nonce[i]=(uchar)(MathRand()&255);
  string key=Base64(nonce,16);
- string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.29.0\r\n\r\n";
+ string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.29.1\r\n\r\n";
  if(!TlsSendString(req))return false;
  uchar pending[];ulong until=GetTickCount64()+5000;
  while(GetTickCount64()<until&&!IsStopped()){
@@ -1128,16 +1128,17 @@ void DrawRisk(int W,double t)
 void DrawSettings(int W,double t)
   {
    int x=12,y=128,w=W-24;
-   Card(x,y,w,132);Kicker("TAKE-PROFIT ACTIONS · NEW POSITIONS",x+16,y+14);
+   Card(x,y,w,132);Kicker("1 LICENSE / 2 BROKER SYMBOL (F7)",x+16,y+16);
+   g_sf.Text(LicenseReady()?"License verified":"Copy your key from drfx.company > Setup",x+16,y+40,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(LicenseReady()?P_GREEN:P_GOLD2),TA_LEFT|TA_VCENTER);
+   string k[4]={"BROKER SYMBOL","DEFAULT LOTS","MAX LOT","MAX RISK"};string v[4];v[0]=TestSymbol();v[1]=DoubleToString(InpDefaultLots,2);v[2]=DoubleToString(InpMaxLot,2);v[3]=F2(InpMaxRiskPercent)+"%";
+   for(int i=0;i<4;i++){int cx=x+16+(i%2)*(w/2),cy=y+64+(i/2)*34;Kicker(k[i],cx,cy);g_sf.Text(v[i],cx,cy+20,SB_FONT_N,FS_VAL,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);}
+   Card(x,y+142,w,132);Kicker("TAKE-PROFIT ACTIONS · NEW POSITIONS",x+16,y+156);
    string p[3];p[0]=g_policy1;p[1]=g_policy2;p[2]=g_policy3;int cw=(w-48)/3;
    for(int i=0;i<3;i++){int cx=x+16+i*(cw+8);color c=p[i]=="CLOSE"?P_GREEN:p[i]=="BE"?P_CYAN:p[i]=="PARTIAL"?P_GOLD2:P_DIM;double hv=g_hover=="pol"+IntegerToString(i)?1:0;
-      g_sf.FillRR(cx,y+38,cw,62,10,SbA(SbMix(P_CARD,c,0.08+0.1*hv)));g_sf.StrokeRR(cx,y+38,cw,62,10,1,SbA(c,0.45+0.3*hv));HitAdd("pol"+IntegerToString(i),cx,y+38,cw,62);
-      g_sf.Text("TP"+IntegerToString(i+1),cx+cw/2.0,y+56,SB_FONT_B,FS_SMALL,FW_SEMIBOLD,SbA(P_MUTED),TA_CENTER|TA_VCENTER);g_sf.Text(p[i],cx+cw/2.0,y+80,SB_FONT_B,16,FW_BOLD,SbA(c),TA_CENTER|TA_VCENTER);}
-   g_sf.Text("Partial "+DoubleToString(g_policyPartial,0)+"%  ·  Break-even buffer "+IntegerToString(g_policyBuffer)+" pts",x+16,y+116,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
-   Card(x,y+142,w,126);Kicker("EXECUTION",x+16,y+156);
-   string k[4]={"TEST SYMBOL","DEFAULT LOTS","MAX LOT","MAX RISK"};string v[4];v[0]=TestSymbol();v[1]=DoubleToString(InpDefaultLots,2);v[2]=DoubleToString(InpMaxLot,2);v[3]=F2(InpMaxRiskPercent)+"%";
-   for(int i=0;i<4;i++){int cx=x+16+(i%2)*(w/2),cy=y+182+(i/2)*44;Kicker(k[i],cx,cy);g_sf.Text(v[i],cx,cy+24,SB_FONT_N,FS_VAL,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);}
-   g_sf.Text("Change these in the EA inputs (F7) or at drfx.company",x+w/2.0,y+286,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
+      g_sf.FillRR(cx,y+180,cw,62,10,SbA(SbMix(P_CARD,c,0.08+0.1*hv)));g_sf.StrokeRR(cx,y+180,cw,62,10,1,SbA(c,0.45+0.3*hv));HitAdd("pol"+IntegerToString(i),cx,y+180,cw,62);
+      g_sf.Text("TP"+IntegerToString(i+1),cx+cw/2.0,y+198,SB_FONT_B,FS_SMALL,FW_SEMIBOLD,SbA(P_MUTED),TA_CENTER|TA_VCENTER);g_sf.Text(p[i],cx+cw/2.0,y+222,SB_FONT_B,16,FW_BOLD,SbA(c),TA_CENTER|TA_VCENTER);}
+   g_sf.Text("Partial "+DoubleToString(g_policyPartial,0)+"%  ·  Break-even buffer "+IntegerToString(g_policyBuffer)+" pts",x+16,y+258,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
+   g_sf.Text("F7: 1 License / 2 Symbol (e.g. XAUUSD.p)",x+w/2.0,y+286,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
    DrawFooter(x,y+304,w);
   }
 
@@ -1212,7 +1213,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    if(id==CHARTEVENT_CHART_CHANGE&&g_sbReady)PanelPlace((int)g_hCur);
   }
 
-int OnInit(){if(InpPartialPercent<=0||InpPartialPercent>=100||InpBreakEvenBufferPoints<0||(InpTP1Action!=SB_EXIT_CLOSE&&InpTP2Action!=SB_EXIT_CLOSE&&InpTP3Action!=SB_EXIT_CLOSE)||InpDefaultLots<=0||InpDefaultLots>InpMaxLot||InpDailyDrawdownPercent<=0||InpDailyDrawdownPercent>100||InpTestSymbol==""){Print("SignalBridge: invalid lot, symbol or daily drawdown input");return INIT_PARAMETERS_INCORRECT;}RiskInit();LoadPolicyDefaults();RiskCheck();RecoverClosedTargets();MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.29.0 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+int OnInit(){if(InpPartialPercent<=0||InpPartialPercent>=100||InpBreakEvenBufferPoints<0||(InpTP1Action!=SB_EXIT_CLOSE&&InpTP2Action!=SB_EXIT_CLOSE&&InpTP3Action!=SB_EXIT_CLOSE)||InpDefaultLots<=0||InpDefaultLots>InpMaxLot||InpDailyDrawdownPercent<=0||InpDailyDrawdownPercent>100||InpTestSymbol==""){Print("SignalBridge: invalid lot, symbol or daily drawdown input");return INIT_PARAMETERS_INCORRECT;}RiskInit();LoadPolicyDefaults();RiskCheck();RecoverClosedTargets();MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.29.1 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
 void OnDeinit(const int reason){EventKillTimer();PanelDestroy();if(g_testLock!=INVALID_HANDLE){FileClose(g_testLock);g_testLock=INVALID_HANDLE;}DisconnectCloud();DeletePanel();ChartRedraw(0);}
 void OnTick(){RiskCheck();ProcessPositionTargets();CloseTimedTest();}
 void OnTimer(){

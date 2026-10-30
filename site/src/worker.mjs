@@ -700,6 +700,7 @@ async function api(req,env){
   if(!await limited(req,env,'rotate',4))return fail('RATE_LIMITED',429);
   const code=await rotateLicense(env,user);return json({ok:true,activation_code:code});
  }
+ if(path==='/api/downloads'&&req.method==='GET')return json({ok:true,signalbridge:{version:env.SIGNALBRIDGE_EA_VERSION||'Latest compiled build',url:env.SIGNALBRIDGE_EA_DOWNLOAD_URL||'https://github.com/drfxai/Signal-Bridge/releases/download/ea-latest/DrFX_SignalBridge_EA.ex5'}});
  if(path==='/api/webhook'&&req.method==='GET')return json({ok:true,webhook:await userWebhook(env,user)});
  if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
  if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);

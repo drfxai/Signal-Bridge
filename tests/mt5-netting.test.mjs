@@ -39,5 +39,5 @@ test('current EA remains hard DEMO-only',()=>{
 
 test('current EA uses valid MQL5 array reference syntax and current version metadata',()=>{
  assert.match(ea,/void HandleCommand\(string &parts\[\]\)/);
- assert.match(ea,/#property version\s+"0\.290"/);
+ assert.match(ea,/#property version\s+"0\.291"/);
 });

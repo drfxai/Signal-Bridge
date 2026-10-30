@@ -1,3 +1,4 @@
+import {SETUP_HTML} from './member-setup.mjs';
 // Compose the shared member workspace while retaining every existing control ID.
 const icons={chart:'M3 17l5-5 4 3 8-10M15 5h5v5',pulse:'M2 12h5l3-8 4 16 3-8h5',wallet:'M3 6h16v14H3zM3 6l13-3v3M15 11h6v5h-6z',signals:'M4 7h16M4 12h11M4 17h7',shield:'M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6',arrow:'M5 12h14M13 6l6 6-6 6',refresh:'M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0113 3M18 17a7 7 0 01-13-3',settings:'M4 7h16M4 17h16M8 4v6M16 14v6'};
 const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+('<path d="'+icons[name]+'"/>')+'</svg>';
@@ -27,5 +28,8 @@ export function composeWorkspace(html){
  html=html.replace('<p id="executionFeedback"', '<div class="sb-workspace-footer"><span id="workspaceLicenseSummary">License · checking</span><button type="button" data-sb-tab="settings"><span id="workspacePolicy">Trade policy · configure</span> ↗</button><button id="resetReport" type="button">↻ Reset report</button></div><p id="executionFeedback"');
  const index=html.lastIndexOf('</section>',html.indexOf('<dialog id="tradeTestConfirm"'));
  html=html.slice(0,index)+`<dialog id="workspaceDetail" class="sb-detail" aria-labelledby="workspaceDetailTitle"><header><div><span class="sb-section-label">WORKSPACE CONTROLS</span><h2 id="workspaceDetailTitle">Account &amp; trade settings</h2></div><button id="workspaceDetailClose" type="button" aria-label="Close settings">×</button></header><div id="workspaceDetailBody"></div></dialog>`+html.slice(index);
+ html=html.replace('<button data-sb-tab="signals">☷ Signals</button>', '<button type="button" data-sb-tab="setup"><span>Setup</span></button><button data-sb-tab="signals">☷ Signals</button>');
+ html=html.replace('<button data-sb-tab="signals">☷<span>Signals</span></button>', '<button type="button" data-sb-tab="setup">⚡<span>Setup</span></button><button data-sb-tab="signals">☷<span>Signals</span></button>');
+ html=html.replace('<div class="sb-mobile-tabs">',SETUP_HTML+'<div class="sb-mobile-tabs">');
  return html;
 }
