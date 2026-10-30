@@ -75,6 +75,34 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 @media(max-width:360px){.container{padding:0 12px}.brandname .name{font-size:14px}.chip{font-size:9px;padding:7px}.hero h1{font-size:29px}.card{padding:15px}.grid{gap:8px}.small{padding:12px 11px}.micro{font-size:10px}.action-grid{grid-template-columns:1fr}.route-head{padding:11px 11px 4px}}
 @media(min-width:681px){nav.bottom{padding-inline:max(16px,calc((100% - 660px)/2))}.container{padding-inline:22px}.hero{padding-top:33px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Daily / Setup visual contract shared with the DrFX website. */
+.mini-view-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;background:#091b29;border:1px solid #254963;border-radius:11px;margin:12px 0}
+.mini-view-switch button{padding:9px;font-size:13px;border:0;background:transparent;color:#a9bdcf;border-radius:8px;font-weight:750}
+.mini-view-switch button.mini-view-active{background:linear-gradient(120deg,#d8af59,#f6dc99);color:#14120a}
+body.is-authenticated .hero,body.is-authenticated .route-stage{display:none}
+body[data-tab="plans"] .mini-view-switch,body[data-tab="help"] .mini-view-switch,body[data-tab="admin"] .mini-view-switch{display:none}
+.mini-daily-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
+.mini-daily-head h2{font-size:22px;font-weight:800;letter-spacing:-.05em;margin:0}.mini-daily-head small{color:#b0c5d5}
+.mini-ea-connection{border:1px solid #2b6c5a;border-radius:11px;background:#0b2028;padding:12px;display:flex;align-items:center;gap:10px}
+.mini-live-dot{width:9px;height:9px;border-radius:50%;background:#d4af37;flex:none}
+.mini-ea-connection div{flex:1;min-width:0}.mini-ea-connection strong{display:block;font-size:13px;color:#abefcb}.mini-ea-connection small{display:block;color:#b5c9d7;font-size:11px}
+.mini-go-setup{border:1px solid #ae8c46;border-radius:7px;background:#eac477;color:#10171e;padding:8px;font-size:12px;font-weight:800;white-space:nowrap}
+.mini-daily-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+.mini-daily-kpis>div{background:#0b2030;border:1px solid #245574;border-radius:10px;padding:13px;min-width:0}
+.mini-daily-kpis span{display:block;font-size:11px;color:#c0ceda}.mini-daily-kpis strong{display:block;font-size:24px;color:#fff;font-weight:850;margin:4px 0}.mini-daily-kpis small{font-size:10px;color:#9eb9ca}
+.mini-daily-chart{padding:13px;border:1px solid #31516b;border-radius:10px;background:repeating-linear-gradient(0deg,#0b1726,#0b1726 36px,#16324b 37px);min-height:113px}
+.mini-daily-chart h3{font-size:15px;margin:0}.mini-daily-chart p{font-size:12px;line-height:1.5;color:#adc3d4}
+.mini-daily-checks{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.mini-daily-checks button{min-width:0;font-size:12px}.mini-daily-checks .btn.primary{background:#50dbaa;color:#091d16}
+.mini-daily-routes{border:1px solid #315575;padding:12px;border-radius:10px;margin:13px 0;background:#0e2435}
+.mini-daily-routes h3{font-size:13px;margin:0 0 6px}.mini-daily-routes>div{font-size:11px;color:#a8d0c2;line-height:1.7}
+.mini-route-settings{background:#0a2030;border:1px solid #285875;padding:14px;border-radius:12px;margin:12px 0}
+.mini-route-settings h3{font-size:18px;margin:0 0 11px}
+.mini-route-settings label{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #37516c;border-radius:8px;padding:11px;margin-top:7px;background:#101c2c}
+.mini-route-settings label>span{font-size:13px;font-weight:750}.mini-route-settings small{display:block;color:#abbfcc;font-size:11px;font-weight:400}
+.mini-route-settings input{width:20px;height:20px;accent-color:#18c789}
+@media(max-width:360px){.mini-daily-checks{grid-template-columns:1fr}}
 </style>
 <script src="/assets/telegram-mini.js?v=20261028-mobile-v6" defer></script></head>
 <body data-tab="home"><main class="container">
@@ -82,6 +110,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
  <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button id="langToggle" class="lang-toggle" type="button" aria-label="Change Mini App language" title="Change language · تغییر زبان" aria-expanded="false" aria-controls="miniLangOptions" aria-haspopup="true"><svg class="mini-lang-globe" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.5 4.5 5.5 4.5 9S15 18.5 12 21M12 3C9 5.5 7.5 8.5 7.5 12S9 18.5 12 21"/></svg><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div class="mini-lang-options" id="miniLangOptions" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">SELECT LANGUAGE · زبان</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="ar" aria-pressed="false"><b>AR</b><span>العربية</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
+<nav class="mini-view-switch" aria-label="Dashboard tabs"><button type="button" data-jump="home" class="mini-view-active" id="miniDailyTab">Daily</button><button type="button" data-jump="license" id="miniSetupTab">Setup</button></nav>
 <section class="hero">
  <span class="eyebrow" data-tr="eyebrow">ALL YOUR SIGNALS. ONE CONTROL CENTER.</span>
  <h1><span data-tr="hero1">Your signals.</span><br><em data-tr="hero2">One powerful connection.</em></h1>
@@ -106,7 +135,19 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
   <p id="otpStatus" class="otp-status" role="status" aria-live="polite"></p>
  </section></div>
 <section class="tab-panel" data-panel="home" id="panel-home">
- <div class="section-head"><h2 data-tr="command">Your dashboard</h2><small data-tr="privateCaption">PRIVATE ACCOUNT</small></div>
+ <div class="mini-daily-head"><div><h2>Daily overview</h2><small id="miniDailyUpdated">Verified data pending</small></div><button type="button" id="miniDailyRefresh" class="btn subtle">↻</button></div>
+<div class="mini-ea-connection"><span class="mini-live-dot"></span><div><strong id="miniDailyEA">EA status unknown</strong><small id="miniDailyEAHelp">Attach your licensed EA to MT5</small></div><button type="button" class="mini-go-setup" data-jump="license">Setup ↗</button></div>
+<div class="mini-daily-kpis">
+ <div><span>NET P/L</span><strong id="miniDailyPL">—</strong><small>MT5 telemetry required</small></div>
+ <div><span>EQUITY</span><strong id="miniDailyEquity">—</strong><small>MT5 telemetry required</small></div>
+ <div><span>SIGNALS TODAY</span><strong id="miniDailySignals">—</strong><small>Real received signals</small></div>
+ <div><span>FLOATING P/L</span><strong id="miniDailyFloating">—</strong><small>MT5 telemetry required</small></div>
+</div>
+<div class="mini-daily-chart"><h3>Performance · 14 days</h3><p>Waiting for verified MT5 broker reporting. No simulated performance displayed.</p></div>
+<div class="mini-daily-checks"><button type="button" id="miniDailyCheck" class="btn primary">Test Connection</button><button type="button" class="btn subtle" disabled title="Requires updated EA">Test open/close position</button></div>
+<p class="mini-note" id="miniDailyCheckNote">Connection check reads the last recorded handshake, not a live trade.</p>
+<div class="mini-daily-routes"><h3>Signal routing preferences</h3><div id="miniDailyRouteState">Defaults: all three preferences ON</div><button type="button" class="mini-go-setup" data-jump="license">Configure ↗</button></div>
+<div class="section-head"><h2 data-tr="command">Membership &amp; license</h2><small data-tr="privateCaption">PRIVATE ACCOUNT</small></div>
  <article class="card gold">
   <div class="split"><div><div class="micro" data-tr="memberCaption">CURRENT MEMBERSHIP</div><div id="memberPlan" class="value">Not signed in</div></div><span class="indicator" aria-hidden="true">♛</span></div>
   <div class="goldline"></div><div class="split"><span id="memberIdentity" class="meta" data-tr="memberHint">Sign in from the official Telegram bot</span><span id="licenseBadge" class="status" data-active="false">LOCKED</span></div>
@@ -121,6 +162,15 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
   <div class="code" id="serialValue" aria-live="polite">•••• •••• •••• ••••</div>
   <div class="buttons"><button type="button" id="revealSerial" class="btn primary" data-tr="reveal" disabled>Reveal code</button><button type="button" id="copySerial" class="btn" data-tr="copy" disabled>Copy code</button></div>
  </article>
+ <div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
+</section>
+<section class="tab-panel" data-panel="license" id="panel-license" hidden>
+<div class="mini-route-settings"><h3>Your signal routes</h3>
+ <label><span>TradingView → MT5 <small>EA execution</small></span><input type="checkbox" data-mini-route="tradingview_mt5" checked></label>
+ <label><span>TradingView → Telegram <small>Channel delivery</small></span><input type="checkbox" data-mini-route="tradingview_telegram" checked></label>
+ <label><span>Telegram → MT5 <small>Telegram signal forwarding</small></span><input type="checkbox" data-mini-route="telegram_mt5" checked></label>
+ <p id="miniRouteMessage" class="mini-note">Preferences default to ON. Delivery requires verified integration.</p>
+ </div>
  <section class="mini-tools" aria-label="SignalBridge account tools"><div class="mini-tools-head"><span>PERSONAL SIGNALBRIDGE</span><strong>Connection & Webhook</strong></div>
  <div class="mini-status-grid"><div><small>EA LICENSE</small><strong id="miniConnectionLicense">Not checked</strong></div><div><small>LAST HANDSHAKE</small><strong id="miniConnectionLast">Not checked</strong></div></div>
  <button type="button" id="miniTestConnection" class="btn primary mini-wide">Test Connection · No Trade</button>
@@ -130,9 +180,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
  <button type="button" class="btn subtle mini-wide" disabled title="Requires a newer compiled EA">XAUUSD 0.01 Practice Test · Requires EA upgrade</button>
- </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
-</section>
-<section class="tab-panel" data-panel="license" id="panel-license" hidden>
+ </section>
  <p class="tab-kicker" data-tr="eaKicker">EXPERT ADVISOR</p><h2 class="section-title" data-tr="connect">Connect your <span>MT5 account</span></h2>
  <div class="card gold"><div class="micro">ONE EA · ONE PRIVATE CODE</div><h2 style="font-size:22px;margin-top:10px" data-tr="setupTitle">Set up SignalBridge</h2>
   <ol class="list"><li data-tr="step1">Install the official compiled DrFX EX5 Expert Advisor in MetaTrader 5.</li><li data-tr="step2">Allow https://signalbridge.drfx.online in MT5 Expert Advisors.</li><li data-tr="step3">Enter your activation code as the first EA setting.</li><li data-tr="step4">Check the MT5 Experts tab for the verified license state.</li></ol>
@@ -168,8 +216,8 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 <footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Private licensing and signal connectivity. Trading performance is displayed only when broker-verified records exist.</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
- <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Home</span></button>
- <button data-tab="license" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span data-tr="navEA">MT5 EA</span></button>
+ <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Daily</span></button>
+ <button data-tab="license" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span data-tr="navEA">Setup</span></button>
  <button data-tab="plans" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 9 4 4 5-8 5 8 4-4-2 10H5z"/></svg><span data-tr="navPlans">Plans</span></button>
  <button data-tab="help" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a3 3 0 0 1 5.3 1.9c0 2-2.8 2.4-2.8 4.1M12 18h.01"/></svg><span data-tr="navHelp">Help</span></button>
 <button id="miniAdminTab" type="button" data-tab="admin" aria-selected="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5h16v14zM4 10h16M9 5v14"/></svg><span>Admin</span></button>
@@ -251,6 +299,7 @@ export const MINI_JS=String.raw`(() => {
  function message(text,kind='') {const e=$('statusMessage');e.textContent=text;e.className='message '+kind;}
  function clearPrivateAccount(){
   state.user=null;state.serialVisible=false;
+  document.body.classList.remove('is-authenticated');
   $('miniAdminTab').hidden=true;document.body.classList.remove('admin-visible');
   $('miniWebhookUrl').textContent='No webhook created';$('miniCopyWebhook').disabled=true;$('miniRotateWebhook').disabled=true;
   set('memberPlan',ui('Not signed in','وارد نشده'));
@@ -271,6 +320,10 @@ export const MINI_JS=String.raw`(() => {
   if(tab==='admin'&&state.user?.role!=='admin')return;
   if(tab==='admin')loadMiniAdmin();
   document.body.dataset.tab=tab;
+  $('miniDailyTab').classList.toggle('mini-view-active',tab==='home');
+  $('miniSetupTab').classList.toggle('mini-view-active',tab==='license');
+  if(tab==='home'&&state.user)refreshMiniDaily();
+  if(tab==='license'&&state.user)refreshMiniRoutes();
   document.querySelectorAll('[data-panel]').forEach(e=>e.hidden=e.dataset.panel!==tab);
   document.querySelectorAll('[data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
   if(tg?.BackButton){if(tab==='home')tg.BackButton.hide();else tg.BackButton.show();}
@@ -291,6 +344,38 @@ export const MINI_JS=String.raw`(() => {
   let data;try{data=await resp.json();}catch{throw Error('INVALID_SERVER_RESPONSE');}
   if(!resp.ok)throw Error(data.error||'SERVICE_UNAVAILABLE');return data;
  }
+
+async function refreshMiniDaily(){
+ if(!state.user)return;
+ try{
+  const [d,r]=await Promise.all([api('/api/dashboard'),api('/api/routes')]);
+  $('miniDailyUpdated').textContent='Last checked '+new Date(d.as_of).toLocaleTimeString();
+  $('miniDailyEA').textContent=d.ea?.last_connection_attempt?'EA contacted earlier':'EA status not verified';
+  $('miniDailyEAHelp').textContent='Historical handshake; live connection not confirmed';
+  for(const [id,key] of [['miniDailyPL','net_pl'],['miniDailyEquity','equity'],['miniDailyFloating','floating_pl']])
+   set(id,d[key]==null?'—':String(d[key]));
+  set('miniDailySignals',String(d.signals_today??0));
+  set('miniDailyCheckNote','Historical EA attempt: '+(d.ea?.last_connection_attempt||'not recorded')+'. No market order was opened.');
+  const names={tradingview_mt5:'TV → MT5',tradingview_telegram:'TV → TG',telegram_mt5:'TG → MT5'};
+  set('miniDailyRouteState',Object.entries(names).map(([key,value])=>value+': '+(r.routes?.[key]===false?'OFF':'ON')+' (preference)').join(' · '));
+ }catch(e){set('miniDailyUpdated','Dashboard unavailable: '+e.message);}
+}
+async function refreshMiniRoutes(){
+ if(!state.user)return;
+ try{
+  const x=await api('/api/routes');
+  document.querySelectorAll('[data-mini-route]').forEach(el=>el.checked=x.routes?.[el.dataset.miniRoute]===true);
+  set('miniRouteMessage','Preferences loaded. Enabled does not prove confirmed delivery.');
+ }catch(e){set('miniRouteMessage','Unable to read preferences: '+e.message);}
+}
+$('miniDailyRefresh').addEventListener('click',refreshMiniDaily);
+$('miniDailyCheck').addEventListener('click',refreshMiniDaily);
+document.querySelectorAll('[data-mini-route]').forEach(el=>el.addEventListener('change',async()=>{
+ const checked=el.checked;el.disabled=true;
+ try{await api('/api/routes',{[el.dataset.miniRoute]:checked});set('miniRouteMessage','Preference saved. Actual routing requires verified EA and channel.');await refreshMiniDaily();}
+ catch(e){el.checked=!checked;set('miniRouteMessage','Could not update: '+e.message)}
+ finally{el.disabled=false}
+}));
 async function refreshMiniConnection(){
  if(!state.user)return;
  try{
@@ -346,6 +431,8 @@ $('miniAdminSearch').addEventListener('change',loadMiniAdmin);
  function applyUser(user){
   state.user=user;
   state.serialVisible=false;
+  document.body.classList.add('is-authenticated');
+  refreshMiniDaily();
   $('miniAdminTab').hidden=user.role!=='admin';document.body.classList.toggle('admin-visible',user.role==='admin');
   refreshMiniConnection();
   set('memberPlan',planLabel(user.plan));
