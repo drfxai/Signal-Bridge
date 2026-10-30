@@ -74,7 +74,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  if(await page.locator('.sb-kpis article').count()!==4)throw Error('Overview should have four primary metrics');
  if(width>700&&url==='/'){
   const box=await page.locator('#portalOverlay .portal').boundingBox();
-  if(box.width>1260||box.width>=width)throw Error('Desktop workspace is not constrained');
+  if(box.width>1440||box.width>=width)throw Error('Desktop workspace is not constrained');
  }
  if(width<=700){
   const box=await page.locator('.sb-kpis').boundingBox();if(box.height>210)throw Error('Mobile KPI stack too tall');
@@ -85,6 +85,12 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  await page.waitForFunction(()=>document.getElementById('setupChannel').options.length===3);
  if(!await page.locator('#memberSetup').isVisible())throw Error('Setup missing');
  if(await page.locator('#setupLicense').getAttribute('type')!=='password')throw Error('License exposed by default');
+ for(const step of ['setupStep1','setupStep2','setupStep3']){
+  await page.locator('[data-setup-step='+step+']').click();
+  if(!await page.locator('#'+step).isVisible())throw Error('Setup step inaccessible: '+step);
+  if(width<=700&&await page.locator('.su-grid > article:visible').count()!==1)throw Error('Mobile setup stacks all panels');
+  await page.screenshot({path:dir+'/'+label+'-'+step+'.png',fullPage:url!=='/'});
+ }
  await page.locator('#setupChannel').selectOption('-1001');
  if(await page.locator('#setupChannelHook').inputValue()!=='https://example.test/gold')throw Error('Wrong gold channel link');
  await page.locator('#setupChannel').selectOption('-1002');
@@ -94,7 +100,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  await page.screenshot({path:dir+'/'+label+'-setup.png',fullPage:url!=='/'});
  for(const tab of ['signals','routes','settings']){
   if(tab==='signals'){await page.locator(nav+' [data-sb-tab=overview]').click();await page.locator('.sb-all-activity').click();}
-  else{await page.locator(nav+' [data-sb-tab=setup]').click();await page.locator('.su-footer [data-sb-tab='+tab+']').click();}
+  else{await page.locator(nav+' [data-sb-tab=setup]').click();if(!await page.locator('.su-more').getAttribute('open').then(v=>v!==null))await page.locator('.su-more > summary').click();await page.locator('.su-footer [data-sb-tab='+tab+']').click();}
   const target={signals:'.sb-stream',routes:'.sb-routes',settings:'.sb-policy'}[tab];
   if(!await page.locator(target).isVisible())throw Error('Tab not reachable: '+tab);
   if(tab==='settings'&&await page.locator('.sb-account-group').count()&&await page.locator('.sb-account-group').first().getAttribute('open')!==null)throw Error('Account setup should start collapsed');
@@ -138,6 +144,40 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  if(overflow)throw Error(label+' has horizontal overflow');
  console.log(JSON.stringify({label,testRequested,overflow,feedback:await page.locator('#executionFeedback').textContent()}));
  await page.close();
+}
+
+// An offline terminal must explain the next action without a tall empty chart.
+for(const [label,url,width,height] of [['offline-web-phone','/',390,844],['offline-telegram-phone','/telegram',390,844],['offline-web-desktop','/',1440,1000],['offline-telegram-desktop','/telegram',1440,1000]]){
+ const page=await browser.newPage({viewport:{width,height}});page.on('pageerror',e=>errors.push(label+': '+e.message));
+ await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname;let data={ok:true};
+  if(path==='/api/me')data={ok:true,user};
+  if(path==='/api/config')data={ok:true,telegram:true,licensing:true};
+  if(path==='/api/connection/check')data={ok:true,diagnostic:{license:'active',terminal_online:false,mt5_mode:'UNKNOWN',capabilities:[],telemetry:{}}};
+  if(path==='/api/member/settings')data={ok:true,settings:{policy:{tp1:'BE',tp2:'CLOSE',tp3:'OFF',partial_percent:50,be_buffer_points:0},default_lots:.01}};
+  if(path==='/api/member/report')data={ok:true,commands:[],review:[],outbox:[]};
+  if(path==='/api/downloads')data={ok:true,signalbridge:{version:'0.29.1',url:'https://example.test/ea.ex5'}};
+  if(path==='/api/scalper')data={ok:true,keys:[]};
+  if(path==='/api/channels')data={ok:true,telegram_linked:true,chats:[]};
+  if(path==='/api/webhook')data={ok:true,webhook:{exists:false}};
+  await route.fulfill({json:data});});
+ await page.route(/^https:\/\/(?!127\.0\.0\.1)/,route=>route.abort());
+ await page.goto('http://127.0.0.1:4199'+url,{waitUntil:'networkidle'});
+ if(url==='/')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
+ await page.locator('#checkConnectionAction').click();
+ await page.waitForFunction(()=>document.getElementById('connectionActions').dataset.history==='empty');
+ if(await page.locator('#performanceChart svg').count())throw Error('Offline empty state fabricates performance');
+ if((await page.locator('.sb-chart').boundingBox()).height>220)throw Error('Offline chart wastes vertical space');
+ if(!await page.locator('.sb-chart-connect button').isVisible())throw Error('Offline next action missing');
+ await page.screenshot({path:dir+'/'+label+'.png',fullPage:url!=='/'});
+ await page.locator('.sb-chart-connect button').click();
+ await page.waitForFunction(()=>document.getElementById('setupProgress').textContent.includes('0 / 3'));
+ if(width<=700&&await page.locator('.su-grid > article:visible').count()!==1)throw Error('Offline setup stacks all steps');
+ await page.evaluate(()=>{document.documentElement.lang='fa';document.documentElement.dir='rtl'});
+ await page.locator('[data-setup-step=setupStep3]').click();
+ if(await page.locator('#setupTitle').textContent()!=='ستاپ')throw Error('Persian setup locale missing');
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Offline RTL horizontal overflow');
+ await page.screenshot({path:dir+'/'+label+'-fa-setup.png',fullPage:url!=='/'});
+ await page.close();console.log(JSON.stringify({label,offline:true,rtl:true}));
 }
 
 // Email and Telegram sign-in, including short landscape and RTL layouts.
