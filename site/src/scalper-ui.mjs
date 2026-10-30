@@ -185,7 +185,7 @@ export const SX_CSS = String.raw`
 .sx-product-glow{transform:translateZ(2px)}
 .sx-product:focus-visible{outline:2px solid #f3d98b;outline-offset:6px;border-color:#d4af3799;box-shadow:0 20px 60px #d4af3720}
 @media(hover:hover) and (pointer:fine){.sx-product.sx-pointer-active{--sx-lift:-5px;border-color:#f3d98b88;box-shadow:0 28px 70px #000b,0 0 36px #d4af371a}.sx-product.sx-pointer-active:before{opacity:1}.sx-product.sx-pointer-active .sx-product-glow{opacity:1}}
-@media(prefers-reduced-motion:reduce),(hover:none),(pointer:coarse){.sx-product.sx-in{transform:none!important}.sx-product>:not(.sx-product-glow),.sx-product:before,.sx-product:after,.sx-product-glow{transform:none}#suite .sx-product-glow{animation:none}.sx-product:after{box-shadow:0 8px 22px #0006}}
+@media(prefers-reduced-motion:reduce),(hover:none),(pointer:coarse){.sx-product.sx-in{transform:none!important;transition:none!important}.sx-product>:not(.sx-product-glow),.sx-product:before,.sx-product:after,.sx-product-glow{transform:none}#suite .sx-product-glow{animation:none}.sx-product:after{box-shadow:0 8px 22px #0006}}
 
 .sx-product-glow{position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:conic-gradient(from var(--sx-a,0deg),transparent 0 70%,#d4af37 80%,#38db9e 88%,transparent 95%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.0;transition:opacity .4s;animation:sxSpin 5s linear infinite;pointer-events:none}
 .sx-product:hover .sx-product-glow,.sx-product-gold .sx-product-glow{opacity:1}

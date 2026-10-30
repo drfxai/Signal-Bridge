@@ -44,7 +44,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   if(label==='website-desktop'){
    const card=page.locator('.sx-product').first(),box=await card.boundingBox();
    await page.mouse.move(box.x+box.width*.8,box.y+box.height*.3);
-   await page.waitForFunction(()=>document.querySelector('.sx-product').classList.contains('sx-pointer-active'),{},{timeout:5000}).catch(async e=>{console.log(JSON.stringify(await page.evaluate(()=>{const e=document.querySelector('.sx-product'),b=e.getBoundingClientRect();return {bounds:{x:b.x,y:b.y,w:b.width,h:b.height},hit:document.elementFromPoint(b.x+b.width*.8,b.y+b.height*.3)?.outerHTML.slice(0,300),hover:matchMedia('(hover:hover) and (pointer:fine)').matches,reduced:matchMedia('(prefers-reduced-motion:reduce)').matches,classes:e.className,style:e.getAttribute('style')}})));console.log(errors);throw e});
+   await page.waitForFunction(()=>document.querySelector('.sx-product').classList.contains('sx-pointer-active'));
    await page.waitForTimeout(300);
    if(!await card.evaluate(e=>getComputedStyle(e).transform.startsWith('matrix3d(')))throw Error('Reveal style overrides product 3D tilt');
    if(await card.evaluate(e=>getComputedStyle(e,':before').opacity)!=='1')throw Error('Pointer spotlight is hidden');
@@ -52,7 +52,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
    await page.mouse.move(0,0);await page.waitForTimeout(300);
    if(await card.evaluate(e=>e.classList.contains('sx-pointer-active')||e.style.getPropertyValue('--rx')!=='0deg'))throw Error('Tilt does not reset');
    await page.emulateMedia({reducedMotion:'reduce'});
-   if(await card.evaluate(e=>getComputedStyle(e).transform)!=='none')throw Error('Reduced motion retains tilt');
+   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.sx-product')).transform==='none');
    await page.emulateMedia({reducedMotion:'no-preference'});
   }
   await page.locator('#suite').screenshot({path:dir+'/'+label+'-suite.png'});
