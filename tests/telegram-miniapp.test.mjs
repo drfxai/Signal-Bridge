@@ -294,3 +294,21 @@ test('Mini App preserves six language choices with localized main controls and R
  assert.ok(!MINI_HTML.includes('<select id="langToggle"'));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });
+
+
+test('Mini App reproduces approved Daily/Setup dashboard with real metrics and 3 default-on route toggles',async()=>{
+ for(const token of ['id="miniDailyTab"','id="miniSetupTab"','id="miniDailyPL"','id="miniDailyEquity"','id="miniDailyFloating"','id="miniDailySignals"','id="miniDailyCheck"','id="miniDailyRouteState"','id="miniDailyRefresh"','class="mini-route-settings"'])
+ assert.ok(MINI_HTML.includes(token),token);
+ for(const key of ['tradingview_mt5','tradingview_telegram','telegram_mt5'])
+ assert.ok(MINI_HTML.includes('data-mini-route="'+key+'" checked'),key);
+ assert.ok(MINI_HTML.includes('Performance · 14 days'));
+ assert.ok(MINI_HTML.includes('Test open/close position'));
+ assert.ok(MINI_HTML.includes('MT5 telemetry required'));
+ assert.match(MINI_JS,/async function refreshMiniDaily\(\)/);
+ assert.match(MINI_JS,/async function refreshMiniRoutes\(\)/);
+ assert.match(MINI_JS,/\/api\/dashboard/);
+ assert.match(MINI_JS,/\/api\/routes/);
+ assert.ok(MINI_JS.includes("d[key]==null?'—':String(d[key])"));
+ assert.ok(MINI_HTML.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));
+ assert.doesNotThrow(()=>new Function(MINI_JS));
+});
