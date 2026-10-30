@@ -324,3 +324,38 @@ test('site language picker preserves six available languages without oversized n
  assert.ok(!DESIGN_HTML.includes('<select id="lang"'));
  assert.doesNotThrow(()=>new Function(SITE_JS));
 });
+
+
+test('user dashboard implements the reference Daily and Setup layouts without imaginary performance',async()=>{
+ const {DESIGN_HTML}=await import('../site/src/design.mjs');
+ for(const id of ['portalDaily','portalSetup','portalDailyTab','portalSetupTab','portalAdminTab','dailyNetPL','dailyEquity','dailySignals','dailyFloating','dailyPerformanceChart','dailyCheckConnection','dailyTestTrade','dailyRouteStates','dailyLastContact','routesMessage','setupRefresh'])
+  assert.ok(DESIGN_HTML.includes('id="'+id+'"'),id);
+ for(const key of ['tradingview_mt5','tradingview_telegram','telegram_mt5'])
+  assert.ok(DESIGN_HTML.includes('data-route="'+key+'" checked'),key);
+ assert.ok(DESIGN_HTML.includes('Daily overview'));
+ assert.ok(DESIGN_HTML.includes('TradingView → MT5'));
+ assert.ok(DESIGN_HTML.includes('TradingView → Telegram'));
+ assert.ok(DESIGN_HTML.includes('Telegram → MT5'));
+ assert.ok(DESIGN_HTML.includes('Performance · 14 days'));
+ assert.ok(DESIGN_HTML.includes('No simulated results are shown'));
+ assert.match(SITE_CSS,/\.daily-kpis\{display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+ assert.match(SITE_CSS,/@media\(max-width:720px\)/);
+ assert.match(SITE_CSS,/\.daily-kpis\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(SITE_JS,/function selectPortalView\(view\)/);
+ assert.match(SITE_JS,/refreshDailyOverview/);
+ assert.match(SITE_JS,/refreshSignalRoutes/);
+ assert.match(SITE_JS,/path|\/api\/dashboard/);
+ assert.doesNotThrow(()=>new Function(SITE_JS));
+});
+test('daily endpoint provides actual tenant data not invented balance or P/L and user preferences are separate',()=>{
+ assert.match(worker,/async function dailyUserSummary\(env,user\)/);
+ assert.match(worker,/FROM received_signals WHERE tenant_id=\?/);
+ assert.match(worker,/net_pl:null,equity:null,floating_pl:null/);
+ assert.match(worker,/performance_points:\[\]/);
+ assert.match(worker,/async function signalRouteSettings\(env,user\)/);
+ assert.match(worker,/delivery_verified:false/);
+ assert.match(worker,/const DEFAULT_ROUTES=Object.freeze/);
+ assert.match(worker,/async function changeSignalRoutes\(req,env,user\)/);
+ assert.match(worker,/typeof data\[k\]!=='boolean'/);
+ for(const endpoint of ['/api/dashboard','/api/routes'])assert.ok(worker.includes("path==='"+endpoint+"'"));
+});
