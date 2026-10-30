@@ -255,7 +255,7 @@ export const MINI_JS=String.raw`(() => {
  const set = (id,text) => {const el=$(id);if(el)el.textContent=String(text??'');};
  function message(text,kind='') {const e=$('statusMessage');e.textContent=text;e.className='message '+kind;}
  function clearPrivateAccount(){
-  state.user=null;state.serialVisible=false;
+  state.user=null;state.serialVisible=false;document.body.classList.remove('workspace-home');
   $('miniAdminTab').hidden=true;document.body.classList.remove('admin-visible');
   $('miniWebhookUrl').textContent='No webhook created';$('miniCopyWebhook').disabled=true;$('miniRotateWebhook').disabled=true;
   set('memberPlan',ui('Not signed in','وارد نشده'));
@@ -278,6 +278,7 @@ export const MINI_JS=String.raw`(() => {
   if(tab==='scalper')window.sxMiniLoad?.();else window.sxMiniLeave?.();
   if(tab==='channels')window.chMiniLoad?.();else window.chMiniLeave?.();
   document.body.dataset.tab=tab;
+  document.body.classList.toggle('workspace-home',tab==='home'&&!!state.user);
   document.querySelectorAll('[data-panel]').forEach(e=>e.hidden=e.dataset.panel!==tab);
   document.querySelectorAll('[data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
   if(tg?.BackButton){if(tab==='home')tg.BackButton.hide();else tg.BackButton.show();}
@@ -354,6 +355,7 @@ $('miniAdminRefresh').addEventListener('click',loadMiniAdmin);
 $('miniAdminSearch').addEventListener('change',loadMiniAdmin);
  function applyUser(user){
   state.user=user;
+  document.body.classList.toggle('workspace-home',!!user&&(!document.body.dataset.tab||document.body.dataset.tab==='home'));
   state.serialVisible=false;
   $('miniAdminTab').hidden=user.role!=='admin';document.body.classList.toggle('admin-visible',user.role==='admin');
   refreshMiniConnection();
