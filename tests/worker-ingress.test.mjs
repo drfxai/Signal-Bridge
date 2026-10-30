@@ -13,10 +13,11 @@ function fixture(overrides={}){const now=Date.now();return {
  occurred_at:iso(now-1000),expires_at:iso(now+59000),...overrides};}
 
 class MemoryDB {
- constructor(hash){this.connections=new Map([[hash,{id:'conn-1',tenant_id:'tenant-1'}]]);this.signals=new Map();this.broken=false;this.writes=0;}
+ constructor(hash){this.connections=new Map([[hash,{id:'conn-1',tenant_id:'tenant-1'}]]);this.signals=new Map();this.broken=false;this.writes=0;this.tvMt5=1;}
  prepare(sql){let args=[];const that=this;return {
   bind(...a){args=a;return this;},
   async first(){if(that.broken)throw Error('DB unavailable');
+   if(sql.includes('SELECT tv_to_mt5 FROM member_signal_settings'))return {tv_to_mt5:that.tvMt5};
    if(sql.includes('FROM ingress_connections'))return that.connections.get(args[0])||null;
    if(sql.includes('FROM received_signals'))return that.signals.get(`${args[0]}/${args[1]}`)||null;
    throw Error('Unexpected query: '+sql);},
@@ -58,3 +59,15 @@ test('nested unexpected properties reject',()=>assert.throws(()=>validateTrading
 test('object serialization is canonical',()=>assert.equal(stableStringify({b:1,a:{z:2,y:3}}),'{"a":{"y":3,"z":2},"b":1}'));
 test('method and path restrictions',async()=>{const db=await setup();assert.equal((await handleRequest(new Request(endpoint),{DB:db})).status,405);assert.equal((await handleRequest(new Request('https://signalbridge.example/private'),{DB:db})).status,404);});
 test('retry after D1 failure did not persist any signal',async()=>{const db=await setup();db.broken=true;assert.equal((await handleRequest(req(),{DB:db})).status,503);db.broken=false;assert.equal((await handleRequest(req(),{DB:db})).status,202);assert.equal(db.writes,1);});
+
+test('TV→MT5 OFF stores alert but does not dispatch to EA and leaves TV→Telegram relay independent',async()=>{
+ const db=await setup();db.tvMt5=0;
+ const r=await handleRequest(req(),{DB:db});
+ assert.equal(r.status,202);
+ const body=await read(r);
+ assert.equal(body.accepted,true);
+ assert.equal(body.execution_enabled,false);
+ assert.equal(body.dispatch_status,'ROUTE_DISABLED');
+ assert.equal(body.command_id,null);
+ assert.equal(db.writes,1);
+});
