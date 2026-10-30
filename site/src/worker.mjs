@@ -126,16 +126,36 @@ async function profile(env,user){
 }
 async function getOrCreateEmail(env,email){
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE email=?').bind(email).first();
- if(user)return user;
- const id=uid('usr'),role=env.ADMIN_EMAIL&&email===env.ADMIN_EMAIL.trim().toLowerCase()?'admin':'user';
+ // The verified email admin may have registered before ADMIN_EMAIL was configured.
+ // Promote only an exact, freshly verified email identity; do not trust a request body alone.
+ const verifiedAdmin=!!(env.ADMIN_EMAIL&&email===String(env.ADMIN_EMAIL).trim().toLowerCase());
+ if(user){
+  if(verifiedAdmin&&user.role!=='admin'){
+   const updated=await env.DB.prepare("UPDATE site_users SET role='admin',updated_at=CURRENT_TIMESTAMP WHERE id=? AND email=? AND role!='admin'").bind(user.id,email).run();
+   if(updated.meta?.changes===1){user={...user,role:'admin'};await audit(env,user.id,'verified_email_admin_granted',user.id);}
+   else user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(user.id).first();
+  }
+  return user;
+ }
+ const id=uid('usr'),role=verifiedAdmin?'admin':'user';
  await env.DB.prepare("INSERT INTO site_users (id,email,role) VALUES (?,?,?)").bind(id,email,role).run();
  user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(id).first();
  return user;
 }
 async function getOrCreateTelegram(env,id,username){
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(id).first();
- if(user)return user;
- const userId=uid('usr'),role=env.ADMIN_TELEGRAM_ID&&safeEq(id,env.ADMIN_TELEGRAM_ID)?'admin':'user';
+ // Only the cryptographically verified numeric Telegram sender can inherit the
+ // ADMIN_TELEGRAM_ID role, even when the user existed before this secret was set.
+ const verifiedAdmin=!!(env.ADMIN_TELEGRAM_ID&&safeEq(id,String(env.ADMIN_TELEGRAM_ID).trim()));
+ if(user){
+  if(verifiedAdmin&&user.role!=='admin'){
+   const updated=await env.DB.prepare("UPDATE site_users SET role='admin',updated_at=CURRENT_TIMESTAMP WHERE id=? AND telegram_id=? AND role!='admin'").bind(user.id,id).run();
+   if(updated.meta?.changes===1){user={...user,role:'admin'};await audit(env,user.id,'verified_telegram_admin_granted',user.id);}
+   else user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(user.id).first();
+  }
+  return user;
+ }
+ const userId=uid('usr'),role=verifiedAdmin?'admin':'user';
  await env.DB.prepare("INSERT OR IGNORE INTO site_users (id,telegram_id,telegram_name,role) VALUES (?,?,?,?)").bind(userId,id,safeText(username,80),role).run();
  user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(userId).first();
  return user;
