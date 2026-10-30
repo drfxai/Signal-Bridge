@@ -375,21 +375,45 @@ bool HasPending(){for(int i=0;i<MAX_PENDING;i++)if(g_pendingId[i]!="")return tru
 string ResolveSymbol(string requested){if((requested=="XAUUSD"||requested==InpGoldSymbol)&&InpGoldSymbol!=""){if(SymbolSelect(InpGoldSymbol,true))return InpGoldSymbol;return "";}string s=InpSymbolPrefix+requested+InpSymbolSuffix;if(SymbolSelect(s,true))return s;if(SymbolSelect(requested,true))return requested;return "";}
 // Resolve the gold test independently. Never guess between multiple contracts.
 string ResolveTestSymbol(string &reason){
+ // Respect an explicit user choice. Never silently substitute another instrument.
  if(InpTestSymbol!=""){
   string mapped=ResolveSymbol(InpTestSymbol);if(mapped!="")return mapped;
-  if(InpTestSymbol!="XAUUSD"){reason="TEST_SYMBOL_NOT_FOUND: configured "+InpTestSymbol;return "";}
+  if(InpTestSymbol!="XAUUSD"){
+   reason="TEST_SYMBOL_NOT_FOUND: set InpTestSymbol to the EXACT broker Market Watch symbol (configured "+InpTestSymbol+")";
+   return "";
+  }
  }
  string exact=ResolveSymbol("XAUUSD");if(exact!="")return exact;
- if(InpGoldSymbol!=""){reason="TEST_SYMBOL_NOT_FOUND: InpGoldSymbol="+InpGoldSymbol;return "";}
- string candidate="";int matches=0;
+ if(InpGoldSymbol!=""){
+  reason="TEST_SYMBOL_NOT_FOUND: verify InpGoldSymbol="+InpGoldSymbol+" exists in Market Watch";
+  return "";
+ }
+ // For the default XAUUSD setting, first try the EA chart itself, but only
+ // when the broker explicitly classifies it as tradable XAU/USD. This supports
+ // suffix contracts such as XAUUSD.p without trading an unrelated CFD.
+ string chart=Symbol();
+ if(chart!=""&&SymbolInfoString(chart,SYMBOL_CURRENCY_BASE)=="XAU"&&
+    SymbolInfoString(chart,SYMBOL_CURRENCY_PROFIT)=="USD"){
+  long chartMode=SymbolInfoInteger(chart,SYMBOL_TRADE_MODE);
+  if((chartMode==SYMBOL_TRADE_MODE_FULL||chartMode==SYMBOL_TRADE_MODE_LONGONLY)&&SymbolSelect(chart,true))return chart;
+ }
+ // Broker inventory may contain more than one gold contract. Never choose an
+ // ambiguous contract: require exact input so size/risk cannot shift silently.
+ string candidate="",suggestions="";int matches=0;
  for(int i=0;i<SymbolsTotal(false);i++){
   string name=SymbolName(i,false);
   if(SymbolInfoString(name,SYMBOL_CURRENCY_BASE)!="XAU"||SymbolInfoString(name,SYMBOL_CURRENCY_PROFIT)!="USD")continue;
-  if(SymbolInfoInteger(name,SYMBOL_TRADE_MODE)!=SYMBOL_TRADE_MODE_FULL&&SymbolInfoInteger(name,SYMBOL_TRADE_MODE)!=SYMBOL_TRADE_MODE_LONGONLY)continue;
+  long mode=SymbolInfoInteger(name,SYMBOL_TRADE_MODE);
+  if(mode!=SYMBOL_TRADE_MODE_FULL&&mode!=SYMBOL_TRADE_MODE_LONGONLY)continue;
   candidate=name;matches++;
+  if(matches<=3)suggestions+=(suggestions==""?"":", ")+name;
  }
  if(matches==1&&SymbolSelect(candidate,true))return candidate;
- reason=matches>1?"TEST_SYMBOL_AMBIGUOUS: set InpTestSymbol to the exact broker gold symbol":"TEST_SYMBOL_NOT_FOUND: set InpTestSymbol to your broker gold symbol";
+ if(matches>1){
+  reason="TEST_SYMBOL_AMBIGUOUS: gold symbols "+suggestions+"; set InpTestSymbol to EXACT Market Watch symbol";
+ }else{
+  reason="TEST_SYMBOL_NOT_FOUND: open Market Watch and set InpTestSymbol (or InpGoldSymbol) to exact broker gold symbol, e.g. XAUUSD.p or GOLD";
+ }
  return "";
 }
 

@@ -210,3 +210,45 @@ test('failed durable writes never acknowledge policy synchronization or retire t
  await hub.handleEaMessage(ws,'TARGET_EVENT|abcdef123456|0|2|1',a);assert.equal(sent.length,0);
  await hub.handleEaMessage(ws,'POLICY_UPDATE|BE|CLOSE|OFF|50|0',a);assert.deepEqual(sent,['POLICY_REJECTED']);assert.equal(a.policySignature,undefined);f.db.close();
 });
+
+
+test('latest broker test is tenant-scoped, read-only and explains symbol rejection',async()=>{
+ const f=fixture();
+ f.db.prepare("INSERT INTO connection_tests (id,user_id,agent_id,status,detail) VALUES ('test_old','usr_a','ea_a','CLOSED','broker history confirms test exit')").run();
+ f.db.prepare("INSERT INTO connection_tests (id,user_id,agent_id,status,detail) VALUES ('test_new','usr_a','ea_a','REJECTED','TEST_SYMBOL_NOT_FOUND: set InpTestSymbol to your broker gold symbol')").run();
+ const count=f.calls.length;
+ const response=await f.request('/api/connection/test-last');
+ assert.equal(response.status,200);
+ const result=await response.json();
+ assert.equal(result.test.status,'REJECTED');
+ assert.match(result.test.detail,/TEST_SYMBOL_NOT_FOUND/);
+ assert.equal(f.calls.length,count,'status checks must not dispatch trading commands');
+ const second=await f.request('/api/connection/test-last',undefined,f.other);
+ assert.equal(second.status,200);
+ assert.equal((await second.json()).test,null,'a separate user cannot inspect another user test');
+ f.db.close();
+});
+test('EA gold-symbol resolver uses only broker verified XAUUSD contracts and fails ambiguous markets',()=>{
+ const ea=readFileSync('mt5/DrFX_SignalBridge_EA.mq5','utf8');
+ assert.match(ea,/string ResolveTestSymbol\(string &reason\)/);
+ assert.match(ea,/string chart=Symbol\(\)/);
+ assert.match(ea,/SymbolInfoString\(chart,SYMBOL_CURRENCY_BASE\)=="XAU"/);
+ assert.match(ea,/SymbolInfoString\(chart,SYMBOL_CURRENCY_PROFIT\)=="USD"/);
+ assert.match(ea,/SYMBOL_TRADE_MODE_FULL\|\|chartMode==SYMBOL_TRADE_MODE_LONGONLY/);
+ assert.match(ea,/if\(matches==1&&SymbolSelect\(candidate,true\)\)return candidate/);
+ assert.match(ea,/TEST_SYMBOL_AMBIGUOUS/);
+ assert.match(ea,/InpTestSymbol to EXACT Market Watch symbol/);
+ assert.match(ea,/if\(HasAnyPositionOnSymbol\(sym\)\)/);
+ assert.match(ea,/g_testDeadlineTick=GetTickCount64\(\)\+5000/);
+ assert.match(ea,/trade\.PositionClose\(ticket\)/);
+});
+test('portal offers persisted actionable symbol-fix guidance without submitting another order',async()=>{
+ const {EXECUTION_JS} = await import('../site/src/portal-execution.mjs');
+ assert.doesNotThrow(()=>new Function(EXECUTION_JS));
+ assert.match(EXECUTION_JS,/function testSymbolGuidance\(result\)/);
+ assert.match(EXECUTION_JS,/testSymbolFix/);
+ assert.match(EXECUTION_JS,/latestTestForUser/);
+ assert.match(EXECUTION_JS,/\/api\/connection\/test-last/);
+ assert.match(EXECUTION_JS,/InpTestSymbol/);
+ assert.match(EXECUTION_JS,/Market Watch/);
+});
