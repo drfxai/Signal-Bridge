@@ -1,8 +1,9 @@
+import {versionUiAssets} from './ui-release.mjs';
 import {RESPONSIVE_REFRESH} from './responsive-refresh.mjs';
 import { EXECUTION_HTML, EXECUTION_JS } from './portal-execution.mjs';
 import { SXM_HOME_HTML, SXM_NAV_HTML, SXM_PANEL_HTML, SXM_CSS, SXM_JS } from './scalper-mini.mjs';
 // DrFX Telegram Mini App: mobile-first full-width UI, authenticated account state.
-export const MINI_HTML=String.raw`<!doctype html>
+const MINI_BASE_HTML=String.raw`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"><meta name="theme-color" content="#050609"><title>DrFX · SignalBridge Mini App</title>
 <script src="https://telegram.org/js/telegram-web-app.js?64"></script>
 <style>
@@ -167,6 +168,8 @@ ${SXM_PANEL_HTML}<section class="tab-panel" data-panel="help" id="panel-help" hi
  ${SXM_NAV_HTML}<button data-tab="help" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a3 3 0 0 1 5.3 1.9c0 2-2.8 2.4-2.8 4.1M12 18h.01"/></svg><span data-tr="navHelp">Help</span></button>
 <button id="miniAdminTab" type="button" data-tab="admin" aria-selected="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5h16v14zM4 10h16M9 5v14"/></svg><span data-tr="adminLabel">Admin</span></button>
 </nav></body></html>`;
+export const MINI_HTML=versionUiAssets(MINI_BASE_HTML);
+
 export const MINI_JS=String.raw`(() => {
  'use strict';
  const $ = id => document.getElementById(id);

@@ -1,3 +1,4 @@
+import {UI_RELEASE} from '../site/src/ui-release.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -152,7 +153,7 @@ test('approved HTML is production-ready with self-hosted Tailwind and real membe
  assert.ok(TAILWIND_CSS.length>18000);
  assert.match(TAILWIND_CSS,/\.bg-obsidian/);
  assert.match(TAILWIND_CSS,/\.text-gold/);
- assert.ok(SITE_HTML.includes('/assets/tailwind.css?v=20261028-cinematic'));
+ assert.ok(SITE_HTML.includes('/assets/tailwind.css?v='+UI_RELEASE));
  assert.ok(!SITE_HTML.includes('cdn.tailwindcss.com'));
  assert.ok(!SITE_HTML.includes('tailwind.config'));
  assert.ok(!SITE_JS.includes('simulateAuthCodeSend'));

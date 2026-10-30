@@ -1,3 +1,4 @@
+import {UI_RELEASE} from '../site/src/ui-release.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { verifyTelegramInitData, inspectTelegramInitData, TELEGRAM_INITDATA_MAX_AGE_SECONDS } from '../site/src/telegram-auth.mjs';
@@ -149,7 +150,7 @@ test('Mini App clears private EA activation material on failed session refresh',
  assert.match(MINI_JS,/catch\(error\)\{\s*clearPrivateAccount\(\)/);
  assert.match(MINI_HTML,/id="retrySignIn"[^>]*hidden/);
  assert.match(MINI_JS,/\$\('retrySignIn'\)\.addEventListener\('click',start\)/);
- assert.match(MINI_HTML,/telegram-mini\.js\?v=20261029-sixlangs/);
+ assert.ok(MINI_HTML.includes('telegram-mini.js?v='+UI_RELEASE));
 });
 test('Persian translation covers account safety, MT5 onboarding, and error states',()=>{
  for(const label of [
@@ -173,7 +174,7 @@ test('external mobile browser offers a verified Telegram bot link instead of pre
  assert.match(MINI_JS,/await offerBotLaunch\(\)/);
  assert.match(MINI_JS,/if\(tg\?\.initData&&state\.telegramEnabled\)/);
  assert.ok(!MINI_JS.includes('initDataUnsafe'));
- assert.ok(MINI_HTML.includes('telegram-mini.js?v=20261029-sixlangs'));
+ assert.ok(MINI_HTML.includes('telegram-mini.js?v='+UI_RELEASE));
  assert.doesNotThrow(()=>new Function(MINI_JS));
 });
 
@@ -228,7 +229,7 @@ test('Telegram bot HMAC includes optional Ed25519 signature field in signed data
 test('Mini App provides safe one-time bot /login code UI without exposing EA secret',()=>{
  for(const token of ['id="otpLogin"','id="otpForm"','id="otpInput"','id="otpSubmit"','id="otpStatus"',
   'autocomplete="one-time-code"','inputmode="text"','/login',
-  'id="revealSerial"','id="copySerial"','telegram-mini.js?v=20261029-sixlangs'])
+  'id="revealSerial"','id="copySerial"','telegram-mini.js?v='+UI_RELEASE])
    assert.ok(MINI_HTML.includes(token),token);
  for(const token of ["'/api/auth/telegram/code'","await api('/api/auth/telegram/code',{code})",
   "await refresh('session')","$('otpLogin').hidden=false",

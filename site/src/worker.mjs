@@ -1,3 +1,4 @@
+import {UI_RELEASE} from './ui-release.mjs';
 import {memberControls} from './member-controls.mjs';
 import {relayTradingView,routeTelegramSignal} from './signal-routing.mjs';
 import { createAndDispatch } from '../../worker/src/command.mjs';
@@ -12,7 +13,7 @@ import { I18N_JS } from './i18n.mjs';
 import { PROMO_ASSETS } from './promo.mjs';
 import { scalperOverview, scalperCheckout, scalperPaid, scalperGrant, SCALPER_PLANS } from './scalper.mjs';
 
-const HEAD={'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
+const HEAD={'x-drfx-ui-release':UI_RELEASE,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
 const DURATION={trial:'+1 month',quarterly:'+3 months',annual:'+1 year'};
 const ADMIN_ACTIONS=new Set(['suspend','resume','grant_trial','grant_quarterly','grant_annual','revoke_license','grant_scalper_1m','grant_scalper_3m']);
@@ -20,7 +21,7 @@ const API_ORIGIN='https://drfx.company';
 const encoder=new TextEncoder();
 const json=(data,status=200,extra={})=>new Response(JSON.stringify(data),{status,headers:{...HEAD,'content-type':'application/json; charset=utf-8',...extra}});
 const fail=(code,status=400)=>json({ok:false,error:code},status);
-const asset=(body,type)=>new Response(body,{headers:{...HEAD,'content-type':type,'cache-control':'no-cache, must-revalidate','content-security-policy':"default-src 'none'; style-src 'self'; script-src 'self'"}});
+const asset=(body,type)=>new Response(body,{headers:{...HEAD,'content-type':type,'cache-control':'no-store, no-cache, max-age=0, must-revalidate','content-security-policy':"default-src 'none'; style-src 'self'; script-src 'self'"}});
 const uid=prefix=>prefix+'_'+crypto.randomUUID().replaceAll('-','');
 const rand=(size=32)=>{const a=new Uint8Array(size);crypto.getRandomValues(a);return a;};
 const b64=a=>btoa(String.fromCharCode(...a));
