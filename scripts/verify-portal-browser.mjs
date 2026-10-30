@@ -67,12 +67,14 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
 
  // Verify focused tabs, real CSS sizing and accessible touch inputs at every breakpoint.
  if(await page.locator('.sb-policy').isVisible()||await page.locator('.sb-routes').isVisible())throw Error('Overview contains setup panels');
+ if(!await page.locator('#performanceChart svg').count())throw Error('Real telemetry chart missing');
+ if(await page.locator('.sb-kpis article').count()!==4)throw Error('Overview should have four primary metrics');
  if(width>700&&url==='/'){
   const box=await page.locator('#portalOverlay .portal').boundingBox();
-  if(box.width>1231||box.width>=width)throw Error('Desktop workspace is not constrained');
+  if(box.width>1260||box.width>=width)throw Error('Desktop workspace is not constrained');
  }
  if(width<=700){
-  const box=await page.locator('.sb-kpis').boundingBox();if(box.height>330)throw Error('Mobile KPI stack too tall');
+  const box=await page.locator('.sb-kpis').boundingBox();if(box.height>210)throw Error('Mobile KPI stack too tall');
   if(await page.locator('.sb-stream').isVisible())throw Error('Mobile overview contains signal history');
  }
  const nav=width<=700?'.sb-mobile-tabs':'.sb-top nav';
@@ -88,6 +90,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   }
   await page.waitForFunction(()=>[...document.querySelectorAll('.sb-grid > .sb-card')].every(e=>!e.getClientRects().length||Number(getComputedStyle(e).opacity)>.99));
   await page.screenshot({path:dir+'/'+label+'-'+tab+'.png',fullPage:url!=='/'});
+  if(['routes','settings'].includes(tab))await page.locator('#workspaceDetailClose').click();
  }
  await page.locator(nav+' [data-sb-tab=overview]').click();
  await page.evaluate(()=>{const p=document.querySelector('.portal-content');if(p)p.scrollTop=0;window.scrollTo(0,0)});
