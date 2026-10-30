@@ -152,6 +152,26 @@ TP3 2740
 
 The parser currently supports deterministic formats in **English, فارسی and العربية**.
 
+### 🆕 TradingView → Telegram channel (no MT5)
+
+Post TradingView alerts straight to your own Telegram channel or group:
+
+1. **Add the bot as an admin** with *Post messages* (Mini App → **Channels**, or the bot's `/channels` buttons).
+2. **Pick the chat.** The bot lists every channel and group it was added to by you.
+3. **Copy the unique webhook** (`https://drfx.company/tv/ch/<token>`) into the TradingView alert's *Webhook URL*.
+
+Each chat gets its own private link (rotate or delete it any time). Alerts can be JSON
+(`symbol`, `side`, `entry`, `sl`, `tp1`–`tp3`, `lot`, `timeframe`, `strategy`, `message`) or plain text,
+and are posted with 🟢/🔴 icons, entry, SL and TPs. This route never creates MT5 commands.
+
+Deploy: apply `site/migrations/0015_channel_webhooks.sql`, then re-run
+`scripts/configure-company-telegram-bot.mjs` so the bot receives `my_chat_member` updates and shows `/channels`.
+
+### Signal source everywhere
+
+The member dashboard and the EA panel show where each signal came from (TradingView or Telegram),
+and every MT5 position opened by the bridge carries it in its comment, e.g. `SB:1a2b3c4d5e6f:TradingView`.
+
 ### Telegram Web App — Product UI
 
 Prototype:

@@ -1,6 +1,7 @@
 import {versionUiAssets} from './ui-release.mjs';
 import {RESPONSIVE_REFRESH} from './responsive-refresh.mjs';
 import { EXECUTION_HTML, EXECUTION_JS } from './portal-execution.mjs';
+import { CHM_HOME_HTML, CHM_NAV_HTML, CHM_PANEL_HTML, CHM_CSS, CHM_JS } from './channels-mini.mjs';
 import { SXM_HOME_HTML, SXM_NAV_HTML, SXM_PANEL_HTML, SXM_CSS, SXM_JS } from './scalper-mini.mjs';
 // DrFX Telegram Mini App: mobile-first full-width UI, authenticated account state.
 const MINI_BASE_HTML=String.raw`<!doctype html>
@@ -69,6 +70,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 .mini-lang-options button[aria-pressed=true]{background:linear-gradient(110deg,#a8873d38,#233c3048);border-color:#ddb66870}
 @media(max-width:420px){.lang-toggle{height:40px;min-width:54px;padding:0 8px;gap:5px}.mini-lang-chevron{display:none}.mini-globe-icon{width:17px;height:17px}}
 ${SXM_CSS}
+${CHM_CSS}
 ${RESPONSIVE_REFRESH}</style>
 <script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
 <body data-tab="home"><main class="container">
@@ -105,7 +107,7 @@ ${RESPONSIVE_REFRESH}</style>
   <div class="split"><div><div class="micro" data-tr="memberCaption">CURRENT MEMBERSHIP</div><div id="memberPlan" class="value">Not signed in</div></div><span class="indicator" aria-hidden="true">♛</span></div>
   <div class="goldline"></div><div class="split"><span id="memberIdentity" class="meta" data-tr="memberHint">Sign in from the official Telegram bot</span><span id="licenseBadge" class="status" data-active="false">LOCKED</span></div>
  </article>
-${SXM_HOME_HTML} <div class="grid">
+${CHM_HOME_HTML}${SXM_HOME_HTML} <div class="grid">
   <article class="small"><span data-tr="mt5Caption">MT5 CONNECTION</span><strong id="mt5Status">Not connected</strong><span id="mt5Server" data-tr="mt5Hint">Account not yet verified</span></article>
   <article class="small"><span data-tr="eaCaption">EA ACTIVATION</span><strong id="activationDate">Not started</strong><span id="expiryStatus" data-tr="expiryHint">Valid after activation</span></article>
  </div>
@@ -123,7 +125,7 @@ ${SXM_HOME_HTML} <div class="grid">
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook" data-tr="createWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" data-tr="copyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" data-tr="rotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
- ${EXECUTION_HTML.replace('<button data-sb-tab="settings">⚙ Settings</button></nav>','<button data-sb-tab="settings">⚙ Settings</button><button type="button" data-jump="scalper">◎ Scalper Pro</button></nav>').replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
+ ${EXECUTION_HTML.replace('<button data-sb-tab="settings">⚙ Settings</button></nav>','<button data-sb-tab="settings">⚙ Settings</button><button type="button" data-jump="scalper">◎ Scalper Pro</button><button type="button" data-jump="channels">📡 Channels</button></nav>').replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
@@ -144,7 +146,7 @@ ${SXM_HOME_HTML} <div class="grid">
   <p class="meta" data-tr="premiumNote">* Premium content requires separate authorized release. This Mini App does not collect payments.</p>
  </div>
 </section>
-${SXM_PANEL_HTML}<section class="tab-panel" data-panel="help" id="panel-help" hidden>
+${SXM_PANEL_HTML}${CHM_PANEL_HTML}<section class="tab-panel" data-panel="help" id="panel-help" hidden>
  <p class="tab-kicker" data-tr="helpKicker">SUPPORT &amp; ACCOUNT SAFETY</p><h2 class="section-title" data-tr="support">Help &amp; security</h2>
  <div class="card"><h2 data-tr="securityTitle">Keep your account protected</h2>
   <ol class="list"><li data-tr="help1">Open the Mini App from the official Telegram bot to verify your identity.</li><li data-tr="help2">Email and Telegram accounts can only be linked after explicit verification.</li><li data-tr="help3">EA activation keys never belong in screenshots or chat messages.</li><li data-tr="help4">Use your main website dashboard for account management.</li></ol>
@@ -165,7 +167,7 @@ ${SXM_PANEL_HTML}<section class="tab-panel" data-panel="help" id="panel-help" hi
  <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Home</span></button>
  <button data-tab="license" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span data-tr="navEA">MT5 EA</span></button>
  <button data-tab="plans" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 9 4 4 5-8 5 8 4-4-2 10H5z"/></svg><span data-tr="navPlans">Plans</span></button>
- ${SXM_NAV_HTML}<button data-tab="help" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a3 3 0 0 1 5.3 1.9c0 2-2.8 2.4-2.8 4.1M12 18h.01"/></svg><span data-tr="navHelp">Help</span></button>
+ ${SXM_NAV_HTML}${CHM_NAV_HTML}<button data-tab="help" type="button" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a3 3 0 0 1 5.3 1.9c0 2-2.8 2.4-2.8 4.1M12 18h.01"/></svg><span data-tr="navHelp">Help</span></button>
 <button id="miniAdminTab" type="button" data-tab="admin" aria-selected="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5h16v14zM4 10h16M9 5v14"/></svg><span data-tr="adminLabel">Admin</span></button>
 </nav></body></html>`;
 export const MINI_HTML=versionUiAssets(MINI_BASE_HTML);
@@ -270,10 +272,11 @@ export const MINI_JS=String.raw`(() => {
   set('connection',ui('Sign-in needed','ورود لازم است'));
  }
  function show(tab){
-  if(!['home','license','plans','scalper','help','admin'].includes(tab))return;
+  if(!['home','license','plans','scalper','channels','help','admin'].includes(tab))return;
   if(tab==='admin'&&state.user?.role!=='admin')return;
   if(tab==='admin')loadMiniAdmin();
   if(tab==='scalper')window.sxMiniLoad?.();else window.sxMiniLeave?.();
+  if(tab==='channels')window.chMiniLoad?.();else window.chMiniLeave?.();
   document.body.dataset.tab=tab;
   document.querySelectorAll('[data-panel]').forEach(e=>e.hidden=e.dataset.panel!==tab);
   document.querySelectorAll('[data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
@@ -479,4 +482,4 @@ $('miniAdminSearch').addEventListener('change',loadMiniAdmin);
  language(initialLanguage);
  show('home');
  start();
-})();`+EXECUTION_JS+SXM_JS;
+})();`+EXECUTION_JS+SXM_JS+CHM_JS;

@@ -22,7 +22,7 @@ try{
  await call('setWebhook',{
   url:'https://drfx.company/api/telegram/webhook',
   secret_token:secret,
-  allowed_updates:['message','callback_query'],
+  allowed_updates:['message','callback_query','my_chat_member'],
   drop_pending_updates:false,
   max_connections:10
  });
@@ -38,7 +38,8 @@ try{
    {command:'resetlogin',description:'Revoke and replace your website login code'},
    {command:'me',description:'View membership status'},
    {command:'code',description:'Retrieve your private EA activation code'},
-   {command:'link',description:'Link an already-verified email account'}
+   {command:'link',description:'Link an already-verified email account'},
+   {command:'channels',description:'TradingView webhook for your channel or group'}
   ]
  });
  console.log('Telegram webhook, Mini App menu button and bot commands registered.');

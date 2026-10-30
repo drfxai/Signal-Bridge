@@ -60,7 +60,8 @@ input bool InpCompact=false;
 input ENUM_BASE_CORNER InpCorner=CORNER_LEFT_UPPER;
 input int InpPanelX=16;
 input int InpPanelY=22;
-input int InpPanelWidth=420; // 380-560 px; drag the header to move the panel
+input int InpPanelWidth=440; // 400-620 (at 100% scale); drag the header to move the panel
+input int InpUiScale=0;      // 0 = follow Windows display scaling; or 100-300 (%) for larger text
 
 #define SBP "SB290_"
 #define MAX_PENDING 32
@@ -86,6 +87,12 @@ bool g_testCorrupt=false;
 int g_testLock=INVALID_HANDLE;
 
 string g_lastSource="WAITING",g_lastStrategy="";
+int g_srcN[4]; // signals per source this session: 0 other, 1 TradingView, 2 Telegram, 3 test
+int SourceKey(string src){string s=src;StringToLower(s);if(StringFind(s,"tradingview")>=0||s=="tv")return 1;if(StringFind(s,"telegram")>=0||s=="tg")return 2;if(s=="test")return 3;return 0;}
+string SourceName(string src){int k=SourceKey(src);if(k==1)return "TradingView";if(k==2)return "Telegram";if(k==3)return "Test";if(src==""||src=="unknown"||src=="WAITING")return "Bridge";string s=StringSubstr(src,0,15);string head=StringSubstr(s,0,1);StringToUpper(head);return head+StringSubstr(s,1);}
+// MT5 position comment: SB:<12-char tag>:<source>, at most 31 characters.
+string OrderNote(string tag){return StringSubstr("SB:"+tag+":"+SourceName(g_lastSource),0,31);}
+string NoteSource(string note){if(StringFind(note,"SB:")!=0||StringLen(note)<17||StringGetCharacter(note,15)!=':')return "Bridge";return StringSubstr(note,16);}
 string g_connStage="ACTIVATION CODE REQUIRED";
 string g_pendingTag[MAX_PENDING],g_pendingId[MAX_PENDING];
 string g_receiptId[MAX_RECEIPTS],g_receiptStatus[MAX_RECEIPTS],g_receiptTicket[MAX_RECEIPTS],g_receiptRetcode[MAX_RECEIPTS],g_receiptDetail[MAX_RECEIPTS];
@@ -448,7 +455,7 @@ void HandleOpen(string id,string mode,string side,string requested,string tag,st
  if((marginMode==ACCOUNT_MARGIN_MODE_RETAIL_NETTING||marginMode==ACCOUNT_MARGIN_MODE_EXCHANGE)&&HasAnyPositionOnSymbol(sym)){Receipt(id,"REJECTED","",0,"netting account already has a position on this symbol; merge risk blocked");return;}
  double lots=(volumeMode=="RISK_PERCENT")?LotsForRisk(sym,buy,sl,volumeValue):NormalizeVolume(sym,volumeValue);if(lots<=0){Receipt(id,"REJECTED","",0,"position size invalid or below broker minimum");return;}double finalTp=PolicyClosePrice(tp1,tp2,tp3);if(finalTp<=0){Receipt(id,"REJECTED","",0,"configured full-close target is missing");return;}if(!StopsValid(sym,buy,sl,finalTp)){Receipt(id,"REJECTED","",0,"SL/TP/spread validation failed");return;}
  if(mode=="dry_run"){Receipt(id,"PREVIEWED","",0,"preview accepted by MT5");return;}if(mode!="demo_execute"){Receipt(id,"REJECTED","",0,"unknown execution mode");return;}if(!DemoGate(id))return;if(CountMyPositions()>=InpMaxOpenTrades){Receipt(id,"REJECTED","",0,"max open trades reached");return;}
- SavePositionPolicy(tag,tp1,tp2,tp3,lots);if(!RegisterPending(tag,id)){Receipt(id,"ERROR","",0,"persistent pending-command ledger is full");return;}trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.SetTypeFillingBySymbol(sym);bool ok=buy?trade.Buy(lots,sym,0.0,sl,finalTp,"SB:"+tag):trade.Sell(lots,sym,0.0,sl,finalTp,"SB:"+tag);long rc=(long)trade.ResultRetcode();if(!ok){Receipt(id,"BROKER_REJECTED","",rc,trade.ResultRetcodeDescription());return;}GlobalVariableSet(GVVol(tag),lots);FlushTradeIdentity();
+ SavePositionPolicy(tag,tp1,tp2,tp3,lots);if(!RegisterPending(tag,id)){Receipt(id,"ERROR","",0,"persistent pending-command ledger is full");return;}trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.SetTypeFillingBySymbol(sym);string note=OrderNote(tag);bool ok=buy?trade.Buy(lots,sym,0.0,sl,finalTp,note):trade.Sell(lots,sym,0.0,sl,finalTp,note);long rc=(long)trade.ResultRetcode();if(!ok){Receipt(id,"BROKER_REJECTED","",rc,trade.ResultRetcodeDescription());return;}GlobalVariableSet(GVVol(tag),lots);FlushTradeIdentity();
  RememberPositionFromDeal(tag,trade.ResultDeal());
  ulong openedTicket=0;string openedSym="";double openedVol=0,openedPrice=0,openedSl=0,openedTp=0;if(FindPosition(tag,openedTicket,openedSym,openedVol,openedPrice,openedSl,openedTp))RememberPositionIdentity(tag,openedTicket);
  Receipt(id,"SUBMITTED",N64((long)trade.ResultOrder()),rc,trade.ResultRetcodeDescription());
@@ -577,7 +584,7 @@ void HandleTimedTest(string id,string mode,string side,string requested,string t
  g_testAccountMode=AccountMode();g_testLogin=N64(AccountInfoInteger(ACCOUNT_LOGIN));g_testServer=AccountInfoString(ACCOUNT_SERVER);g_testId=id;g_testTag=tag;g_testDue=(long)TimeGMT()+5;g_testDeadlineTick=GetTickCount64()+5000;g_testPhase="ARMED";g_testDetail="test submitted; exit intent saved";
  if(!SaveTimedTest()){g_testCorrupt=true;Receipt(id,"REJECTED","",0,"cannot persist test exit intent");return;}
  trade.SetExpertMagicNumber(InpMagic);trade.SetTypeFillingBySymbol(sym);trade.SetDeviationInPoints(InpSlippagePoints);
- bool ok=trade.Buy(InpDefaultLots,sym,0,emergencyStop,0,"SB:"+tag);long rc=(long)trade.ResultRetcode();
+ bool ok=trade.Buy(InpDefaultLots,sym,0,emergencyStop,0,"SB:"+tag+":Test");long rc=(long)trade.ResultRetcode();
  if(ok&&(rc==TRADE_RETCODE_DONE||rc==TRADE_RETCODE_DONE_PARTIAL)){
   RememberPositionFromDeal(tag,trade.ResultDeal());g_testDue=(long)TimeGMT()+5;g_testDeadlineTick=GetTickCount64()+5000;
   TestPhase("OPEN","BUY "+sym+" "+DoubleToString(InpDefaultLots,4)+"; local exit armed");Receipt(id,"FILLED",N64((long)trade.ResultOrder()),rc,"test open; closure is tracked separately");
@@ -591,7 +598,7 @@ void HandleCommand(string &parts[]){
  if(!LicenseReady()){Receipt(parts[1],"REJECTED","",0,"activation not confirmed");return;}string id=parts[1],mode=parts[2],action=parts[3],event=parts[4],side=parts[5],requested=parts[6],tag=parts[7],volumeMode=parts[8];double volumeValue=StringToDouble(parts[9]),referencePrice=StringToDouble(parts[10]),sl=StringToDouble(parts[11]),tp1=StringToDouble(parts[12]),tp2=StringToDouble(parts[13]),tp3=StringToDouble(parts[14]);long expiresMs=(long)StringToInteger(parts[15]);if(StringLen(tag)!=12){Receipt(id,"REJECTED","",0,"invalid correlation tag");return;}g_activityTick=GetTickCount64();g_lastSource=ArraySize(parts)>16?parts[16]:"unknown";g_lastStrategy=ArraySize(parts)>17?parts[17]:"";g_lastSignal=action+" "+event+" "+side+" "+requested;
  if(action=="OPEN"&&g_policyDirty){Receipt(id,"REJECTED","",0,"POLICY_SYNC_PENDING");return;}
  if(action=="OPEN"&&ArraySize(parts)>=26&&ValidPolicyAction(parts[21])&&ValidPolicyAction(parts[22])&&ValidPolicyAction(parts[23])){g_policy1=parts[21];g_policy2=parts[22];g_policy3=parts[23];g_policyPartial=StringToDouble(parts[24]);g_policyBuffer=(int)StringToInteger(parts[25]);}
- if(action=="OPEN")CountSignal(id);RiskCheck();if(g_riskHit){Receipt(id,"REJECTED","",0,"DAILY_DRAWDOWN_HIT: manual reset required");return;}
+ if(action=="OPEN"){CountSignal(id);g_srcN[SourceKey(g_lastSource)]++;}RiskCheck();if(g_riskHit){Receipt(id,"REJECTED","",0,"DAILY_DRAWDOWN_HIT: manual reset required");return;}
  if(action=="TEST"){HandleTimedTest(id,mode,side,requested,tag,volumeValue,expiresMs,ArraySize(parts)>18?parts[18]:"",ArraySize(parts)>19?parts[19]:"",ArraySize(parts)>20?parts[20]:"");return;}
  if(TimedTestActive()){Receipt(id,"REJECTED","",0,"connection test recovery in progress");return;}
  if(action=="OPEN"){HandleOpen(id,mode,side,requested,tag,volumeMode,volumeValue,referencePrice,sl,tp1,tp2,tp3,expiresMs);return;}if(action=="MANAGE"){HandleManage(id,mode,event,tag);return;}Receipt(id,"REJECTED","",0,"unsupported command action");
@@ -641,28 +648,36 @@ color BlendColor(color a,color b,double t){
 int UiRefresh(){return (int)MathMax(33,MathMin(1000,InpUiRefreshMs));}
 string g_panelTab="OVERVIEW";
 //+------------------------------------------------------------------+
-//| Command center panel: anti-aliased ARGB canvas, eased animation, |
-//| hover/press feedback, sliding tabs and a draggable header.       |
+//| Command center panel: anti-aliased ARGB canvas drawn in logical   |
+//| units and scaled to the Windows display DPI, so text stays sharp  |
+//| and readable. Eased animation, hover/press feedback, vector icons,|
+//| signal-source badges, sliding tabs and a draggable header.        |
 //+------------------------------------------------------------------+
 #define SB_FONT_B "Segoe UI Semibold"
 #define SB_FONT_R "Segoe UI"
-#define SB_FONT_M "Consolas"
+#define SB_FONT_N "Bahnschrift"
 #define SB_RES "::SB290_panel"
 #define SB_OBJ "SB290_panel"
-#define SB_HMAX 620
-color P_BG=C'7,11,18',P_CARD=C'13,20,31',P_CARD2=C'18,28,42',P_LINE=C'37,53,69',P_GOLD=C'231,196,119',P_GOLD2=C'255,226,150',P_CYAN=C'128,217,226',P_GREEN=C'56,219,158',P_RED=C'255,111,125',P_TEXT=C'237,242,248',P_MUTED=C'139,156,178',P_DIM=C'92,108,128';
+#define SB_HMAX 600
+#define FS_KICK 10
+#define FS_SMALL 11
+#define FS_BODY 13
+#define FS_VAL 16
+color P_BG=C'8,12,20',P_CARD=C'14,21,33',P_CARD2=C'20,30,46',P_LINE=C'38,54,74',P_GOLD=C'232,196,118',P_GOLD2=C'255,226,150',P_CYAN=C'110,214,232',P_GREEN=C'52,214,152',P_RED=C'255,104,120',P_TEXT=C'240,244,250',P_MUTED=C'150,166,188',P_DIM=C'92,108,128',P_TV=C'41,98,255',P_TG=C'42,171,238';
 double SbClamp(double v,double lo,double hi){return MathMax(lo,MathMin(hi,v));}
 uint SbA(color c,double a=1.0){return ColorToARGB(c,(uchar)SbClamp(255.0*a,0,255));}
 color SbMix(color a,color b,double t){t=SbClamp(t,0,1);int ia=(int)a,ib=(int)b;int r=(int)((ia&0xFF)*(1-t)+(ib&0xFF)*t),g=(int)(((ia>>8)&0xFF)*(1-t)+((ib>>8)&0xFF)*t),bl=(int)(((ia>>16)&0xFF)*(1-t)+((ib>>16)&0xFF)*t);return (color)(r|(g<<8)|(bl<<16));}
 uint SbLerpA(uint a,uint b,double t){t=SbClamp(t,0,1);uint r=0;for(int s=0;s<32;s+=8){double ca=(double)((a>>s)&0xFF),cb=(double)((b>>s)&0xFF);r|=((uint)(ca+(cb-ca)*t+0.5)&0xFF)<<s;}return r;}
 double SbAngDiff(double a,double b){double d=MathMod(a-b,360.0);if(d<0)d+=360.0;return d;}
 double SbEase(double cur,double target,double k){if(MathAbs(target-cur)<1e-6)return target;return cur+(target-cur)*k;}
+double UiScale(){if(InpUiScale>=50)return SbClamp(InpUiScale/100.0,0.75,3.0);int dpi=(int)TerminalInfoInteger(TERMINAL_SCREEN_DPI);return dpi>0?SbClamp(dpi/96.0,1.0,3.0):1.0;}
 
+// All public drawing methods take logical coordinates; s maps them to device pixels.
 class CSbSurface
   {
 public:
-   uint px[];int w,h;
-   void Resize(int W,int H){w=MathMax(W,1);h=MathMax(H,1);ArrayResize(px,w*h);Clear();}
+   uint px[];int w,h;double s;
+   void Resize(int W,int H,double scale){s=scale;w=MathMax((int)MathCeil(W*s),1);h=MathMax((int)MathCeil(H*s),1);ArrayResize(px,w*h);Clear();}
    void Clear(){ArrayInitialize(px,0);}
    void Blend(int x,int y,uint c,double cov)
      {
@@ -675,6 +690,7 @@ public:
    double SdRR(double qx,double qy,double x,double y,double ww,double hh,double r){double hx=ww*0.5,hy=hh*0.5,dx=MathAbs(qx-(x+hx))-(hx-r),dy=MathAbs(qy-(y+hy))-(hy-r),ox=MathMax(dx,0),oy=MathMax(dy,0);return MathSqrt(ox*ox+oy*oy)+MathMin(MathMax(dx,dy),0)-r;}
    void FillRR(double x,double y,double ww,double hh,double r,uint c1,uint c2=0,bool grad=false)
      {
+      x*=s;y*=s;ww*=s;hh*=s;r*=s;
       if(ww<=0||hh<=0)return;r=MathMin(r,MathMin(ww,hh)*0.5);
       int x0=MathMax((int)MathFloor(x),0),x1=MathMin((int)MathCeil(x+ww),w),y0=MathMax((int)MathFloor(y),0),y1=MathMin((int)MathCeil(y+hh),h);
       for(int j=y0;j<y1;j++)
@@ -691,23 +707,26 @@ public:
      }
    void StrokeRR(double x,double y,double ww,double hh,double r,double th,uint c)
      {
+      x*=s;y*=s;ww*=s;hh*=s;r*=s;th=MathMax(1.0,th*s);
       r=MathMin(r,MathMin(ww,hh)*0.5);int x0=MathMax((int)MathFloor(x)-1,0),x1=MathMin((int)MathCeil(x+ww)+1,w),y0=MathMax((int)MathFloor(y)-1,0),y1=MathMin((int)MathCeil(y+hh)+1,h),band=(int)MathCeil(th)+2,sA=(int)MathCeil(x+band),sB=(int)MathFloor(x+ww-band);
       for(int j=y0;j<y1;j++){double py=j+0.5;bool mid=(py>y+r+band&&py<y+hh-r-band);for(int i=x0;i<x1;i++){if(mid&&i>sA&&i<sB){i=sB-1;continue;}double d=SdRR(i+0.5,py,x,y,ww,hh,r),cov=th*0.5+0.5-MathAbs(d+th*0.5);if(cov>0)Blend(i,j,c,MathMin(1.0,cov));}}
      }
    void GlowRR(double x,double y,double ww,double hh,double r,double spread,uint c)
      {
+      x*=s;y*=s;ww*=s;hh*=s;r*=s;spread*=s;
       r=MathMin(r,MathMin(ww,hh)*0.5);int sp=(int)MathCeil(spread),x0=MathMax((int)x-sp,0),x1=MathMin((int)(x+ww)+sp,w),y0=MathMax((int)y-sp,0),y1=MathMin((int)(y+hh)+sp,h),sA=(int)MathCeil(x+1),sB=(int)MathFloor(x+ww-1);
       for(int j=y0;j<y1;j++){double py=j+0.5;bool mid=(py>y+r&&py<y+hh-r);for(int i=x0;i<x1;i++){if(mid&&i>sA&&i<sB){i=sB-1;continue;}double d=SdRR(i+0.5,py,x,y,ww,hh,r);if(d<=0||d>=spread)continue;Blend(i,j,c,MathExp(-3.0*d/spread)*(1.0-d/spread));}}
      }
-   void Circle(double cx,double cy,double r,uint c)
+   void Disc(double cx,double cy,double r,uint c)
      {
       int x0=MathMax((int)(cx-r-1),0),x1=MathMin((int)(cx+r+2),w),y0=MathMax((int)(cy-r-1),0),y1=MathMin((int)(cy+r+2),h);
       for(int j=y0;j<y1;j++)for(int i=x0;i<x1;i++){double dx=i+0.5-cx,dy=j+0.5-cy,cov=r+0.5-MathSqrt(dx*dx+dy*dy);if(cov>0)Blend(i,j,c,MathMin(1.0,cov));}
      }
+   void Circle(double cx,double cy,double r,uint c){Disc(cx*s,cy*s,r*s,c);}
    void Ring(double cx,double cy,double r,double th,uint c){Arc(cx,cy,r,th,0,360,c,false);}
    void Arc(double cx,double cy,double r,double th,double a0,double span,uint c,bool caps=true)
      {
-      if(span<=0)return;if(span>360)span=360;
+      if(span<=0)return;if(span>360)span=360;cx*=s;cy*=s;r*=s;th=MathMax(1.0,th*s);
       int x0=MathMax((int)(cx-r-th-1),0),x1=MathMin((int)(cx+r+th+2),w),y0=MathMax((int)(cy-r-th-1),0),y1=MathMin((int)(cy+r+th+2),h);
       for(int j=y0;j<y1;j++)for(int i=x0;i<x1;i++)
         {
@@ -715,26 +734,50 @@ public:
          if(span<360){double ang=MathArctan2(dx,-dy)*180.0/M_PI;if(SbAngDiff(ang,a0)>span)continue;}
          Blend(i,j,c,MathMin(1.0,cov));
         }
-      if(caps&&span<360){double ra=a0*M_PI/180.0,rb=(a0+span)*M_PI/180.0;Circle(cx+r*MathSin(ra),cy-r*MathCos(ra),th*0.5,c);Circle(cx+r*MathSin(rb),cy-r*MathCos(rb),th*0.5,c);}
+      if(caps&&span<360){double ra=a0*M_PI/180.0,rb=(a0+span)*M_PI/180.0;Disc(cx+r*MathSin(ra),cy-r*MathCos(ra),th*0.5,c);Disc(cx+r*MathSin(rb),cy-r*MathCos(rb),th*0.5,c);}
      }
    void Line(double ax,double ay,double bx,double by,double th,uint c)
      {
+      ax*=s;ay*=s;bx*=s;by*=s;th=MathMax(1.0,th*s);
       int x0=MathMax((int)(MathMin(ax,bx)-th-1),0),x1=MathMin((int)(MathMax(ax,bx)+th+2),w),y0=MathMax((int)(MathMin(ay,by)-th-1),0),y1=MathMin((int)(MathMax(ay,by)+th+2),h);
       double vx=bx-ax,vy=by-ay,ll=vx*vx+vy*vy;
       for(int j=y0;j<y1;j++)for(int i=x0;i<x1;i++){double qx=i+0.5-ax,qy=j+0.5-ay,t=(ll>0)?SbClamp((qx*vx+qy*vy)/ll,0,1):0,ex=qx-vx*t,ey=qy-vy*t,cov=th*0.5+0.5-MathSqrt(ex*ex+ey*ey);if(cov>0)Blend(i,j,c,MathMin(1.0,cov));}
      }
-   void Text(string s,int x,int y,string font,int size,int weight,uint c,uint anchor=0){if(((c>>24)&0xFF)==0||s=="")return;TextSetFont(font,size,weight);TextOut(s,x,y,anchor,px,w,h,c,COLOR_FORMAT_ARGB_NORMALIZE);}
-   int TextW(string s,string font,int size,int weight){uint tw=0,th=0;TextSetFont(font,size,weight);TextGetSize(s,tw,th);return (int)tw;}
+   void Tri(double ax,double ay,double bx,double by,double cx,double cy,uint c)
+     {
+      ax*=s;ay*=s;bx*=s;by*=s;cx*=s;cy*=s;
+      double area=(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);if(MathAbs(area)<1e-6)return;double sg=area>0?1.0:-1.0;
+      double l0=MathSqrt((bx-ax)*(bx-ax)+(by-ay)*(by-ay)),l1=MathSqrt((cx-bx)*(cx-bx)+(cy-by)*(cy-by)),l2=MathSqrt((ax-cx)*(ax-cx)+(ay-cy)*(ay-cy));
+      int x0=MathMax((int)MathFloor(MathMin(ax,MathMin(bx,cx)))-1,0),x1=MathMin((int)MathCeil(MathMax(ax,MathMax(bx,cx)))+1,w),y0=MathMax((int)MathFloor(MathMin(ay,MathMin(by,cy)))-1,0),y1=MathMin((int)MathCeil(MathMax(ay,MathMax(by,cy)))+1,h);
+      for(int j=y0;j<y1;j++)for(int i=x0;i<x1;i++)
+        {
+         double qx=i+0.5,qy=j+0.5;
+         double e0=sg*((bx-ax)*(qy-ay)-(by-ay)*(qx-ax))/l0,e1=sg*((cx-bx)*(qy-by)-(cy-by)*(qx-bx))/l1,e2=sg*((ax-cx)*(qy-cy)-(ay-cy)*(qx-cx))/l2;
+         double cov=MathMin(e0,MathMin(e1,e2))+0.5;if(cov>0)Blend(i,j,c,MathMin(1.0,cov));
+        }
+     }
+   // diagonal light sweep across the top band (logical sx, band width, height)
+   void Sheen(double sx,double band,double hh,uint c,double amp)
+     {
+      int bw=(int)(band*s),hp=(int)(hh*s);double x0=sx*s;
+      for(int i=0;i<bw;i++){double a=amp*MathSin(M_PI*i/bw);for(int j=2;j<hp;j++)Blend((int)(x0+i-j*0.35),j,c,a);}
+     }
+   void Text(string str,double x,double y,string font,int size,int weight,uint c,uint anchor=0){if(((c>>24)&0xFF)==0||str=="")return;TextSetFont(font,(int)MathRound(size*s),weight);TextOut(str,(int)MathRound(x*s),(int)MathRound(y*s),anchor,px,w,h,c,COLOR_FORMAT_ARGB_NORMALIZE);}
+   int TextW(string str,string font,int size,int weight){uint tw=0,th=0;TextSetFont(font,(int)MathRound(size*s),weight);TextGetSize(str,tw,th);return (int)MathCeil(tw/s);}
+   string Fit(string str,string font,int size,int weight,int maxW){if(TextW(str,font,size,weight)<=maxW)return str;int n=StringLen(str);while(n>1&&TextW(StringSubstr(str,0,n)+"…",font,size,weight)>maxW)n--;return StringSubstr(str,0,n)+"…";}
   };
 
 CSbSurface g_sf;
 bool g_sbReady=false,g_mouseDown=false,g_dragging=false,g_scrollOff=false,g_scrollWas=true,g_posInit=false;
-int g_pX=0,g_pY=0,g_pW=420,g_dragOX=0,g_dragOY=0;
+int g_pX=0,g_pY=0,g_pW=440,g_dragOX=0,g_dragOY=0;double g_ui=1.0;
 double g_hCur=0,g_tabPos=0,g_dBal=0,g_dEq=0,g_dNet=0,g_dDD=0,g_barsGrow=0,g_sigFlash=-100,g_pressT=-100,g_toastT=-100;
 string g_hover="",g_press="",g_toast="",g_seenSignal="";bool g_valsInit=false;
 string g_hbId[];int g_hbX[],g_hbY[],g_hbW[],g_hbH[];
 string SB_TABS[5]={"OVERVIEW","SIGNALS","TRADES","RISK","SETTINGS"};
+string SB_TAB_LABEL[5]={"Overview","Signals","Trades","Risk","Setup"};
+string SB_TAB_ICON[5]={"grid","bolt","candles","shield","gear"};
 double SbNow(){return (double)GetTickCount64()/1000.0;}
+int PxW(){return (int)MathCeil(g_pW*g_ui);}
 void HitReset(){ArrayResize(g_hbId,0);ArrayResize(g_hbX,0);ArrayResize(g_hbY,0);ArrayResize(g_hbW,0);ArrayResize(g_hbH,0);}
 void HitAdd(string id,int x,int y,int w,int h){int n=ArraySize(g_hbId);ArrayResize(g_hbId,n+1);ArrayResize(g_hbX,n+1);ArrayResize(g_hbY,n+1);ArrayResize(g_hbW,n+1);ArrayResize(g_hbH,n+1);g_hbId[n]=id;g_hbX[n]=x;g_hbY[n]=y;g_hbW[n]=w;g_hbH[n]=h;}
 string HitTest(int x,int y){for(int i=ArraySize(g_hbId)-1;i>=0;i--)if(x>=g_hbX[i]&&x<g_hbX[i]+g_hbW[i]&&y>=g_hbY[i]&&y<g_hbY[i]+g_hbH[i])return g_hbId[i];return "";}
@@ -744,272 +787,346 @@ string Signed(double v){return (v>=0?"+":"")+Money(v);}
 
 int PanelTargetH()
   {
-   if(g_compact)return 132;
-   if(g_panelTab=="OVERVIEW")return 560;
-   if(g_panelTab=="TRADES")return 470;
-   return 452;
+   if(g_compact)return 150;
+   if(g_panelTab=="OVERVIEW")return 566;
+   if(g_panelTab=="SIGNALS")return 544;
+   if(g_panelTab=="TRADES")return 508;
+   if(g_panelTab=="RISK")return 516;
+   return 486;
   }
-void PanelPlace(int h)
+void PanelPlace(int hLogical)
   {
-   int cw=(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS),ch=(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0);
+   int cw=(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS),ch=(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0),pw=PxW(),ph=(int)MathCeil(hLogical*g_ui);
    if(!g_posInit)
      {
       g_pX=InpPanelX;g_pY=InpPanelY;
-      if(InpCorner==CORNER_RIGHT_UPPER||InpCorner==CORNER_RIGHT_LOWER)g_pX=cw-InpPanelX-g_pW;
-      if(InpCorner==CORNER_LEFT_LOWER||InpCorner==CORNER_RIGHT_LOWER)g_pY=ch-InpPanelY-h;
+      if(InpCorner==CORNER_RIGHT_UPPER||InpCorner==CORNER_RIGHT_LOWER)g_pX=cw-InpPanelX-pw;
+      if(InpCorner==CORNER_LEFT_LOWER||InpCorner==CORNER_RIGHT_LOWER)g_pY=ch-InpPanelY-ph;
       g_posInit=true;
      }
-   if(cw>g_pW)g_pX=(int)SbClamp(g_pX,0,cw-g_pW);if(ch>40)g_pY=(int)SbClamp(g_pY,0,MathMax(0,ch-40));
-   ObjectSetInteger(0,SB_OBJ,OBJPROP_XDISTANCE,g_pX);ObjectSetInteger(0,SB_OBJ,OBJPROP_YDISTANCE,g_pY);ObjectSetInteger(0,SB_OBJ,OBJPROP_YSIZE,h);
+   if(cw>pw)g_pX=(int)SbClamp(g_pX,0,cw-pw);if(ch>40)g_pY=(int)SbClamp(g_pY,0,MathMax(0,ch-40));
+   ObjectSetInteger(0,SB_OBJ,OBJPROP_XDISTANCE,g_pX);ObjectSetInteger(0,SB_OBJ,OBJPROP_YDISTANCE,g_pY);ObjectSetInteger(0,SB_OBJ,OBJPROP_YSIZE,ph);
   }
 bool PanelCreate()
   {
-   g_pW=(int)SbClamp(InpPanelWidth,380,560);
-   g_sf.Resize(g_pW,SB_HMAX);
+   g_pW=(int)SbClamp(InpPanelWidth,400,620);g_ui=UiScale();
+   g_sf.Resize(g_pW,SB_HMAX,g_ui);
    if(!ResourceCreate(SB_RES,g_sf.px,g_sf.w,g_sf.h,0,0,0,COLOR_FORMAT_ARGB_NORMALIZE))return false;
    ObjectDelete(0,SB_OBJ);
    if(!ObjectCreate(0,SB_OBJ,OBJ_BITMAP_LABEL,0,0,0))return false;
-   ObjectSetInteger(0,SB_OBJ,OBJPROP_CORNER,CORNER_LEFT_UPPER);ObjectSetInteger(0,SB_OBJ,OBJPROP_XSIZE,g_pW);ObjectSetInteger(0,SB_OBJ,OBJPROP_YSIZE,SB_HMAX);
+   ObjectSetInteger(0,SB_OBJ,OBJPROP_CORNER,CORNER_LEFT_UPPER);ObjectSetInteger(0,SB_OBJ,OBJPROP_XSIZE,g_sf.w);ObjectSetInteger(0,SB_OBJ,OBJPROP_YSIZE,g_sf.h);
    ObjectSetString(0,SB_OBJ,OBJPROP_BMPFILE,SB_RES);ObjectSetInteger(0,SB_OBJ,OBJPROP_SELECTABLE,false);ObjectSetInteger(0,SB_OBJ,OBJPROP_HIDDEN,true);ObjectSetInteger(0,SB_OBJ,OBJPROP_ZORDER,100);ObjectSetInteger(0,SB_OBJ,OBJPROP_BACK,false);
    ChartSetInteger(0,CHART_EVENT_MOUSE_MOVE,true);
    g_hCur=PanelTargetH();g_sbReady=true;return true;
   }
 void PanelDestroy(){if(g_scrollOff){ChartSetInteger(0,CHART_MOUSE_SCROLL,g_scrollWas);g_scrollOff=false;}ObjectDelete(0,SB_OBJ);ResourceFree(SB_RES);g_sbReady=false;}
 
+//--- vector icons (centre cx,cy; box size sz)
+void Icon(string name,double cx,double cy,double sz,color c,double a=1.0)
+  {
+   uint k=SbA(c,a);double u=sz/16.0;
+   if(name=="grid"){for(int i=0;i<4;i++)g_sf.FillRR(cx-7*u+(i%2)*8*u,cy-7*u+(i/2)*8*u,6*u,6*u,1.6*u,k);}
+   else if(name=="bolt"){g_sf.Tri(cx+2*u,cy-8*u,cx-6*u,cy+1*u,cx+1*u,cy+1*u,k);g_sf.Tri(cx-1*u,cy-1*u,cx+6*u,cy-1*u,cx-2*u,cy+8*u,k);}
+   else if(name=="candles"){g_sf.Line(cx-4*u,cy-8*u,cx-4*u,cy+7*u,1.2*u,k);g_sf.FillRR(cx-6.5*u,cy-4*u,5*u,8*u,1*u,k);g_sf.Line(cx+4*u,cy-6*u,cx+4*u,cy+8*u,1.2*u,k);g_sf.FillRR(cx+1.5*u,cy-2*u,5*u,7*u,1*u,SbA(c,a*0.55));}
+   else if(name=="shield"){g_sf.FillRR(cx-6.5*u,cy-8*u,13*u,9*u,2*u,k);g_sf.Tri(cx-6.5*u,cy,cx+6.5*u,cy,cx,cy+8.5*u,k);g_sf.Line(cx-2.5*u,cy,cx-0.5*u,cy+2.2*u,1.5*u,SbA(P_BG,a));g_sf.Line(cx-0.5*u,cy+2.2*u,cx+3*u,cy-2.5*u,1.5*u,SbA(P_BG,a));}
+   else if(name=="gear"){for(int i=0;i<8;i++){double an=i*M_PI/4;g_sf.Line(cx+5*u*MathCos(an),cy+5*u*MathSin(an),cx+7.6*u*MathCos(an),cy+7.6*u*MathSin(an),2.6*u,k);}g_sf.Ring(cx,cy,4.6*u,2.4*u,k);}
+   else if(name=="tv"){g_sf.FillRR(cx-8*u,cy-8*u,16*u,16*u,4*u,SbA(P_TV,a));g_sf.Line(cx-5*u,cy+3*u,cx-1.5*u,cy-0.5*u,1.6*u,SbA(clrWhite,a));g_sf.Line(cx-1.5*u,cy-0.5*u,cx+1*u,cy+1.8*u,1.6*u,SbA(clrWhite,a));g_sf.Line(cx+1*u,cy+1.8*u,cx+5*u,cy-4*u,1.6*u,SbA(clrWhite,a));g_sf.Circle(cx+5*u,cy-4*u,1.4*u,SbA(clrWhite,a));}
+   else if(name=="tg"){g_sf.Circle(cx,cy,8*u,SbA(P_TG,a));g_sf.Tri(cx-4.8*u,cy-0.2*u,cx+4.6*u,cy-4*u,cx+2.6*u,cy+4.6*u,SbA(clrWhite,a));g_sf.Tri(cx-1.4*u,cy+1.2*u,cx+4.6*u,cy-4*u,cx-0.6*u,cy+4*u,SbA(C'200,232,250',a));}
+   else if(name=="test"){g_sf.Circle(cx,cy,8*u,SbA(P_GOLD,a*0.9));g_sf.Tri(cx-3.5*u,cy+4*u,cx+3.5*u,cy+4*u,cx,cy-2*u,SbA(P_BG,a));g_sf.FillRR(cx-1.2*u,cy-5*u,2.4*u,4*u,0.8*u,SbA(P_BG,a));}
+   else if(name=="bridge"){g_sf.Circle(cx,cy,8*u,SbA(P_DIM,a));g_sf.Arc(cx,cy+3*u,5*u,1.6*u,270,180,SbA(P_TEXT,a));g_sf.Line(cx-6*u,cy+3*u,cx+6*u,cy+3*u,1.4*u,SbA(P_TEXT,a));}
+   else if(name=="cloud"){g_sf.Circle(cx-3*u,cy+1*u,3.6*u,k);g_sf.Circle(cx+1*u,cy-1.5*u,4.6*u,k);g_sf.Circle(cx+4.6*u,cy+1.6*u,3*u,k);g_sf.FillRR(cx-6.6*u,cy+1*u,14*u,3.6*u,1.8*u,k);}
+   else if(name=="mt5"){g_sf.StrokeRR(cx-7.5*u,cy-6*u,15*u,10.5*u,2*u,1.5*u,k);g_sf.Line(cx-4.5*u,cy+1*u,cx-1*u,cy-2.5*u,1.4*u,k);g_sf.Line(cx-1*u,cy-2.5*u,cx+1.5*u,cy,1.4*u,k);g_sf.Line(cx+1.5*u,cy,cx+4.5*u,cy-3*u,1.4*u,k);g_sf.Line(cx-3*u,cy+7*u,cx+3*u,cy+7*u,1.5*u,k);}
+   else if(name=="reset"){g_sf.Arc(cx,cy,5.6*u,1.8*u,40,290,k);g_sf.Tri(cx+2.2*u,cy-8.4*u,cx+6.8*u,cy-4.6*u,cx+1.6*u,cy-2.8*u,k);}
+   else if(name=="chev_up"){g_sf.Line(cx-4.5*u,cy+2.2*u,cx,cy-2.2*u,1.8*u,k);g_sf.Line(cx,cy-2.2*u,cx+4.5*u,cy+2.2*u,1.8*u,k);}
+   else if(name=="chev_dn"){g_sf.Line(cx-4.5*u,cy-2.2*u,cx,cy+2.2*u,1.8*u,k);g_sf.Line(cx,cy+2.2*u,cx+4.5*u,cy-2.2*u,1.8*u,k);}
+   else if(name=="pulse"){g_sf.Line(cx-7*u,cy,cx-3*u,cy,1.5*u,k);g_sf.Line(cx-3*u,cy,cx-1*u,cy-5*u,1.5*u,k);g_sf.Line(cx-1*u,cy-5*u,cx+1.5*u,cy+5*u,1.5*u,k);g_sf.Line(cx+1.5*u,cy+5*u,cx+3.5*u,cy,1.5*u,k);g_sf.Line(cx+3.5*u,cy,cx+7*u,cy,1.5*u,k);}
+  }
+string SourceIcon(int key){if(key==1)return "tv";if(key==2)return "tg";if(key==3)return "test";return "bridge";}
+color SourceColor(int key){if(key==1)return C'92,140,255';if(key==2)return P_TG;if(key==3)return P_GOLD;return P_MUTED;}
+// Badge: brand icon + source name in a tinted pill. Returns its width.
+int SourceBadge(string src,double x,double y,int fs=FS_SMALL,bool solid=false)
+  {
+   int key=SourceKey(src);string name=SourceName(src);color c=SourceColor(key);
+   double hh=fs+11,ic=fs+3;int tw=g_sf.TextW(name,SB_FONT_B,fs,FW_SEMIBOLD),bw=(int)(tw+ic+18);
+   g_sf.FillRR(x,y,bw,hh,hh/2,SbA(c,solid?0.24:0.13));g_sf.StrokeRR(x,y,bw,hh,hh/2,1,SbA(c,0.55));
+   Icon(SourceIcon(key),x+4+ic/2,y+hh/2,ic,c);
+   g_sf.Text(name,x+ic+10,y+hh/2,SB_FONT_B,fs,FW_SEMIBOLD,SbA(SbMix(c,P_TEXT,0.45)),TA_LEFT|TA_VCENTER);
+   return bw;
+  }
+
 //--- widgets
-void Btn(string id,int x,int y,int w,int h,string text,color accent,bool primary,bool enabled=true)
+void Btn(string id,int x,int y,int w,int h,string text,color accent,bool primary,bool enabled=true,string icon="")
   {
    double t=SbNow(),hov=(enabled&&g_hover==id)?1.0:0.0,pr=(g_press==id)?MathMax(0,1.0-(t-g_pressT)/0.25):0;
    double inset=pr*1.5;
-   if(primary){g_sf.GlowRR(x,y,w,h,8,10+6*hov,SbA(accent,0.20+0.18*hov));g_sf.FillRR(x+inset,y+inset,w-2*inset,h-2*inset,8,SbA(SbMix(accent,P_GOLD2,0.25+0.2*hov)),SbA(SbMix(accent,C'120,90,30',0.25)),true);}
-   else{g_sf.FillRR(x+inset,y+inset,w-2*inset,h-2*inset,8,SbA(SbMix(P_CARD2,accent,0.06+0.12*hov)));g_sf.StrokeRR(x+inset,y+inset,w-2*inset,h-2*inset,8,1,SbA(SbMix(P_LINE,accent,0.25+0.6*hov)));}
-   if(!enabled)g_sf.FillRR(x,y,w,h,8,SbA(P_BG,0.45));
+   if(primary){g_sf.GlowRR(x,y,w,h,10,10+6*hov,SbA(accent,0.20+0.18*hov));g_sf.FillRR(x+inset,y+inset,w-2*inset,h-2*inset,10,SbA(SbMix(accent,P_GOLD2,0.25+0.2*hov)),SbA(SbMix(accent,C'120,90,30',0.25)),true);}
+   else{g_sf.FillRR(x+inset,y+inset,w-2*inset,h-2*inset,10,SbA(SbMix(P_CARD2,accent,0.06+0.12*hov)));g_sf.StrokeRR(x+inset,y+inset,w-2*inset,h-2*inset,10,1,SbA(SbMix(P_LINE,accent,0.25+0.6*hov)));}
+   if(!enabled)g_sf.FillRR(x,y,w,h,10,SbA(P_BG,0.40));
    color tc=primary?C'12,10,4':SbMix(P_TEXT,accent,0.35+0.4*hov);
-   g_sf.Text(text,x+w/2,y+h/2,SB_FONT_B,9,FW_BOLD,SbA(tc,enabled?1.0:0.5),TA_CENTER|TA_VCENTER);
+   int tw=g_sf.TextW(text,SB_FONT_B,12,FW_SEMIBOLD),iw=icon==""?0:20;double tx=x+w/2.0-(tw+iw)/2.0;
+   if(icon!="")Icon(icon,tx+8,y+h/2.0,15,tc,enabled?1.0:0.6);
+   g_sf.Text(text,tx+iw,y+h/2.0,SB_FONT_B,12,FW_SEMIBOLD,SbA(tc,enabled?1.0:0.6),TA_LEFT|TA_VCENTER);
    if(enabled)HitAdd(id,x,y,w,h);
   }
 void Card(int x,int y,int w,int h,double glow=0,color tint=clrNONE)
   {
-   if(glow>0)g_sf.GlowRR(x,y,w,h,10,12,SbA(tint==clrNONE?P_GOLD:tint,0.22*glow));
-   g_sf.FillRR(x,y,w,h,10,SbA(P_CARD2),SbA(P_CARD),true);
-   g_sf.StrokeRR(x,y,w,h,10,1,SbA(tint==clrNONE?P_LINE:SbMix(P_LINE,tint,0.35+0.5*glow)));
+   if(glow>0)g_sf.GlowRR(x,y,w,h,12,14,SbA(tint==clrNONE?P_GOLD:tint,0.24*glow));
+   g_sf.FillRR(x,y,w,h,12,SbA(P_CARD2),SbA(P_CARD),true);
+   g_sf.FillRR(x+1,y+1,w-2,1,1,SbA(clrWhite,0.05));
+   g_sf.StrokeRR(x,y,w,h,12,1,SbA(tint==clrNONE?P_LINE:SbMix(P_LINE,tint,0.35+0.5*glow)));
   }
-void Kicker(string s,int x,int y,color c=clrNONE){g_sf.Text(s,x,y,SB_FONT_B,7,FW_BOLD,SbA(c==clrNONE?P_MUTED:c));}
-void Chip(string s,int x,int y,color c,bool filled=false)
+void Kicker(string s,int x,int y,color c=clrNONE,uint anchor=0){g_sf.Text(s,x,y,SB_FONT_B,FS_KICK,FW_SEMIBOLD,SbA(c==clrNONE?P_MUTED:c),anchor);}
+int Chip(string s,int x,int y,color c,bool filled=false,int fs=FS_SMALL)
   {
-   int tw=g_sf.TextW(s,SB_FONT_B,7,FW_BOLD)+14;
-   g_sf.FillRR(x,y,tw,18,9,SbA(c,filled?0.9:0.12));if(!filled)g_sf.StrokeRR(x,y,tw,18,9,1,SbA(c,0.45));
-   g_sf.Text(s,x+tw/2,y+9,SB_FONT_B,7,FW_BOLD,SbA(filled?C'8,10,14':c),TA_CENTER|TA_VCENTER);
+   int hh=fs+9,tw=g_sf.TextW(s,SB_FONT_B,fs,FW_BOLD)+18;
+   g_sf.FillRR(x,y,tw,hh,hh/2.0,SbA(c,filled?0.92:0.13));if(!filled)g_sf.StrokeRR(x,y,tw,hh,hh/2.0,1,SbA(c,0.5));
+   g_sf.Text(s,x+tw/2.0,y+hh/2.0,SB_FONT_B,fs,FW_BOLD,SbA(filled?C'8,10,14':c),TA_CENTER|TA_VCENTER);
+   return tw;
   }
 
 string StatusText(color &c)
   {
-   if(LicenseReady()){c=P_GREEN;return "LIVE  "+DoubleToString(g_cloudRttMs,0)+" ms";}
-   if(CloudConnected()){c=P_GOLD;return "VERIFYING";}
-   c=P_RED;string s=g_connStage;if(StringLen(s)>22)s=StringSubstr(s,0,22);return s==""?"OFFLINE":s;
+   if(LicenseReady()){c=P_GREEN;return "Live · "+DoubleToString(g_cloudRttMs,0)+" ms";}
+   if(CloudConnected()){c=P_GOLD;return "Verifying";}
+   c=P_RED;string s=g_connStage;if(StringLen(s)>24)s=StringSubstr(s,0,24);return s==""?"Offline":s;
   }
 
 void DrawHeader(double t,int W)
   {
-   //--- header band with a moving sheen
-   g_sf.FillRR(1,1,W-2,g_compact?50:62,13,SbA(C'20,30,45'),SbA(C'10,15,24'),true);
-   double sx=MathMod(t*90,W+240)-120;for(int i=0;i<120;i++){double a=0.05*MathSin(M_PI*i/120.0);for(int j=2;j<(g_compact?50:62);j+=1)g_sf.Blend((int)(sx+i-j*0.35),j,SbA(P_GOLD2),a);}
-   //--- logo badge
+   int hb=g_compact?64:66;
+   g_sf.FillRR(1,1,W-2,hb,15,SbA(C'24,35,54'),SbA(C'11,17,28'),true);
+   if(InpAnimations)g_sf.Sheen(MathMod(t*90,W+240)-120,120,hb,SbA(P_GOLD2),0.05);
+   //--- logo: gold tile with a bridge glyph and a live dot
    double pulse=(MathSin(t*2.2)+1)/2;
-   g_sf.GlowRR(14,12,34,34,9,8+4*pulse,SbA(P_GOLD,0.25));
-   g_sf.FillRR(14,12,34,34,9,SbA(P_GOLD2),SbA(C'176,134,52'),true);
-   g_sf.Text("DFX",31,29,SB_FONT_B,9,FW_HEAVY,SbA(C'20,14,4'),TA_CENTER|TA_VCENTER);
-   g_sf.Circle(45,43,4,SbA(LicenseReady()?P_GREEN:P_RED));g_sf.Ring(45,43,4,1.5,SbA(C'10,15,24'));
-   g_sf.Text("DrFX",58,15,SB_FONT_B,13,FW_BOLD,SbA(P_GOLD));
-   g_sf.Text("SIGNALBRIDGE",58+g_sf.TextW("DrFX ",SB_FONT_B,13,FW_BOLD),19,SB_FONT_B,8,FW_BOLD,SbA(P_TEXT,0.9));
-   if(!g_compact)g_sf.Text("EA 0.29.0  ·  "+AccountMode()+"  ·  LICENSE "+LicenseRemaining(),58,38,SB_FONT_M,7,FW_NORMAL,SbA(P_MUTED));
+   g_sf.GlowRR(14,12,42,42,11,9+5*pulse,SbA(P_GOLD,0.28));
+   g_sf.FillRR(14,12,42,42,11,SbA(P_GOLD2),SbA(C'176,134,52'),true);
+   color ink=C'26,18,4';g_sf.Arc(35,40,13,3,270,180,SbA(ink));g_sf.Line(19,40,51,40,3,SbA(ink));g_sf.Line(27,30,27,40,2.4,SbA(ink));g_sf.Line(43,30,43,40,2.4,SbA(ink));
+   g_sf.Circle(52,50,6,SbA(C'11,17,28'));g_sf.Circle(52,50,4.2,SbA(LicenseReady()?P_GREEN:P_RED));
+   g_sf.Text("Signal Bridge",68,13,SB_FONT_B,18,FW_SEMIBOLD,SbA(P_TEXT));
+   g_sf.Text("DrFX  ·  EA 0.29  ·  "+AccountMode()+"  ·  License "+LicenseRemaining(),68,39,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED));
    //--- status pill with breathing dot
-   color sc;string st=StatusText(sc);int pw=g_sf.TextW(st,SB_FONT_B,7,FW_BOLD)+30,px0=W-pw-40,py0=g_compact?15:18;
-   g_sf.FillRR(px0,py0,pw,22,11,SbA(sc,0.12));g_sf.StrokeRR(px0,py0,pw,22,11,1,SbA(sc,0.5));
-   g_sf.Circle(px0+12,py0+11,3+2.5*pulse,SbA(sc,0.25*(1-pulse)+0.05));g_sf.Circle(px0+12,py0+11,3,SbA(sc));
-   g_sf.Text(st,px0+21,py0+11,SB_FONT_B,7,FW_BOLD,SbA(sc),TA_LEFT|TA_VCENTER);
+   color sc;string st=StatusText(sc);int pw=g_sf.TextW(st,SB_FONT_B,FS_SMALL,FW_SEMIBOLD)+32,px0=W-pw-50,py0=14;
+   g_sf.FillRR(px0,py0,pw,24,12,SbA(sc,0.13));g_sf.StrokeRR(px0,py0,pw,24,12,1,SbA(sc,0.5));
+   g_sf.Circle(px0+13,py0+12,3.5+3*pulse,SbA(sc,0.28*(1-pulse)+0.05));g_sf.Circle(px0+13,py0+12,3.5,SbA(sc));
+   g_sf.Text(st,px0+23,py0+12,SB_FONT_B,FS_SMALL,FW_SEMIBOLD,SbA(sc),TA_LEFT|TA_VCENTER);
    //--- collapse / expand
-   double hv=g_hover=="compact"?1:0;g_sf.FillRR(W-32,py0,22,22,7,SbA(SbMix(P_CARD2,P_GOLD,0.1+0.2*hv)));g_sf.StrokeRR(W-32,py0,22,22,7,1,SbA(SbMix(P_LINE,P_GOLD,0.3+0.5*hv)));
-   g_sf.Text(g_compact?"+":"–",W-21,py0+11,SB_FONT_B,11,FW_BOLD,SbA(SbMix(P_MUTED,P_GOLD,0.4+0.6*hv)),TA_CENTER|TA_VCENTER);HitAdd("compact",W-32,py0,22,22);
-   HitAdd("drag",0,0,W-44,g_compact?50:62);
+   double hv=g_hover=="compact"?1:0;g_sf.FillRR(W-42,12,28,28,9,SbA(SbMix(P_CARD2,P_GOLD,0.1+0.2*hv)));g_sf.StrokeRR(W-42,12,28,28,9,1,SbA(SbMix(P_LINE,P_GOLD,0.3+0.5*hv)));
+   Icon(g_compact?"chev_dn":"chev_up",W-28,26,16,SbMix(P_MUTED,P_GOLD2,0.4+0.6*hv));HitAdd("compact",W-42,12,28,28);
+   HitAdd("drag",0,0,px0-4,hb);
   }
 
 void DrawTabs(double t,int W)
   {
-   int x0=12,y0=72,tw=(W-24)/5;
-   g_sf.FillRR(x0,y0,W-24,30,9,SbA(P_CARD));g_sf.StrokeRR(x0,y0,W-24,30,9,1,SbA(P_LINE));
+   int x0=12,y0=78,tw=(W-24)/5;
+   g_sf.FillRR(x0,y0,W-24,40,12,SbA(P_CARD));g_sf.StrokeRR(x0,y0,W-24,40,12,1,SbA(P_LINE));
    int sel=0;for(int i=0;i<5;i++)if(SB_TABS[i]==g_panelTab)sel=i;
-   g_tabPos=SbEase(g_tabPos,sel,0.28);
+   g_tabPos=SbEase(g_tabPos,sel,InpAnimations?0.28:1.0);
    double ix=x0+3+g_tabPos*tw;
-   g_sf.GlowRR(ix,y0+3,tw-6,24,7,8,SbA(P_GOLD,0.18));g_sf.FillRR(ix,y0+3,tw-6,24,7,SbA(P_GOLD,0.22),SbA(P_GOLD,0.10),true);g_sf.StrokeRR(ix,y0+3,tw-6,24,7,1,SbA(P_GOLD,0.6));
+   g_sf.GlowRR(ix,y0+4,tw-6,32,9,9,SbA(P_GOLD,0.18));g_sf.FillRR(ix,y0+4,tw-6,32,9,SbA(P_GOLD,0.24),SbA(P_GOLD,0.10),true);g_sf.StrokeRR(ix,y0+4,tw-6,32,9,1,SbA(P_GOLD,0.6));
    for(int i=0;i<5;i++)
      {
       string id="tab"+IntegerToString(i);double hv=g_hover==id?1:0,on=MathMax(0,1-MathAbs(g_tabPos-i));
-      g_sf.Text(SB_TABS[i],x0+i*tw+tw/2,y0+15,SB_FONT_B,7,FW_BOLD,SbA(SbMix(SbMix(P_MUTED,P_TEXT,hv*0.7),P_GOLD2,on)),TA_CENTER|TA_VCENTER);
-      HitAdd(id,x0+i*tw,y0,tw,30);
+      color c=SbMix(SbMix(P_MUTED,P_TEXT,hv*0.7),P_GOLD2,on);
+      int lw=g_sf.TextW(SB_TAB_LABEL[i],SB_FONT_B,12,FW_SEMIBOLD);bool withIcon=(lw+20<=tw-10);double cx=x0+i*tw+tw/2.0,sx=cx-(lw+(withIcon?20:0))/2.0;
+      if(withIcon)Icon(SB_TAB_ICON[i],sx+7,y0+20,14,c);
+      g_sf.Text(SB_TAB_LABEL[i],sx+(withIcon?20:0),y0+20,SB_FONT_B,12,FW_SEMIBOLD,SbA(c),TA_LEFT|TA_VCENTER);
+      HitAdd(id,x0+i*tw,y0,tw,40);
      }
   }
 
-void Kpi(int x,int y,int w,string k,double v,color c,double t,int i)
+void DrawHero(int x,int y,int w,double t)
   {
-   Card(x,y,w,62);Kicker(k,x+12,y+11);
-   g_sf.Text(Money(v),x+12,y+40,SB_FONT_M,12,FW_BOLD,SbA(c),TA_LEFT|TA_VCENTER);
-   double sh=MathMod(t*0.6+i*0.33,1.0);g_sf.Line(x+10,y+60,x+10+(w-20)*sh,y+60,1.2,SbA(c,0.35*(1-sh)));
+   Card(x,y,w,96,0.35,P_GOLD);
+   Kicker("EQUITY",x+16,y+14);
+   g_sf.Text(Money(g_dEq),x+15,y+50,SB_FONT_N,28,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
+   double fl=AccountInfoDouble(ACCOUNT_PROFIT);Chip(Signed(fl)+" floating",x+16,y+68,fl>=0?P_GREEN:P_RED);
+   int rx=x+(int)(w*0.60);g_sf.Line(rx-14,y+16,rx-14,y+80,1,SbA(P_LINE));
+   Kicker("BALANCE",rx,y+14);g_sf.Text(Money(g_dBal),rx,y+36,SB_FONT_N,FS_VAL,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
+   Kicker("NET RESULT",rx,y+54);g_sf.Text(Signed(g_dNet),rx,y+76,SB_FONT_N,FS_VAL,FW_BOLD,SbA(g_dNet>=0?P_GREEN:P_RED),TA_LEFT|TA_VCENTER);
+   if(InpAnimations){double sh=MathMod(t*0.45,1.0);g_sf.Line(x+14,y+94,x+14+(w-28)*sh,y+94,1.4,SbA(P_GOLD2,0.45*(1-sh)));}
   }
 
 void DrawFlow(int x,int y,int w,double t)
   {
-   bool live=LicenseReady();Card(x,y,w,74,live?0.5+0.5*MathSin(t*1.6)*0.5:0,live?P_GREEN:clrNONE);
-   Kicker("SIGNAL ROUTE",x+12,y+10);
-   g_sf.Text(live?"Cloud RTT "+DoubleToString(g_cloudRttMs,0)+" ms":"Waiting for verified connection",x+w-12,y+10,SB_FONT_R,7,FW_NORMAL,SbA(live?P_GREEN:P_MUTED),TA_RIGHT);
-   string nodes[3];nodes[0]="TV / TELEGRAM";nodes[1]="DRFX CLOUD";nodes[2]="MT5 · "+AccountMode();color nc[3];nc[0]=P_CYAN;nc[1]=P_GOLD;nc[2]=P_GREEN;
-   double cy=y+44,xs[3];xs[0]=x+44;xs[1]=x+w/2.0;xs[2]=x+w-44;
+   bool live=LicenseReady();Card(x,y,w,100,live?0.5+0.5*MathSin(t*1.6)*0.5:0,live?P_GREEN:clrNONE);
+   Kicker("SIGNAL ROUTE",x+16,y+14);
+   g_sf.Text(live?"Cloud "+DoubleToString(g_cloudRttMs,0)+" ms":"Waiting for connection",x+w-16,y+14,SB_FONT_B,FS_SMALL,FW_SEMIBOLD,SbA(live?P_GREEN:P_MUTED),TA_RIGHT);
+   int key=SourceKey(g_lastSource);
+   string srcName=key==0?"TradingView / Telegram":SourceName(g_lastSource);
+   string nodes[3];nodes[0]=srcName;nodes[1]="DrFX Cloud";nodes[2]="MT5 · "+AccountMode();color nc[3];nc[0]=key==0?P_CYAN:SourceColor(key);nc[1]=P_GOLD;nc[2]=P_GREEN;
+   double cy=y+52,xs[3];xs[0]=x+58;xs[1]=x+w/2.0;xs[2]=x+w-58;
    for(int i=0;i<2;i++)
      {
-      g_sf.Line(xs[i]+12,cy,xs[i+1]-12,cy,1.5,SbA(P_LINE));
-      if(live)for(int k=0;k<3;k++){double p=MathMod(t*0.55+k/3.0+i*0.17,1.0);double px=xs[i]+12+(xs[i+1]-xs[i]-24)*p;g_sf.Circle(px,cy,5,SbA(nc[i+1],0.12));g_sf.Circle(px,cy,2.2,SbA(nc[i+1],0.95*MathSin(M_PI*p)));}
+      g_sf.Line(xs[i]+20,cy,xs[i+1]-20,cy,1.6,SbA(P_LINE));
+      if(live&&InpAnimations)for(int k=0;k<3;k++){double p=MathMod(t*0.55+k/3.0+i*0.17,1.0);double px=xs[i]+20+(xs[i+1]-xs[i]-40)*p;g_sf.Circle(px,cy,5.5,SbA(nc[i+1],0.12));g_sf.Circle(px,cy,2.4,SbA(nc[i+1],0.95*MathSin(M_PI*p)));}
      }
    for(int i=0;i<3;i++)
      {
-      double pl=live?(MathSin(t*2.4+i*1.1)+1)/2:0;
-      g_sf.Circle(xs[i],cy,13+3*pl,SbA(nc[i],0.10));g_sf.Circle(xs[i],cy,10,SbA(P_BG));g_sf.Ring(xs[i],cy,10,1.6,SbA(nc[i],live?0.95:0.4));g_sf.Circle(xs[i],cy,3.5,SbA(nc[i],live?1:0.4));
-      g_sf.Text(nodes[i],(int)xs[i],(int)cy+18,SB_FONT_B,6,FW_BOLD,SbA(P_MUTED),TA_CENTER|TA_TOP);
+      double pl=live&&InpAnimations?(MathSin(t*2.4+i*1.1)+1)/2:0;
+      g_sf.Circle(xs[i],cy,20+3*pl,SbA(nc[i],0.10));g_sf.Circle(xs[i],cy,17,SbA(P_BG));g_sf.Ring(xs[i],cy,17,1.6,SbA(nc[i],live?0.95:0.45));
+      if(i==0)
+        {
+         if(key!=0)Icon(SourceIcon(key),xs[i],cy,18,nc[i]);
+         else{double sw=InpAnimations?(MathSin(t*1.4)+1)/2:0;Icon("tv",xs[i],cy,18,P_TV,1-sw);Icon("tg",xs[i],cy,18,P_TG,sw);}
+        }
+      else Icon(i==1?"cloud":"mt5",xs[i],cy,18,nc[i],live?1:0.6);
+      g_sf.Text(nodes[i],xs[i],cy+24,SB_FONT_B,FS_SMALL,FW_SEMIBOLD,SbA(P_MUTED),TA_CENTER|TA_TOP);
      }
   }
 
 void DrawCounters(int x,int y,int w)
   {
    string k[5]={"SIGNALS","TP1","TP2","TP3","STOPS"};long v[5];v[0]=g_reportSignals;v[1]=g_reportTP1;v[2]=g_reportTP2;v[3]=g_reportTP3;v[4]=g_reportStops;
-   color c[5];c[0]=P_CYAN;c[1]=P_GREEN;c[2]=P_GREEN;c[3]=P_GREEN;c[4]=P_RED;int cw=(w-16)/5;
-   for(int i=0;i<5;i++){int cx=x+i*(cw+4);Card(cx,y,cw,50);Kicker(k[i],cx+cw/2-g_sf.TextW(k[i],SB_FONT_B,7,FW_BOLD)/2,y+9);g_sf.Text(IntegerToString((int)v[i]),cx+cw/2,y+33,SB_FONT_M,12,FW_BOLD,SbA(c[i]),TA_CENTER|TA_VCENTER);}
+   color c[5];c[0]=P_CYAN;c[1]=P_GREEN;c[2]=P_GREEN;c[3]=P_GREEN;c[4]=P_RED;int cw=(w-24)/5;
+   for(int i=0;i<5;i++){int cx=x+i*(cw+6);Card(cx,y,cw,62);Kicker(k[i],cx+cw/2,y+12,clrNONE,TA_CENTER);g_sf.Text(IntegerToString((int)v[i]),cx+cw/2.0,y+41,SB_FONT_N,20,FW_BOLD,SbA(c[i]),TA_CENTER|TA_VCENTER);}
   }
 
 void DrawBars(int x,int y,int w,int h)
   {
-   Card(x,y,w,h);Kicker("14-DAY NET P/L · BROKER HISTORY",x+12,y+10);
+   Card(x,y,w,h);Kicker("14-DAY NET P/L",x+16,y+14);
    double mx=0,sum=0;for(int i=0;i<14;i++){mx=MathMax(mx,MathAbs(g_reportBars[i]));sum+=g_reportBars[i];}
-   g_sf.Text(Signed(sum),x+w-12,y+10,SB_FONT_M,8,FW_BOLD,SbA(sum>=0?P_GREEN:P_RED),TA_RIGHT);
-   int top=y+30,bot=y+h-12,mid=(top+bot)/2;g_sf.Line(x+12,mid,x+w-12,mid,1,SbA(P_LINE));
-   double bw=(w-24)/14.0;g_barsGrow=SbEase(g_barsGrow,1,0.12);
+   g_sf.Text(Signed(sum),x+w-16,y+12,SB_FONT_N,14,FW_BOLD,SbA(sum>=0?P_GREEN:P_RED),TA_RIGHT);
+   int top=y+38,bot=y+h-14,mid=(top+bot)/2;g_sf.Line(x+16,mid,x+w-16,mid,1,SbA(P_LINE));
+   double bw=(w-32)/14.0;g_barsGrow=SbEase(g_barsGrow,1,InpAnimations?0.12:1.0);
    for(int i=0;i<14;i++)
      {
-      double v=g_reportBars[i],hh=mx>0?MathAbs(v)/mx*(mid-top-2)*g_barsGrow:0;double bx=x+12+i*bw+2;
+      double v=g_reportBars[i],hh=mx>0?MathAbs(v)/mx*(mid-top-2)*g_barsGrow:0;double bx=x+16+i*bw+2;
       if(hh<1){g_sf.FillRR(bx,mid-1,bw-4,2,1,SbA(P_DIM,0.6));continue;}
       color c=v>=0?P_GREEN:P_RED;
       if(v>=0)g_sf.FillRR(bx,mid-hh,bw-4,hh,3,SbA(c,0.95),SbA(c,0.35),true);else g_sf.FillRR(bx,mid,bw-4,hh,3,SbA(c,0.35),SbA(c,0.95),true);
      }
-   if(mx<=0)g_sf.Text("Waiting for closed trades",x+w/2,mid-12,SB_FONT_R,8,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
+   if(mx<=0)g_sf.Text("Waiting for closed trades",x+w/2.0,mid-14,SB_FONT_R,12,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
   }
 
+void SignalFlash(double t){if(g_lastSignal!=g_seenSignal){g_seenSignal=g_lastSignal;if(g_valsInit)g_sigFlash=t;}}
 void DrawLast(int x,int y,int w,double t)
   {
-   if(g_lastSignal!=g_seenSignal){g_seenSignal=g_lastSignal;if(g_valsInit)g_sigFlash=t;}
-   double f=MathMax(0,1-(t-g_sigFlash)/2.0);Card(x,y,w,52,f,P_CYAN);
-   g_sf.Circle(x+18,y+26,4+6*f,SbA(P_CYAN,0.25*f));g_sf.Circle(x+18,y+26,3.5,SbA(P_CYAN));
-   g_sf.Text(StringSubstr(g_lastSignal,0,52),x+32,y+18,SB_FONT_B,8,FW_BOLD,SbA(SbMix(P_CYAN,P_TEXT,f)),TA_LEFT|TA_VCENTER);
-   g_sf.Text(StringSubstr(g_lastExecution,0,60),x+32,y+36,SB_FONT_R,7,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
+   SignalFlash(t);int key=SourceKey(g_lastSource);color sc=key==0?P_CYAN:SourceColor(key);
+   double f=MathMax(0,1-(t-g_sigFlash)/2.0);Card(x,y,w,84,f,sc);
+   g_sf.Circle(x+34,y+42,22+8*f,SbA(sc,0.10+0.2*f));Icon(SourceIcon(key),x+34,y+42,28,sc);
+   Kicker("LAST SIGNAL",x+66,y+14);
+   SourceBadge(g_lastSource,x+w-16-g_sf.TextW(SourceName(g_lastSource),SB_FONT_B,FS_SMALL,FW_SEMIBOLD)-32,y+10);
+   g_sf.Text(g_sf.Fit(g_lastSignal,SB_FONT_B,14,FW_SEMIBOLD,w-84),x+66,y+44,SB_FONT_B,14,FW_SEMIBOLD,SbA(SbMix(sc,P_TEXT,1-f*0.6)),TA_LEFT|TA_VCENTER);
+   g_sf.Text(g_sf.Fit(g_lastExecution,SB_FONT_R,FS_SMALL,FW_NORMAL,w-84),x+66,y+66,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
   }
 
 void DrawFooter(int x,int y,int w)
   {
-   int bw=(w-8)/2;
-   Btn("report_reset",x,y,bw,32,"↻  RESET REPORT",P_CYAN,false);
-   if(g_riskHit)Btn("risk_reset",x+bw+8,y,bw,32,"RESTART AFTER DD HIT",P_RED,true);
-   else Btn("risk_reset",x+bw+8,y,bw,32,"DAILY DD  "+F2(g_riskDD)+"% / "+F2(InpDailyDrawdownPercent)+"%",P_GREEN,false,false);
+   int bw=(w-10)/2;
+   Btn("report_reset",x,y,bw,40,"Reset report",P_CYAN,false,true,"reset");
+   if(g_riskHit)Btn("risk_reset",x+bw+10,y,bw,40,"Restart after DD hit",P_RED,true,true,"shield");
+   else Btn("risk_reset",x+bw+10,y,bw,40,"Daily DD "+F2(g_riskDD)+"% / "+F2(InpDailyDrawdownPercent)+"%",P_GREEN,false,false,"shield");
   }
 
 void DrawOverview(int W,double t)
   {
-   int x=12,y=112,cw=(W-24-16)/3;
-   Kpi(x,y,cw,"BALANCE",g_dBal,P_TEXT,t,0);Kpi(x+cw+8,y,cw,"EQUITY",g_dEq,g_dEq>=g_dBal?P_GREEN:P_GOLD2,t,1);Kpi(x+2*(cw+8),y,cw,"NET REPORT",g_dNet,g_dNet>=0?P_GREEN:P_RED,t,2);
-   DrawFlow(x,y+72,W-24,t);
-   DrawCounters(x,y+156,W-24);
-   DrawBars(x,y+216,W-24,104);
-   DrawLast(x,y+330,W-24,t);
-   DrawFooter(x,y+396,W-24);
+   int x=12,y=128,w=W-24;
+   DrawHero(x,y,w,t);
+   DrawFlow(x,y+106,w,t);
+   DrawLast(x,y+216,w,t);
+   DrawCounters(x,y+310,w);
+   DrawFooter(x,y+384,w);
   }
 
 void DrawSignals(int W,double t)
   {
-   int x=12,y=112,w=W-24;
-   if(g_lastSignal!=g_seenSignal){g_seenSignal=g_lastSignal;if(g_valsInit)g_sigFlash=t;}
-   double f=MathMax(0,1-(t-g_sigFlash)/2.0);Card(x,y,w,150,f,P_CYAN);
-   double cx=x+52,cy=y+75;for(int k=0;k<3;k++){double p=MathMod(t*0.5+k/3.0,1.0);g_sf.Ring(cx,cy,10+30*p,1.5,SbA(P_CYAN,0.5*(1-p)));}
-   g_sf.Circle(cx,cy,9,SbA(P_CYAN));g_sf.Circle(cx,cy,3.5,SbA(P_BG));
-   Kicker("LAST SIGNAL",x+104,y+18);g_sf.Text(StringSubstr(g_lastSignal,0,40),x+104,y+38,SB_FONT_B,10,FW_BOLD,SbA(P_TEXT));
-   Kicker("SOURCE / STRATEGY",x+104,y+66);g_sf.Text(StringSubstr(g_lastSource+(g_lastStrategy!=""?" / "+g_lastStrategy:""),0,44),x+104,y+82,SB_FONT_R,8,FW_NORMAL,SbA(P_CYAN));
-   Kicker("EXECUTION",x+104,y+106);g_sf.Text(StringSubstr(g_lastExecution,0,44),x+104,y+122,SB_FONT_R,8,FW_NORMAL,SbA(P_MUTED));
-   DrawCounters(x,y+160,w);
-   Card(x,y+220,w,64);Kicker("CONNECTION",x+12,y+232);g_sf.Text(StringSubstr(g_connStage,0,48),x+12,y+256,SB_FONT_B,9,FW_BOLD,SbA(LicenseReady()?P_GREEN:P_GOLD2),TA_LEFT|TA_VCENTER);
-   g_sf.Text("Ticket "+g_lastTicket,x+w-12,y+256,SB_FONT_M,8,FW_NORMAL,SbA(P_MUTED),TA_RIGHT|TA_VCENTER);
-   DrawFooter(x,y+296,w);
+   int x=12,y=128,w=W-24;SignalFlash(t);
+   int key=SourceKey(g_lastSource);color sc=key==0?P_CYAN:SourceColor(key);
+   double f=MathMax(0,1-(t-g_sigFlash)/2.0);Card(x,y,w,150,f,sc);
+   double cx=x+62,cy=y+75;if(InpAnimations)for(int k=0;k<3;k++){double p=MathMod(t*0.5+k/3.0,1.0);g_sf.Ring(cx,cy,18+30*p,1.5,SbA(sc,0.5*(1-p)));}
+   g_sf.Circle(cx,cy,24,SbA(P_BG));g_sf.Ring(cx,cy,24,1.6,SbA(sc,0.8));Icon(SourceIcon(key),cx,cy,30,sc);
+   int tx=x+124,tw=w-136;
+   Kicker("LAST SIGNAL",tx,y+16);g_sf.Text(g_sf.Fit(g_lastSignal,SB_FONT_B,15,FW_SEMIBOLD,tw),tx,y+42,SB_FONT_B,15,FW_SEMIBOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
+   int bw=SourceBadge(g_lastSource,tx,y+60,12,true);
+   if(g_lastStrategy!="")g_sf.Text(g_sf.Fit(g_lastStrategy,SB_FONT_R,FS_SMALL,FW_NORMAL,tw-bw-10),tx+bw+10,y+72,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
+   Kicker("EXECUTION",tx,y+98);g_sf.Text(g_sf.Fit(g_lastExecution,SB_FONT_R,12,FW_NORMAL,tw),tx,y+124,SB_FONT_R,12,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
+   //--- signals by source this session
+   int y2=y+160;Card(x,y2,w,112);Kicker("SIGNALS BY SOURCE · THIS SESSION",x+16,y2+14);
+   int total=g_srcN[0]+g_srcN[1]+g_srcN[2]+g_srcN[3];int keys[3]={1,2,0};string names[3]={"TradingView","Telegram","Other"};
+   for(int i=0;i<3;i++)
+     {
+      int ry=y2+44+i*22,n=keys[i]==0?g_srcN[0]+g_srcN[3]:g_srcN[keys[i]];color c=SourceColor(keys[i]);
+      Icon(SourceIcon(keys[i]),x+26,ry,15,c);g_sf.Text(names[i],x+42,ry,SB_FONT_B,12,FW_SEMIBOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
+      int bx=x+150,bwid=w-150-56;double fr=total>0?(double)n/total:0;
+      g_sf.FillRR(bx,ry-4,bwid,8,4,SbA(P_LINE));if(fr>0)g_sf.FillRR(bx,ry-4,MathMax(8,bwid*fr*g_barsGrow),8,4,SbA(c,0.95));
+      g_sf.Text(IntegerToString(n),x+w-16,ry,SB_FONT_N,14,FW_BOLD,SbA(n>0?c:P_DIM),TA_RIGHT|TA_VCENTER);
+     }
+   g_barsGrow=SbEase(g_barsGrow,1,InpAnimations?0.12:1.0);
+   //--- connection
+   int y3=y2+122;Card(x,y3,w,70);Kicker("CONNECTION",x+16,y3+14);
+   g_sf.Text(g_sf.Fit(g_connStage,SB_FONT_B,FS_BODY,FW_SEMIBOLD,w-150),x+16,y3+46,SB_FONT_B,FS_BODY,FW_SEMIBOLD,SbA(LicenseReady()?P_GREEN:P_GOLD2),TA_LEFT|TA_VCENTER);
+   g_sf.Text("Ticket "+g_lastTicket,x+w-16,y3+46,SB_FONT_N,13,FW_NORMAL,SbA(P_MUTED),TA_RIGHT|TA_VCENTER);
+   DrawFooter(x,y3+80,w);
   }
 
 void DrawTrades(int W,double t)
   {
-   int x=12,y=112,w=W-24,n=CountMyPositions();
-   Card(x,y,w,302);Kicker("BRIDGE POSITIONS",x+12,y+12);Chip(IntegerToString(n)+" OPEN",x+w-70,y+8,n>0?P_GREEN:P_MUTED);
+   int x=12,y=128,w=W-24,n=CountMyPositions();
+   Card(x,y,w,316);Kicker("BRIDGE POSITIONS",x+16,y+16);Chip(IntegerToString(n)+" open",x+w-16-g_sf.TextW(IntegerToString(n)+" open",SB_FONT_B,FS_SMALL,FW_BOLD)-18,y+10,n>0?P_GREEN:P_MUTED);
    int row=0;double mx=0;
    for(int i=0;i<PositionsTotal();i++){ulong tk=PositionGetTicket(i);if(tk>0&&PositionSelectByTicket(tk)&&(long)PositionGetInteger(POSITION_MAGIC)==InpMagic)mx=MathMax(mx,MathAbs(PositionGetDouble(POSITION_PROFIT)));}
-   for(int i=0;i<PositionsTotal()&&row<6;i++)
+   for(int i=0;i<PositionsTotal()&&row<5;i++)
      {
       ulong tk=PositionGetTicket(i);if(tk==0||!PositionSelectByTicket(tk)||(long)PositionGetInteger(POSITION_MAGIC)!=InpMagic)continue;
-      int ry=y+38+row*42;bool buy=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;double pl=PositionGetDouble(POSITION_PROFIT);color pc=pl>=0?P_GREEN:P_RED;
-      double hv=g_hover=="row"+IntegerToString(row)?1:0;g_sf.FillRR(x+8,ry,w-16,36,8,SbA(SbMix(P_CARD,P_GOLD,0.05+0.08*hv)));HitAdd("row"+IntegerToString(row),x+8,ry,w-16,36);
-      Chip(buy?"BUY":"SELL",x+16,ry+9,buy?P_GREEN:P_RED,true);
-      g_sf.Text(PositionGetString(POSITION_SYMBOL),x+70,ry+12,SB_FONT_B,8,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
-      g_sf.Text(DoubleToString(PositionGetDouble(POSITION_VOLUME),2)+" lot",x+70,ry+26,SB_FONT_M,7,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
-      double frac=mx>0?MathAbs(pl)/mx:0;int bx=x+w/2,bwid=(int)((w/2-110)*frac);g_sf.FillRR(bx,ry+15,w/2-110,6,3,SbA(P_LINE));if(bwid>0)g_sf.FillRR(bx,ry+15,bwid,6,3,SbA(pc,0.85));
-      g_sf.Text(Signed(pl),x+w-16,ry+18,SB_FONT_M,9,FW_BOLD,SbA(pc),TA_RIGHT|TA_VCENTER);
+      int ry=y+42+row*50;bool buy=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY;double pl=PositionGetDouble(POSITION_PROFIT);color pc=pl>=0?P_GREEN:P_RED;
+      string src=NoteSource(PositionGetString(POSITION_COMMENT));int key=SourceKey(src);
+      double hv=g_hover=="row"+IntegerToString(row)?1:0;g_sf.FillRR(x+8,ry,w-16,44,10,SbA(SbMix(P_CARD,P_GOLD,0.05+0.08*hv)));HitAdd("row"+IntegerToString(row),x+8,ry,w-16,44);
+      Chip(buy?"BUY":"SELL",x+16,ry+12,buy?P_GREEN:P_RED,true);
+      g_sf.Text(PositionGetString(POSITION_SYMBOL),x+78,ry+14,SB_FONT_B,FS_BODY,FW_SEMIBOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
+      g_sf.Text(DoubleToString(PositionGetDouble(POSITION_VOLUME),2)+" lot",x+78,ry+31,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
+      //--- source of the signal that opened this position (from the MT5 comment)
+      int sx=x+(int)(w*0.44);Icon(SourceIcon(key),sx+8,ry+15,15,SourceColor(key));g_sf.Text(SourceName(src),sx+20,ry+15,SB_FONT_B,FS_SMALL,FW_SEMIBOLD,SbA(SbMix(SourceColor(key),P_TEXT,0.4)),TA_LEFT|TA_VCENTER);
+      double frac=mx>0?MathAbs(pl)/mx:0;int bwid=(int)(w*0.30);g_sf.FillRR(sx,ry+30,bwid,5,2.5,SbA(P_LINE));if(frac>0)g_sf.FillRR(sx,ry+30,MathMax(5,bwid*frac),5,2.5,SbA(pc,0.85));
+      g_sf.Text(Signed(pl),x+w-18,ry+22,SB_FONT_N,15,FW_BOLD,SbA(pc),TA_RIGHT|TA_VCENTER);
       row++;
      }
-   if(row==0){double p=(MathSin(t*1.5)+1)/2;g_sf.Ring(x+w/2,y+140,22+4*p,1.5,SbA(P_GOLD,0.3+0.3*p));g_sf.Text("No SignalBridge positions",x+w/2,y+188,SB_FONT_B,9,FW_BOLD,SbA(P_TEXT),TA_CENTER|TA_VCENTER);g_sf.Text("New bridge orders appear here live",x+w/2,y+206,SB_FONT_R,8,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);}
-   g_sf.Text("FLOATING  "+Signed(AccountInfoDouble(ACCOUNT_PROFIT)),x+12,y+288,SB_FONT_M,8,FW_BOLD,SbA(AccountInfoDouble(ACCOUNT_PROFIT)>=0?P_GREEN:P_RED),TA_LEFT|TA_VCENTER);
-   DrawFooter(x,y+314,w);
+   if(row==0){double p=InpAnimations?(MathSin(t*1.5)+1)/2:0.5;g_sf.Ring(x+w/2.0,y+130,26+4*p,1.6,SbA(P_GOLD,0.3+0.3*p));Icon("candles",x+w/2.0,y+130,26,P_GOLD,0.8);g_sf.Text("No Signal Bridge positions",x+w/2.0,y+186,SB_FONT_B,14,FW_SEMIBOLD,SbA(P_TEXT),TA_CENTER|TA_VCENTER);g_sf.Text("New orders appear here live, with their source",x+w/2.0,y+208,SB_FONT_R,12,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);}
+   double fl=AccountInfoDouble(ACCOUNT_PROFIT);Kicker("FLOATING P/L",x+16,y+292,clrNONE,TA_LEFT|TA_VCENTER);g_sf.Text(Signed(fl),x+w-18,y+292,SB_FONT_N,15,FW_BOLD,SbA(fl>=0?P_GREEN:P_RED),TA_RIGHT|TA_VCENTER);
+   DrawFooter(x,y+326,w);
   }
 
 void DrawRisk(int W,double t)
   {
-   int x=12,y=112,w=W-24;color c=g_riskHit?P_RED:(g_dDD>InpDailyDrawdownPercent*0.7?P_GOLD2:P_GREEN);
-   Card(x,y,w,214,g_riskHit?0.6+0.4*MathSin(t*4):0,g_riskHit?P_RED:clrNONE);
-   double cx=x+86,cy=y+112,r=58,frac=SbClamp(g_dDD/MathMax(0.01,InpDailyDrawdownPercent),0,1);
-   g_sf.Arc(cx,cy,r,10,225,270,SbA(P_LINE));if(frac>0)g_sf.Arc(cx,cy,r,10,225,270*frac,SbA(c));
-   double ea=(225+270*frac)*M_PI/180.0;g_sf.Circle(cx+r*MathSin(ea),cy-r*MathCos(ea),7,SbA(c,0.25));
-   g_sf.Text(F2(g_dDD)+"%",(int)cx,(int)cy-4,SB_FONT_M,15,FW_BOLD,SbA(c),TA_CENTER|TA_VCENTER);g_sf.Text("of "+F2(InpDailyDrawdownPercent)+"% limit",(int)cx,(int)cy+18,SB_FONT_R,7,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
-   int tx=x+168;Kicker("DAILY ACCOUNT DRAWDOWN",tx,y+28);Chip(g_riskHit?"HIT · SIGNALS PAUSED":"READY",tx,y+46,c,g_riskHit);
-   g_sf.Text("Equity "+Money(AccountInfoDouble(ACCOUNT_EQUITY)),tx,y+86,SB_FONT_M,8,FW_NORMAL,SbA(P_TEXT));
-   g_sf.Text("Today "+Signed(g_dailyProfit),tx,y+104,SB_FONT_M,8,FW_NORMAL,SbA(g_dailyProfit>=0?P_GREEN:P_RED));
-   g_sf.Text("A HIT closes ALL account",tx,y+134,SB_FONT_R,7,FW_NORMAL,SbA(P_MUTED));g_sf.Text("positions and orders.",tx,y+148,SB_FONT_R,7,FW_NORMAL,SbA(P_MUTED));
-   g_sf.Text("Manual confirmation restarts.",tx,y+166,SB_FONT_R,7,FW_NORMAL,SbA(P_MUTED));
-   DrawCounters(x,y+224,w);
-   DrawFooter(x,y+296,w);
+   int x=12,y=128,w=W-24;color c=g_riskHit?P_RED:(g_dDD>InpDailyDrawdownPercent*0.7?P_GOLD2:P_GREEN);
+   Card(x,y,w,186,g_riskHit?0.6+0.4*MathSin(t*4):0,g_riskHit?P_RED:clrNONE);
+   double cx=x+92,cy=y+100,r=60,frac=SbClamp(g_dDD/MathMax(0.01,InpDailyDrawdownPercent),0,1);
+   g_sf.Arc(cx,cy,r,11,225,270,SbA(P_LINE));if(frac>0)g_sf.Arc(cx,cy,r,11,225,270*frac,SbA(c));
+   double ea=(225+270*frac)*M_PI/180.0;g_sf.Circle(cx+r*MathSin(ea),cy-r*MathCos(ea),8,SbA(c,0.25));
+   g_sf.Text(F2(g_dDD)+"%",cx,cy-6,SB_FONT_N,24,FW_BOLD,SbA(c),TA_CENTER|TA_VCENTER);g_sf.Text("of "+F2(InpDailyDrawdownPercent)+"% limit",cx,cy+18,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
+   int tx=x+180;Kicker("DAILY DRAWDOWN",tx,y+20);Chip(g_riskHit?"HIT · signals paused":"Protected",tx,y+40,c,g_riskHit);
+   g_sf.Text("Equity",tx,y+82,SB_FONT_R,12,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);g_sf.Text(Money(AccountInfoDouble(ACCOUNT_EQUITY)),x+w-16,y+82,SB_FONT_N,14,FW_BOLD,SbA(P_TEXT),TA_RIGHT|TA_VCENTER);
+   g_sf.Text("Today",tx,y+106,SB_FONT_R,12,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);g_sf.Text(Signed(g_dailyProfit),x+w-16,y+106,SB_FONT_N,14,FW_BOLD,SbA(g_dailyProfit>=0?P_GREEN:P_RED),TA_RIGHT|TA_VCENTER);
+   g_sf.Text("A hit closes ALL positions and",tx,y+136,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);g_sf.Text("orders; you restart it manually.",tx,y+154,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
+   DrawBars(x,y+196,w,128);
+   DrawFooter(x,y+334,w);
   }
 
 void DrawSettings(int W,double t)
   {
-   int x=12,y=112,w=W-24;
-   Card(x,y,w,112);Kicker("DEFAULT TRADE MANAGEMENT · NEW POSITIONS",x+12,y+12);
-   string p[3];p[0]=g_policy1;p[1]=g_policy2;p[2]=g_policy3;int cw=(w-40)/3;
-   for(int i=0;i<3;i++){int cx=x+12+i*(cw+8);color c=p[i]=="CLOSE"?P_GREEN:p[i]=="BE"?P_CYAN:p[i]=="PARTIAL"?P_GOLD2:P_DIM;double hv=g_hover=="pol"+IntegerToString(i)?1:0;
-      g_sf.FillRR(cx,y+36,cw,58,9,SbA(SbMix(P_CARD,c,0.08+0.1*hv)));g_sf.StrokeRR(cx,y+36,cw,58,9,1,SbA(c,0.45+0.3*hv));HitAdd("pol"+IntegerToString(i),cx,y+36,cw,58);
-      g_sf.Text("TP"+IntegerToString(i+1),cx+cw/2,y+52,SB_FONT_B,7,FW_BOLD,SbA(P_MUTED),TA_CENTER|TA_VCENTER);g_sf.Text(p[i],cx+cw/2,y+74,SB_FONT_B,11,FW_BOLD,SbA(c),TA_CENTER|TA_VCENTER);}
-   g_sf.Text("Partial "+DoubleToString(g_policyPartial,0)+"%  ·  BE buffer "+IntegerToString(g_policyBuffer)+" pts",x+12,y+102,SB_FONT_M,7,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
-   Card(x,y+122,w,112);Kicker("EXECUTION",x+12,y+134);
+   int x=12,y=128,w=W-24;
+   Card(x,y,w,132);Kicker("TAKE-PROFIT ACTIONS · NEW POSITIONS",x+16,y+14);
+   string p[3];p[0]=g_policy1;p[1]=g_policy2;p[2]=g_policy3;int cw=(w-48)/3;
+   for(int i=0;i<3;i++){int cx=x+16+i*(cw+8);color c=p[i]=="CLOSE"?P_GREEN:p[i]=="BE"?P_CYAN:p[i]=="PARTIAL"?P_GOLD2:P_DIM;double hv=g_hover=="pol"+IntegerToString(i)?1:0;
+      g_sf.FillRR(cx,y+38,cw,62,10,SbA(SbMix(P_CARD,c,0.08+0.1*hv)));g_sf.StrokeRR(cx,y+38,cw,62,10,1,SbA(c,0.45+0.3*hv));HitAdd("pol"+IntegerToString(i),cx,y+38,cw,62);
+      g_sf.Text("TP"+IntegerToString(i+1),cx+cw/2.0,y+56,SB_FONT_B,FS_SMALL,FW_SEMIBOLD,SbA(P_MUTED),TA_CENTER|TA_VCENTER);g_sf.Text(p[i],cx+cw/2.0,y+80,SB_FONT_B,16,FW_BOLD,SbA(c),TA_CENTER|TA_VCENTER);}
+   g_sf.Text("Partial "+DoubleToString(g_policyPartial,0)+"%  ·  Break-even buffer "+IntegerToString(g_policyBuffer)+" pts",x+16,y+116,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
+   Card(x,y+142,w,126);Kicker("EXECUTION",x+16,y+156);
    string k[4]={"TEST SYMBOL","DEFAULT LOTS","MAX LOT","MAX RISK"};string v[4];v[0]=TestSymbol();v[1]=DoubleToString(InpDefaultLots,2);v[2]=DoubleToString(InpMaxLot,2);v[3]=F2(InpMaxRiskPercent)+"%";
-   for(int i=0;i<4;i++){int cx=x+12+(i%2)*(w/2),cy=y+156+(i/2)*36;Kicker(k[i],cx,cy);g_sf.Text(v[i],cx,cy+18,SB_FONT_M,9,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);}
-   g_sf.Text("Change in F7 inputs or your member portal at drfx.company",x+w/2,y+254,SB_FONT_R,7,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
-   DrawFooter(x,y+296,w);
+   for(int i=0;i<4;i++){int cx=x+16+(i%2)*(w/2),cy=y+182+(i/2)*44;Kicker(k[i],cx,cy);g_sf.Text(v[i],cx,cy+24,SB_FONT_N,FS_VAL,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);}
+   g_sf.Text("Change these in the EA inputs (F7) or at drfx.company",x+w/2.0,y+286,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
+   DrawFooter(x,y+304,w);
   }
 
 void DrawCompact(int W,double t)
   {
-   int x=12,y=58,w=W-24;
-   Kicker("EQUITY",x,y);g_sf.Text(Money(g_dEq),x,y+20,SB_FONT_M,11,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
-   Kicker("NET",x+w/2,y);g_sf.Text(Signed(g_dNet),x+w/2,y+20,SB_FONT_M,11,FW_BOLD,SbA(g_dNet>=0?P_GREEN:P_RED),TA_LEFT|TA_VCENTER);
+   int x=16,y=76,w=W-32;
+   Kicker("EQUITY",x,y);g_sf.Text(Money(g_dEq),x,y+24,SB_FONT_N,FS_VAL,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
+   Kicker("NET",x+w/2,y);g_sf.Text(Signed(g_dNet),x+w/2,y+24,SB_FONT_N,FS_VAL,FW_BOLD,SbA(g_dNet>=0?P_GREEN:P_RED),TA_LEFT|TA_VCENTER);
    double frac=SbClamp(g_dDD/MathMax(0.01,InpDailyDrawdownPercent),0,1);color c=g_riskHit?P_RED:P_GREEN;
-   g_sf.FillRR(x,y+42,w,8,4,SbA(P_LINE));if(frac>0)g_sf.FillRR(x,y+42,MathMax(8,w*frac),8,4,SbA(c));
-   g_sf.Text("DD "+F2(g_dDD)+"% / "+F2(InpDailyDrawdownPercent)+"%"+(g_riskHit?"  HIT":""),x,y+62,SB_FONT_M,7,FW_NORMAL,SbA(c),TA_LEFT|TA_VCENTER);
-   g_sf.Text("SIG "+N64(g_reportSignals)+"  TP "+N64(g_reportTP1+g_reportTP2+g_reportTP3)+"  SL "+N64(g_reportStops),x+w,y+62,SB_FONT_M,7,FW_NORMAL,SbA(P_CYAN),TA_RIGHT|TA_VCENTER);
+   g_sf.FillRR(x,y+44,w,8,4,SbA(P_LINE));if(frac>0)g_sf.FillRR(x,y+44,MathMax(8,w*frac),8,4,SbA(c));
+   g_sf.Text("DD "+F2(g_dDD)+"% / "+F2(InpDailyDrawdownPercent)+"%"+(g_riskHit?"  HIT":""),x,y+64,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(c),TA_LEFT|TA_VCENTER);
+   int key=SourceKey(g_lastSource);Icon(SourceIcon(key),x+w-8,y+64,14,SourceColor(key));
+   g_sf.Text("Signals "+N64(g_reportSignals)+"  ·  TP "+N64(g_reportTP1+g_reportTP2+g_reportTP3)+"  ·  SL "+N64(g_reportStops),x+w-20,y+64,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_CYAN),TA_RIGHT|TA_VCENTER);
   }
 
 void RenderPanel(){
@@ -1024,10 +1141,10 @@ void RenderPanel(){
  g_dBal=SbEase(g_dBal,AccountInfoDouble(ACCOUNT_BALANCE),k);g_dEq=SbEase(g_dEq,AccountInfoDouble(ACCOUNT_EQUITY),k);g_dNet=SbEase(g_dNet,g_reportProfit+g_reportLoss,k);g_dDD=SbEase(g_dDD,g_riskDD,k);
  g_hCur=SbEase(g_hCur,PanelTargetH(),InpAnimations?0.3:1.0);int H=(int)MathCeil(g_hCur);
  g_sf.Clear();HitReset();
- //--- frame: shadow, body, animated conic edge
- g_sf.FillRR(0,0,W,H,14,SbA(P_BG),SbA(C'5,8,13'),true);
- g_sf.StrokeRR(0,0,W,H,14,1,SbA(P_LINE));
- if(InpAnimations){double per=2.0*(W+H),pos=MathMod(t*160,per);for(int s=0;s<90;s++){double q=MathMod(pos-s*2,per),ex,ey;if(q<W){ex=q;ey=0.5;}else if(q<W+H){ex=W-0.5;ey=q-W;}else if(q<2*W+H){ex=W-(q-W-H);ey=H-0.5;}else{ex=0.5;ey=H-(q-2*W-H);}g_sf.Blend((int)ex,(int)ey,SbA(P_GOLD2),1.0-s/90.0);}}
+ //--- frame: body and a travelling gold edge light
+ g_sf.FillRR(0,0,W,H,16,SbA(P_BG),SbA(C'5,8,13'),true);
+ g_sf.StrokeRR(0,0,W,H,16,1,SbA(P_LINE));
+ if(InpAnimations){int pw=g_sf.w,ph=(int)MathCeil(H*g_ui);double per=2.0*(pw+ph),pos=MathMod(t*160*g_ui,per);int len=(int)(90*g_ui);for(int s=0;s<len;s++){double q=MathMod(pos-s*2,per),ex,ey;if(q<pw){ex=q;ey=0.5;}else if(q<pw+ph){ex=pw-0.5;ey=q-pw;}else if(q<2*pw+ph){ex=pw-(q-pw-ph);ey=ph-0.5;}else{ex=0.5;ey=ph-(q-2*pw-ph);}g_sf.Blend((int)ex,(int)ey,SbA(P_GOLD2),1.0-(double)s/len);}}
  DrawHeader(t,W);
  if(g_compact)DrawCompact(W,t);
  else
@@ -1040,7 +1157,7 @@ void RenderPanel(){
     else DrawSettings(W,t);
    }
  //--- toast
- double ta=SbNow()-g_toastT;if(g_toast!=""&&ta<2.6){double a=SbClamp(MathMin(ta/0.2,(2.6-ta)/0.4),0,1);int tw=g_sf.TextW(g_toast,SB_FONT_B,8,FW_BOLD)+28,tx=(W-tw)/2,ty=H-50+(int)(8*(1-a));g_sf.FillRR(tx,ty,tw,26,13,SbA(C'24,34,48',0.96*a));g_sf.StrokeRR(tx,ty,tw,26,13,1,SbA(P_GOLD,0.6*a));g_sf.Text(g_toast,W/2,ty+13,SB_FONT_B,8,FW_BOLD,SbA(P_TEXT,a),TA_CENTER|TA_VCENTER);}
+ double ta=SbNow()-g_toastT;if(g_toast!=""&&ta<2.6){double a=SbClamp(MathMin(ta/0.2,(2.6-ta)/0.4),0,1);int tw=g_sf.TextW(g_toast,SB_FONT_B,12,FW_SEMIBOLD)+32,tx=(W-tw)/2,ty=H-58+(int)(8*(1-a));g_sf.FillRR(tx,ty,tw,32,16,SbA(C'24,34,48',0.96*a));g_sf.StrokeRR(tx,ty,tw,32,16,1,SbA(P_GOLD,0.6*a));g_sf.Text(g_toast,W/2.0,ty+16,SB_FONT_B,12,FW_SEMIBOLD,SbA(P_TEXT,a),TA_CENTER|TA_VCENTER);}
  g_valsInit=true;
  ResourceCreate(SB_RES,g_sf.px,g_sf.w,g_sf.h,0,0,0,COLOR_FORMAT_ARGB_NORMALIZE);
  PanelPlace(MathMin(H,SB_HMAX));ChartRedraw(0);
@@ -1060,12 +1177,12 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
   {
    if(id==CHARTEVENT_MOUSE_MOVE&&g_sbReady)
      {
-      int mx=(int)lparam-g_pX,my=(int)dparam-g_pY;bool inside=(mx>=0&&mx<g_pW&&my>=0&&my<(int)g_hCur),down=((StringToInteger(sparam)&1)==1);
+      int dx=(int)lparam-g_pX,dy=(int)dparam-g_pY,mx=(int)(dx/g_ui),my=(int)(dy/g_ui);bool inside=(dx>=0&&dx<PxW()&&dy>=0&&dy<(int)(g_hCur*g_ui)),down=((StringToInteger(sparam)&1)==1);
       if(g_dragging){if(down){g_pX=(int)lparam-g_dragOX;g_pY=(int)dparam-g_dragOY;PanelPlace((int)g_hCur);ChartRedraw(0);}else g_dragging=false;}
       string hv=inside?HitTest(mx,my):"";if(hv!=g_hover){g_hover=hv;if(!InpAnimations)RenderPanel();}
       if(inside&&!g_scrollOff){g_scrollWas=(bool)ChartGetInteger(0,CHART_MOUSE_SCROLL);ChartSetInteger(0,CHART_MOUSE_SCROLL,false);g_scrollOff=true;}
       else if(!inside&&g_scrollOff&&!down&&!g_dragging){ChartSetInteger(0,CHART_MOUSE_SCROLL,g_scrollWas);g_scrollOff=false;}
-      if(down&&!g_mouseDown&&inside){if(hv=="drag"){g_dragging=true;g_dragOX=mx;g_dragOY=my;}else PanelClick(hv);}
+      if(down&&!g_mouseDown&&inside){if(hv=="drag"){g_dragging=true;g_dragOX=dx;g_dragOY=dy;}else PanelClick(hv);}
       g_mouseDown=down;return;
      }
    if(id==CHARTEVENT_CHART_CHANGE&&g_sbReady)PanelPlace((int)g_hCur);
