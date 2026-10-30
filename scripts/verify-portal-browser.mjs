@@ -40,10 +40,11 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   await page.locator('#product-gallery').screenshot({path:dir+'/'+label+'-showcase.png'});
   await page.locator('#plans').screenshot({path:dir+'/'+label+'-membership.png'});
   await page.evaluate(()=>document.querySelector('#suite').scrollIntoView({block:'center',behavior:'instant'}));
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   if(label==='website-desktop'){
    const card=page.locator('.sx-product').first(),box=await card.boundingBox();
    await page.mouse.move(box.x+box.width*.8,box.y+box.height*.3);
-   await page.waitForFunction(()=>document.querySelector('.sx-product').classList.contains('sx-pointer-active'));
+   await page.waitForFunction(()=>document.querySelector('.sx-product').classList.contains('sx-pointer-active'),{},{timeout:5000}).catch(async e=>{console.log(JSON.stringify(await page.evaluate(()=>{const e=document.querySelector('.sx-product'),b=e.getBoundingClientRect();return {bounds:{x:b.x,y:b.y,w:b.width,h:b.height},hit:document.elementFromPoint(b.x+b.width*.8,b.y+b.height*.3)?.outerHTML.slice(0,300),hover:matchMedia('(hover:hover) and (pointer:fine)').matches,reduced:matchMedia('(prefers-reduced-motion:reduce)').matches,classes:e.className,style:e.getAttribute('style')}})));console.log(errors);throw e});
    await page.waitForTimeout(300);
    if(!await card.evaluate(e=>getComputedStyle(e).transform.startsWith('matrix3d(')))throw Error('Reveal style overrides product 3D tilt');
    if(await card.evaluate(e=>getComputedStyle(e,':before').opacity)!=='1')throw Error('Pointer spotlight is hidden');
