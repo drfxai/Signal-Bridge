@@ -11,9 +11,9 @@ function mount(labels,geometry){
  const $=id=>document.getElementById(id);if(!$('connectionActions'))return;
  // Read-only per-user test diagnostics. Never re-dispatch a rejected trade automatically.
  const symbolHint=document.createElement('p');symbolHint.id='testSymbolFix';symbolHint.hidden=true;
- symbolHint.setAttribute('role','status');symbolHint.className='sb-hint';
- symbolHint.style.cssText='padding:12px 14px;border:1px solid #ac8845;border-radius:9px;background:#302619;color:#f4deaf;line-height:1.65;font-size:13px;margin-top:12px';
- $('testTradeCard')?.append(symbolHint);
+ symbolHint.setAttribute?.('role','status');symbolHint.className='sb-hint';
+ (symbolHint.style ||= {}).cssText='padding:12px 14px;border:1px solid #ac8845;border-radius:9px;background:#302619;color:#f4deaf;line-height:1.65;font-size:13px;margin-top:12px';
+ $('testTradeCard')?.append?.(symbolHint);
  function testSymbolGuidance(result){
   const message=String(result?.detail||'');
   const symbolProblem=/^(TEST_SYMBOL_NOT_FOUND|TEST_SYMBOL_AMBIGUOUS)\b/.test(message);
