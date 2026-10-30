@@ -176,6 +176,17 @@ export const SX_CSS = String.raw`
 @media(min-width:900px){.sx-suite-grid{grid-template-columns:1fr 1fr}}
 .sx-product{--rx:0deg;--ry:0deg;position:relative;display:flex;flex-direction:column;gap:14px;padding:34px;border-radius:22px;background:linear-gradient(160deg,#10141c,#07090d 70%);border:1px solid #ffffff14;color:#cbd5e1;text-decoration:none;overflow:hidden;transform:perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));transition:transform .25s ease,border-color .3s,box-shadow .3s}
 .sx-product:hover{border-color:#d4af3766;box-shadow:0 30px 80px #000a,0 0 0 1px #d4af3722}
+.sx-suite-grid{perspective:1200px}
+.sx-product.sx-in{transform:perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(var(--sx-lift,0px));transform-style:preserve-3d;overflow:visible;isolation:isolate;transition:transform .22s ease-out,border-color .3s,box-shadow .3s}
+.sx-product:before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(420px circle at var(--sx-x,50%) var(--sx-y,50%),#f7e7b42b,transparent 65%);opacity:0;transition:opacity .25s;pointer-events:none;transform:translateZ(1px)}
+.sx-product:after{content:"";position:absolute;inset:4px;border-radius:inherit;border:1px solid #d4af3726;box-shadow:0 10px 0 -3px #090e17,0 22px 50px #0009;transform:translateZ(-8px);pointer-events:none;z-index:-1}
+.sx-product>:not(.sx-product-glow){position:relative;transform:translateZ(20px)}
+.sx-product h3{transform:translateZ(32px)}
+.sx-product-glow{transform:translateZ(2px)}
+.sx-product:focus-visible{outline:2px solid #f3d98b;outline-offset:6px;border-color:#d4af3799;box-shadow:0 20px 60px #d4af3720}
+@media(hover:hover) and (pointer:fine){.sx-product.sx-pointer-active{--sx-lift:-5px;border-color:#f3d98b88;box-shadow:0 28px 70px #000b,0 0 36px #d4af371a}.sx-product.sx-pointer-active:before{opacity:1}.sx-product.sx-pointer-active .sx-product-glow{opacity:1}}
+@media(prefers-reduced-motion:reduce),(hover:none),(pointer:coarse){.sx-product.sx-in{transform:none!important}.sx-product>:not(.sx-product-glow),.sx-product:before,.sx-product:after,.sx-product-glow{transform:none}.sx-product-glow{animation:none}.sx-product:after{box-shadow:0 8px 22px #0006}}
+
 .sx-product-glow{position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:conic-gradient(from var(--sx-a,0deg),transparent 0 70%,#d4af37 80%,#38db9e 88%,transparent 95%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.0;transition:opacity .4s;animation:sxSpin 5s linear infinite;pointer-events:none}
 .sx-product:hover .sx-product-glow,.sx-product-gold .sx-product-glow{opacity:1}
 @property --sx-a{syntax:"<angle>";inherits:false;initial-value:0deg}
@@ -266,7 +277,7 @@ export const SX_CSS = String.raw`
 .sx-price-best .sx-amount{color:#f3d98b}
 .sx-price-ribbon{position:absolute;top:-12px;right:20px;padding:6px 10px;border-radius:999px;background:linear-gradient(90deg,#d4af37,#f7e7b4);color:#030406;font:700 10px/1 "JetBrains Mono",monospace;letter-spacing:.08em;box-shadow:0 8px 24px #d4af3755}
 .sx-flow{position:relative;display:grid;gap:14px;margin-bottom:56px}
-@media(min-width:900px){.sx-flow{grid-template-columns:repeat(4,minmax(0,1fr))}.sx-flow:before{content:"";position:absolute;left:8%;right:8%;top:27px;height:1px;background:linear-gradient(90deg,transparent,#d4af3788,#38db9e88,transparent);background-size:200% 100%;animation:sxShine 4s linear infinite}}
+@media(min-width:900px){.sx-flow{grid-template-columns:repeat(4,minmax(0,1fr))}.sx-flow-step:not(:last-child):after{content:"";position:absolute;inset-inline-end:-11px;top:32px;width:6px;height:6px;border-top:1px solid #d4af3777;border-inline-end:1px solid #d4af3777;transform:rotate(45deg);pointer-events:none}body[dir=rtl] .sx-flow-step:not(:last-child):after{transform:rotate(-45deg)}}
 .sx-flow-step{position:relative;padding:20px;border-radius:16px;background:#ffffff05;border:1px solid #ffffff12}
 .sx-flow-step b{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#030406;border:1px solid #d4af37;color:#f3d98b;font:700 13px/1 "JetBrains Mono",monospace;box-shadow:0 0 18px #d4af3755}
 .sx-flow-step h4{margin:14px 0 6px;color:#fff;font-size:15px;font-weight:600}
@@ -390,10 +401,15 @@ function count(el){const end=+el.dataset.sxCount,suf=el.dataset.sxSuffix||'',sep
 const io='IntersectionObserver' in window?new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){e.target.classList.add('sx-in');qa('[data-sx-count]',e.target).forEach(count);io.unobserve(e.target)}},{threshold:.14,rootMargin:'0px 0px -6% 0px'}):null;
 setTimeout(()=>qa('.sx-reveal').forEach(el=>el.classList.add('sx-in')),3500);
 qa('.sx-reveal').forEach((el,i)=>{el.style.transitionDelay=(i%4)*90+'ms';if(io)io.observe(el);else{el.classList.add('sx-in');qa('[data-sx-count]',el).forEach(count)}});
-/* tilt */
-if(!reduced&&matchMedia('(hover: hover)').matches)qa('[data-sx-tilt]').forEach(el=>{
- el.addEventListener('pointermove',e=>{const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.setProperty('--ry',(x*7)+'deg');el.style.setProperty('--rx',(-y*7)+'deg')});
- el.addEventListener('pointerleave',()=>{el.style.setProperty('--ry','0deg');el.style.setProperty('--rx','0deg')});
+/* Pointer tilt is independent of the reveal animation; touch keeps native scrolling. */
+const tiltMotion=matchMedia('(prefers-reduced-motion: reduce)'),tiltPointer=matchMedia('(hover: hover) and (pointer: fine)');
+qa('[data-sx-tilt]').forEach(el=>{
+ let frame=0,bounds=null,px=0,py=0;
+ function reset(){cancelAnimationFrame(frame);frame=0;bounds=null;el.classList.remove('sx-pointer-active');el.style.setProperty('--ry','0deg');el.style.setProperty('--rx','0deg');el.style.removeProperty('--sx-x');el.style.removeProperty('--sx-y')}
+ function paint(){frame=0;if(tiltMotion.matches||!tiltPointer.matches)return reset();const x=Math.max(0,Math.min(1,px)),y=Math.max(0,Math.min(1,py));el.style.setProperty('--ry',((x-.5)*12).toFixed(2)+'deg');el.style.setProperty('--rx',((.5-y)*10).toFixed(2)+'deg');el.style.setProperty('--sx-x',(x*100).toFixed(1)+'%');el.style.setProperty('--sx-y',(y*100).toFixed(1)+'%');el.classList.add('sx-pointer-active')}
+ el.addEventListener('pointerenter',()=>{bounds=el.getBoundingClientRect()});
+ el.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||tiltMotion.matches||!tiltPointer.matches)return;if(!bounds)bounds=el.getBoundingClientRect();px=(e.clientX-bounds.left)/bounds.width;py=(e.clientY-bounds.top)/bounds.height;if(!frame)frame=requestAnimationFrame(paint)},{passive:true});
+ el.addEventListener('pointerleave',reset);el.addEventListener('pointercancel',reset);el.addEventListener('blur',reset);tiltMotion.addEventListener('change',reset);tiltPointer.addEventListener('change',reset);addEventListener('resize',reset,{passive:true});addEventListener('scroll',reset,{passive:true});
 });
 /* promo video: plays while on screen */
 const vid=q('#sxVideo'),play=q('#sxPlay');let userPaused=false;
