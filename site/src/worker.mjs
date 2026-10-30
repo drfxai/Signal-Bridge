@@ -400,6 +400,15 @@ async function resetDailyRisk(req,env,user){
  const r=await hub.fetch(new Request('https://agent-hub/risk-reset',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agent_id:d.agent_id,account_login:b.account_login,account_server:b.account_server,hit_id:b.hit_id})}));
  const result=await r.json();if(r.ok)await audit(env,user.id,'daily_risk_reset_requested',user.id,String(b.hit_id));return json(result,r.status);
 }
+// Read-only latest test outcome. Never create a trade while diagnosing a failure.
+async function lastConnectionTest(env,user){
+ const row=await env.DB.prepare(
+  "SELECT t.id,t.status,substr(t.detail,1,240) AS detail,t.created_at,t.updated_at,"+
+  "c.status AS command_status FROM connection_tests t LEFT JOIN commands c ON c.id=t.command_id "+
+  "WHERE t.user_id=? ORDER BY t.created_at DESC,t.rowid DESC LIMIT 1"
+ ).bind(user.id).first();
+ return json({ok:true,test:row||null});
+}
 async function testStatus(req,env,user){
  const id=new URL(req.url).searchParams.get('id');
  const test=await env.DB.prepare("SELECT t.id,t.status,t.broker_ticket,t.detail,t.updated_at,c.status AS command_status FROM connection_tests t LEFT JOIN commands c ON c.id=t.command_id WHERE t.id=? AND t.user_id=?").bind(id,user.id).first();
@@ -700,6 +709,7 @@ async function api(req,env){
  if(path==='/api/connection/test-demo'&&req.method==='POST')return runConnectionTest(req,env,user,true);
  if(path==='/api/connection/test'&&req.method==='POST')return runConnectionTest(req,env,user);
  if(path==='/api/connection/test-status'&&req.method==='GET')return testStatus(req,env,user);
+ if(path==='/api/connection/test-last'&&req.method==='GET')return lastConnectionTest(env,user);
  if(path==='/api/webhook/mode'&&req.method==='POST')return setWebhookMode(req,env,user);
  if(path==='/api/checkout'&&req.method==='POST')return createCheckout(req,env,user);
  if(path.startsWith('/api/channels')){const result=await channelApi(path,req.method,req.method==='POST'?await readBody(req):undefined,env,user,channelHelpers(env,req));if(result)return result;}
