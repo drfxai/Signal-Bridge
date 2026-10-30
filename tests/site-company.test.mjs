@@ -359,3 +359,19 @@ test('daily endpoint provides actual tenant data not invented balance or P/L and
  assert.match(worker,/typeof data\[k\]!=='boolean'/);
  for(const endpoint of ['/api/dashboard','/api/routes'])assert.ok(worker.includes("path==='"+endpoint+"'"));
 });
+
+
+test('an existing verified Telegram admin gets admin role after ADMIN_TELEGRAM_ID is configured',()=>{
+ // Must be based on the signed server-side Telegram principal, never a username or body field.
+ assert.ok(worker.includes("const verifiedAdmin=!!(env.ADMIN_TELEGRAM_ID&&safeEq(id,String(env.ADMIN_TELEGRAM_ID).trim()))"));
+ assert.ok(worker.includes("UPDATE site_users SET role='admin',updated_at=CURRENT_TIMESTAMP WHERE id=? AND telegram_id=?"));
+ assert.ok(worker.includes("if(verifiedAdmin&&user.role!=='admin')"));
+ assert.ok(worker.includes("'verified_telegram_admin_granted'"));
+ assert.ok(worker.includes("if(user.role!=='admin')return fail('FORBIDDEN',403)"));
+});
+test('new webhook features do not execute real trades via the site worker',()=>{
+ assert.ok(worker.includes("'DEMO_TRADE_TEST_REQUIRES_UPDATED_EA'"));
+ assert.ok(worker.includes("live_socket_verified:false,trade_executed:false"));
+ assert.ok(worker.includes("'dry_run'"));
+ assert.ok(!worker.includes("TradingView signal dispatched successfully"));
+});
