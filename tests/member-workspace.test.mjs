@@ -15,3 +15,11 @@ test('generated member runtime remains valid after adding drawers and metric ani
  assert.match(EXECUTION_HTML,/aria-label="Chart display"/);
  assert.match(EXECUTION_HTML,/id="workspaceLicenseSummary"/);
 });
+test('setup is shared by both surfaces with distinct personal and channel hooks',()=>{
+ for(const html of [SITE_HTML,MINI_HTML]){
+  for(const id of ['memberSetup','setupBridgeDownload','setupScalperDownload','setupLicense','setupChannel','setupMt5Hook','setupChannelHook'])assert.equal([...html.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id);
+ }
+ assert.match(EXECUTION_JS,/\/api\/channels\/webhook/);
+ assert.match(EXECUTION_JS,/\/api\/downloads/);
+ assert.match(EXECUTION_JS,/setupLicense'\)\.type='password'/);
+});
