@@ -283,6 +283,47 @@ async function connectionDiagnostic(env,user){
   live_socket_verified:false,trade_executed:false,
   note:'Last connection ATTEMPT recorded at WebSocket upgrade. This is not a verified live connection, MT5 receipt or executed order.'};
 }
+
+const ROUTE_KEYS=['tradingview_mt5','tradingview_telegram','telegram_mt5'];
+const DEFAULT_ROUTES=Object.freeze({tradingview_mt5:true,tradingview_telegram:true,telegram_mt5:true});
+async function signalRouteSettings(env,user){
+ const row=await env.DB.prepare('SELECT tradingview_mt5,tradingview_telegram,telegram_mt5,updated_at FROM site_user_signal_routes WHERE user_id=?')
+ .bind(user.id).first();
+ return {routes:row?Object.fromEntries(ROUTE_KEYS.map(k=>[k,row[k]===1])):{...DEFAULT_ROUTES},
+ updated_at:row?.updated_at||null,delivery_verified:false,
+ note:'Enabled routing preferences do not prove delivery. Connect a verified Telegram channel and licensed MT5 EA.'};
+}
+async function changeSignalRoutes(req,env,user){
+ const data=await readBody(req);
+ if(!data||typeof data!=='object'||Array.isArray(data))return fail('INVALID_ROUTES',400);
+ const keys=Object.keys(data);
+ if(!keys.length||keys.some(k=>!ROUTE_KEYS.includes(k)||typeof data[k]!=='boolean'))return fail('INVALID_ROUTES',400);
+ const before=(await signalRouteSettings(env,user)).routes;
+ const merged={...before,...data};
+ await env.DB.prepare(
+ 'INSERT INTO site_user_signal_routes (user_id,tradingview_mt5,tradingview_telegram,telegram_mt5) VALUES (?,?,?,?) '+
+ 'ON CONFLICT(user_id) DO UPDATE SET tradingview_mt5=excluded.tradingview_mt5,'+
+ 'tradingview_telegram=excluded.tradingview_telegram,telegram_mt5=excluded.telegram_mt5,updated_at=CURRENT_TIMESTAMP'
+ ).bind(user.id,...ROUTE_KEYS.map(k=>Number(merged[k]))).run();
+ await audit(env,user.id,'route_preferences_changed',user.id,keys.join(','));
+ return json({ok:true,...await signalRouteSettings(env,user)});
+}
+async function dailyUserSummary(env,user){
+ const own=await env.DB.prepare(
+   "SELECT COUNT(*) AS total, SUM(CASE WHEN received_at>=datetime('now','start of day') THEN 1 ELSE 0 END) AS today,MAX(received_at) AS last_signal "+
+   "FROM received_signals WHERE tenant_id=?"
+ ).bind(user.id).first();
+ const recent=await env.DB.prepare(
+   "SELECT external_signal_id,received_at,status FROM received_signals WHERE tenant_id=? ORDER BY received_at DESC LIMIT 1"
+ ).bind(user.id).first();
+ const diag=await connectionDiagnostic(env,user);
+ return {ok:true,as_of:new Date().toISOString(),source:'real_d1',
+ signals_total:Number(own?.total||0),signals_today:Number(own?.today||0),
+ latest_signal:recent?{id:recent.external_signal_id,received_at:recent.received_at,status:recent.status}:null,
+ ea:diag,net_pl:null,equity:null,floating_pl:null,
+ account_currency:null,performance_points:[],
+ missing_data:'Broker balance, live P/L and the performance chart require actual EA telemetry; no demonstration numbers are displayed.'};
+}
 async function adminUpdate(req,env,admin){
  const b=await readBody(req);if(!ADMIN_ACTIONS.has(b.action)||!/^usr_[0-9a-f]{32}$/.test(b.user_id||''))return fail('INVALID_ACTION');
  const user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(b.user_id).first();
@@ -500,6 +541,9 @@ async function api(req,env){
  if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
  if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);
  if(path==='/api/connection/check'&&req.method==='GET')return json({ok:true,diagnostic:await connectionDiagnostic(env,user)});
+ if(path==='/api/dashboard'&&req.method==='GET')return json(await dailyUserSummary(env,user));
+ if(path==='/api/routes'&&req.method==='GET')return json({ok:true,...await signalRouteSettings(env,user)});
+ if(path==='/api/routes'&&req.method==='POST')return changeSignalRoutes(req,env,user);
  if(path==='/api/connection/test-demo'&&req.method==='POST')return fail('DEMO_TRADE_TEST_REQUIRES_UPDATED_EA',409);
  if(path==='/api/checkout'&&req.method==='POST')return createCheckout(req,env,user);
  if(path==='/api/orders'&&req.method==='GET'){
