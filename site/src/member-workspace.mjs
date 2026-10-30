@@ -32,6 +32,6 @@ export function composeWorkspace(html){
  html=html.replace('<button data-sb-tab="signals">☷<span>Signals</span></button>', '<button type="button" data-sb-tab="setup">⚡<span>Setup</span></button><button data-sb-tab="signals">☷<span>Signals</span></button>');
  html=html.replace('<div class="sb-mobile-tabs">',SETUP_HTML+'<div class="sb-mobile-tabs">');
  html=html.replace(/<span class="sb-eyebrow">([^<]*)<\/span>/,'<span class="sb-eyebrow" hidden>$1</span><span class="sb-premium-eyebrow">YOUR DAILY COMMAND CENTER</span>');
- html=html.replace('<div class="sb-chart-axis">','<div class="sb-chart-connect"><span>No broker history yet. Connect your EA to begin.</span><button type="button" data-sb-tab="setup">Set up your EA ↗</button></div><div class="sb-chart-axis">');
+ html=html.replace('<div class="sb-chart-axis">','<div class="sb-chart-connect"><span id="workspaceHistoryHint">No broker history yet. Connect your EA to begin.</span><button type="button" data-sb-tab="setup">Set up your EA ↗</button></div><div class="sb-chart-axis">');
  return html;
 }
