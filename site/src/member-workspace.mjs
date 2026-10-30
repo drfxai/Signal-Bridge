@@ -1,0 +1,31 @@
+// Compose the shared member workspace while retaining every existing control ID.
+const icons={chart:'M3 17l5-5 4 3 8-10M15 5h5v5',pulse:'M2 12h5l3-8 4 16 3-8h5',wallet:'M3 6h16v14H3zM3 6l13-3v3M15 11h6v5h-6z',signals:'M4 7h16M4 12h11M4 17h7',shield:'M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6',arrow:'M5 12h14M13 6l6 6-6 6',refresh:'M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0113 3M18 17a7 7 0 01-13-3',settings:'M4 7h16M4 17h16M8 4v6M16 14v6'};
+const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+('<path d="'+icons[name]+'"/>')+'</svg>';
+export function composeWorkspace(html){
+ const begin=html.indexOf('<div class="sb-kpis">'),end=html.indexOf('<div class="sb-grid">',begin);
+ if(begin<0||end<0)throw Error('WORKSPACE_KPI_MISSING');
+ const metrics=`<div class="sb-kpis">
+ <article class="sb-net"><div class="sb-metric-label"><small>Net P/L</small>${icon('chart')}</div><strong id="reportNet">—</strong><div class="sb-metric-context"><span class="sb-positive">↑ <b id="reportProfit">—</b></span><span class="sb-negative">↓ <b id="reportLoss">—</b></span></div></article>
+ <article><div class="sb-metric-label"><small>Account equity</small>${icon('wallet')}</div><strong id="workspaceEquity">—</strong><span>MT5 equity · account currency</span></article>
+ <article><div class="sb-metric-label"><small>Signals received</small>${icon('signals')}</div><strong id="reportSignals">—</strong><div class="sb-target-totals"><span>TP1 <b id="reportTP1">—</b></span><span>TP2 <b id="reportTP2">—</b></span><span>SL <b id="reportStops">—</b></span></div></article>
+ <article><div class="sb-metric-label"><small>Floating P/L</small>${icon('pulse')}</div><strong id="reportFloating">—</strong><span>Open positions · account scope</span></article></div>`;
+ html=html.slice(0,begin)+metrics+html.slice(end);
+ html=html.replace('<h2>Account overview','<h2>Trading cockpit');
+ html=html.replace('<button type="button" data-sb-tab="signals">View all signals ↗</button>',`<div class="sb-workspace-tools"><span id="workspaceSyncAge" aria-live="off">Syncing…</span><button id="workspaceRefresh" type="button" aria-label="Refresh account telemetry" title="Refresh account telemetry">${icon('refresh')}</button><button id="workspaceAccount" type="button" aria-label="Account and membership" title="Account and membership">${icon('settings')}</button></div>`);
+ html=html.replace('<div class="sb-kpis">',`<div class="sb-flight-path" aria-label="Connection overview"><div class="sb-flight-terminal"><i aria-hidden="true"></i><div><strong id="workspaceHealth">Connecting to EA</strong><span id="workspaceHealthHint">Checking your terminal</span></div></div><div class="sb-flight-visual" aria-hidden="true"><span>TV / TG</span><i></i><span>EDGE</span><i></i><span>MT5</span></div><button type="button" data-sb-tab="routes"><span id="workspaceRoutes">Configure routes</span> ↗</button></div><div class="sb-kpis">`);
+ html=html.replace('<h3>Performance · 14 days</h3>',`<div class="sb-chart-heading"><h3>Performance · 14 days</h3></div>`);
+ html=html.replace('<select id="reportPeriod"', '<select id="reportPeriod"');
+ html=html.replace('<span id="performanceCaption">Waiting for broker history</span></div>',`<span id="performanceCaption">Waiting for broker history</span><div class="sb-chart-toggle" role="group" aria-label="Chart display"><button type="button" data-chart-mode="cumulative" aria-pressed="true">Curve</button><button type="button" data-chart-mode="daily" aria-pressed="false">Daily</button></div></div>`);
+ html=html.replace('<p class="sb-hint">Actual broker data · no simulated values</p>', '<div class="sb-chart-axis"><span>Oldest day</span><span>Account currency · net of costs</span><span>Latest day</span></div><details class="sb-chart-data"><summary>Daily values</summary><p id="workspaceDailyValues">No daily broker history</p></details>');
+ html=html.replace('<h3>♧ Connection &amp; test</h3>',`<div class="sb-card-title">${icon('pulse')}<h3>Connection center</h3><span class="sb-health-beacon" aria-hidden="true"></span></div>`);
+ html=html.replace('<h3>♧ Account daily drawdown</h3>',`<div class="sb-risk-heading"><span class="sb-section-label">ACCOUNT PROTECTION</span><h3>Daily drawdown</h3></div>`);
+ html=html.replace('<h3>◉ Active signal</h3>', '<div class="sb-card-title"><h3>Position monitor</h3><span class="sb-position-indicator" aria-hidden="true"></span></div><span class="sb-section-label" id="workspacePositionState">AWAITING TERMINAL</span>');
+ html=html.replace('<h3>◉ Live signal stream</h3>', '<h3>Signal activity</h3>');
+ html=html.replace('Signal reception and broker execution are shown separately', 'Received signals & broker confirmation');
+ html=html.replace('<select id="signalSourceFilter"', '<button type="button" class="sb-all-activity" data-sb-tab="signals">View all ↗</button><select id="signalSourceFilter"');
+ html=html.replace('<div class="sb-table-scroll">','<div class="sb-recent-signal"><div><span class="sb-section-label">LAST RECEIVED SIGNAL</span><strong id="workspaceLatest">Waiting for your first signal</strong><span id="workspaceLatestTime">TradingView &amp; Telegram</span></div><span id="workspaceLatestStatus" class="sb-badge">No activity</span></div><div class="sb-table-scroll">');
+ html=html.replace('<p id="executionFeedback"', '<div class="sb-workspace-footer"><span id="workspaceLicenseSummary">License · checking</span><button type="button" data-sb-tab="settings"><span id="workspacePolicy">Trade policy · configure</span> ↗</button><button id="resetReport" type="button">↻ Reset report</button></div><p id="executionFeedback"');
+ const index=html.lastIndexOf('</section>',html.indexOf('<dialog id="tradeTestConfirm"'));
+ html=html.slice(0,index)+`<dialog id="workspaceDetail" class="sb-detail" aria-labelledby="workspaceDetailTitle"><header><div><span class="sb-section-label">WORKSPACE CONTROLS</span><h2 id="workspaceDetailTitle">Account &amp; trade settings</h2></div><button id="workspaceDetailClose" type="button" aria-label="Close settings">×</button></header><div id="workspaceDetailBody"></div></dialog>`+html.slice(index);
+ return html;
+}
