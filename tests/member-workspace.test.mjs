@@ -23,3 +23,24 @@ test('setup is shared by both surfaces with distinct personal and channel hooks'
  assert.match(EXECUTION_JS,/\/api\/downloads/);
  assert.match(EXECUTION_JS,/setupLicense'\)\.type='password'/);
 });
+
+test('reference signal routes default ON but execution requires separate explicit approval',async()=>{
+ const {SETUP_HTML,SETUP_JS}=await import('../site/src/member-setup.mjs');
+ const {readFileSync}=await import('node:fs');
+ const controls=readFileSync('site/src/member-controls.mjs','utf8');
+ const ingress=readFileSync('worker/src/index.mjs','utf8');
+ const migration=readFileSync('site/migrations/0016_tv_mt5_route_preference.sql','utf8');
+ for(const id of ['setupTvMt5','setupTvTelegram','setupTelegramEnable','setupExecutionMode'])
+  assert.ok(SETUP_HTML.includes('id="'+id+'"'),id);
+ assert.match(SETUP_JS,/routeSettings\?\.tv_to_mt5!==false/);
+ assert.match(SETUP_JS,/toggleRoute\('tv_to_mt5'\)/);
+ assert.match(SETUP_JS,/if\(key==='tv_to_mt5'\)/);
+ assert.match(SETUP_JS,/Enable DEMO execution/);
+ assert.match(SETUP_JS,/confirm\('Enable DEMO execution/);
+ assert.ok(controls.includes('tv_to_mt5:r?.tv_to_mt5!==0'));
+ assert.ok(controls.includes('tv_to_mt5=excluded.tv_to_mt5'));
+ assert.match(migration,/DEFAULT 1 CHECK\(tv_to_mt5 IN \(0,1\)\)/);
+ assert.ok(ingress.includes("SELECT tv_to_mt5 FROM member_signal_settings"));
+ assert.ok(ingress.includes("status:'ROUTE_DISABLED'"));
+ assert.doesNotThrow(()=>new Function(SETUP_JS));
+});
