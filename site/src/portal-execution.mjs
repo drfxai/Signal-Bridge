@@ -14,13 +14,13 @@ function mount(labels,geometry){
  const symbolHint=document.createElement('p');symbolHint.id='testSymbolFix';symbolHint.hidden=true;
  symbolHint.setAttribute?.('role','status');symbolHint.className='sb-hint';
  (symbolHint.style ||= {}).cssText='padding:12px 14px;border:1px solid #ac8845;border-radius:9px;background:#302619;color:#f4deaf;line-height:1.65;font-size:13px;margin-top:12px';
- $('testTradeCard')?.append?.(symbolHint);
+ $('testTradeCard')?.parentElement?.parentElement?.append?.(symbolHint);
  function testSymbolGuidance(result){
   const message=String(result?.detail||'');
   const symbolProblem=/^(TEST_SYMBOL_NOT_FOUND|TEST_SYMBOL_AMBIGUOUS)\b/.test(message);
   if(symbolProblem){
    symbolHint.hidden=false;
-   symbolHint.textContent='MT5 rejected the test because it could not identify a unique gold contract. In MetaTrader 5 → Market Watch, copy your broker\'s exact gold symbol (for example GOLD or XAUUSD.p). In the attached EA → Properties (F7) → Inputs, set InpTestSymbol to that exact name. Keep InpDefaultLots at 0.01; then retry on DEMO. Broker detail: '+message;
+   symbolHint.textContent=fa()?'نماد طلا پیدا نشد. در MT5 → Market Watch نام دقیق نماد، مثلاً XAUUSD.p را کپی کنید. در تنظیمات EA (F7)، InpGoldSymbol و در صورت تنظیم جداگانه InpTestSymbol را بررسی کنید؛ سپس روی دمو دوباره تست کنید.':'Gold symbol not found. Copy the exact name from MT5 → Market Watch (e.g. XAUUSD.p). In EA settings (F7), check InpGoldSymbol and any InpTestSymbol override, then retry on DEMO.';
   }else if(result?.status==='CLOSED'||result?.status==='OPEN'){symbolHint.hidden=true;}
  }
 
