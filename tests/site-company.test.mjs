@@ -336,3 +336,23 @@ test('public marketing is compelling but never invents realized trading returns'
  assert.ok(DESIGN_HTML.includes('data-site-language="fa"'));
  assert.ok(DESIGN_HTML.includes('data-site-language="hi"'));
 });
+
+
+test('existing verified administrator identities are promoted after secure admin config changes',()=>{
+ assert.ok(worker.includes("env.ADMIN_TELEGRAM_ID&&safeEq(id,String(env.ADMIN_TELEGRAM_ID).trim())"));
+ assert.ok(worker.includes("env.ADMIN_EMAIL&&email===String(env.ADMIN_EMAIL).trim().toLowerCase()"));
+ assert.ok(worker.includes("WHERE id=? AND telegram_id=? AND role!='admin'"));
+ assert.ok(worker.includes("WHERE id=? AND email=? AND role!='admin'"));
+ assert.ok(worker.includes("'verified_telegram_admin_granted'"));
+ assert.ok(worker.includes("'verified_email_admin_granted'"));
+ assert.ok(worker.includes("if(updated.meta?.changes===1)"));
+ assert.ok(worker.includes("if(user.role!=='admin')return fail('FORBIDDEN',403)"));
+});
+test('promoting admin does not infer identity from Telegram username or bypass actual sign-in',()=>{
+ const code=worker.slice(worker.indexOf('async function getOrCreateTelegram'),worker.indexOf('async function issueCode'));
+ assert.ok(code.includes("SELECT * FROM site_users WHERE telegram_id=?"));
+ assert.ok(code.includes("safeEq(id,String(env.ADMIN_TELEGRAM_ID).trim())"));
+ assert.ok(!code.includes("safeEq(username"));
+ assert.ok(worker.includes("inspectTelegramInitData(body.init_data,env.TELEGRAM_BOT_TOKEN)"));
+ assert.ok(worker.includes("authUser(req,env)"));
+});
