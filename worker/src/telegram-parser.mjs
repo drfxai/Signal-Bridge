@@ -9,6 +9,8 @@ function normalize(raw){
   .replace(/\u066B/g,'.')
   .replace(/(\d)[,\u066C](?=\d{3}(?:\D|$))/g,'$1')
   .replace(/[\u200c\u200d]/g,' ')
+  .replace(/[\p{Extended_Pictographic}\uFE0F]/gu,' ')
+  .replace(/[：]/g,':')
   .replace(/\r/g,'')
   .trim();
 }
@@ -52,6 +54,10 @@ export function parseTelegramTrade(text,nowMs=Date.now(),options={}){
  if(!/(?:^|\s)(?:LOT|LOTS|VOLUME|لات|حجم)(?=$|[\s:=])/i.test(raw)&&Number.isFinite(options.defaultLots)&&options.defaultLots>0)raw+='\nLOT: '+options.defaultLots;
  const list=raw.match(/(?:^|\n)\s*(?:TP|TARGETS?|اهداف)\s*[:=]\s*([0-9.\s,\/]+)(?=$|\n)/i);
  if(list){const values=list[1].trim().split(/[\s,\/]+/).filter(Boolean);if(values.length>3)return {ok:false,reason:'TOO_MANY_TARGETS_REQUIRES_REVIEW'};raw=raw.replace(list[0],'\n'+values.map((v,i)=>'TP'+(i+1)+': '+v).join('\n'));}
+ const plainTargets=[...raw.matchAll(/(?:^|[^A-Z0-9])TP\s*[:=]\s*([0-9]+(?:\.[0-9]+)?)/gi)];
+ if(plainTargets.length){if(plainTargets.length>3)return {ok:false,reason:'TOO_MANY_TARGETS_REQUIRES_REVIEW'};if(/\bTP\s*[123]\s*[:=]/i.test(raw))return {ok:false,reason:'MIXED_TARGET_LABELS_REQUIRES_REVIEW'};let n=0;raw=raw.replace(/\bTP\s*[:=]/gi,()=> 'TP'+(++n)+':');}
+ if(/(?<![A-Z])MORE\s+(?:BUY|SELL)\b/i.test(raw))return {ok:false,reason:'MULTIPLE_ENTRIES_REQUIRES_REVIEW'};
+ raw=raw.replace(/\b(BUY|SELL|LONG|SHORT)\s+(?:NOW\s*)?@?\s*(\d+(?:\.\d+)?)/gi,'$1 ENTRY: $2');
  if(!raw||raw.length>4096)return {ok:false,reason:'EMPTY_OR_TOO_LONG'};
 
  const dirs=directions(raw);
