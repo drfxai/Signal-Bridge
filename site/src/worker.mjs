@@ -11,6 +11,7 @@ import { telegramHealth } from './telegram-health.mjs';
 import { botLanguage, botText, botLanguageKeyboard } from './telegram-i18n.mjs';
 import { I18N_JS } from './i18n.mjs';
 import { PROMO_ASSETS } from './promo.mjs';
+import { channelApi, channelIngest, onBotMembership, channelsCommand, channelCallback, CHANNEL_HOOK_PATH } from './channel-webhooks.mjs';
 import { scalperOverview, scalperCheckout, scalperPaid, scalperGrant, SCALPER_PLANS } from './scalper.mjs';
 
 const HEAD={'x-drfx-ui-release':UI_RELEASE,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
@@ -91,6 +92,9 @@ async function audit(env,actor,action,subject,detail=''){
  await env.DB.prepare('INSERT INTO site_audit (id,actor_id,action,subject_id,detail) VALUES (?,?,?,?,?)').bind(uid('aud'),actor,action,subject,safeText(detail,240)).run();
 }
 // Shared helpers handed to the Scalper Pro module.
+const channelHelpers=(env,req)=>({json,fail,sha,rand,b64u,uid,limited,req,origin:API_ORIGIN,
+ encryptCode:code=>encryptCode(env,code),decryptCode:(c,n)=>decryptCode(env,c,n),audit:(actor,action,subject)=>audit(env,actor,action,subject),
+ botSend:(chatId,text,keyboard)=>botSend(env,chatId,text,keyboard),answer:id=>botAnswerCallback(env,id),getOrCreateTelegram:(id,name)=>getOrCreateTelegram(env,id,name)});
 const scalperHelpers=env=>({json,fail,readBody,limited,encryptCode,decryptCode,uid,audit,origin:API_ORIGIN,
  notify:async(userId,key,login,days)=>{
   const u=await env.DB.prepare('SELECT telegram_id FROM site_users WHERE id=?').bind(userId).first();
@@ -532,14 +536,15 @@ async function telegramWebhook(req,env){
  const secret=req.headers.get('x-telegram-bot-api-secret-token')||'';
  if(!safeEq(secret,env.TELEGRAM_WEBHOOK_SECRET))return fail('UNAUTHORIZED',401);
  const data=await readBody(req,16384);
- if(data.callback_query)return botLanguageCallback(data,env);
+ if(data.my_chat_member)return onBotMembership(data,env,channelHelpers(env,req));
+ if(data.callback_query){const handled=await channelCallback(data,env,channelHelpers(env,req));if(handled)return handled;return botLanguageCallback(data,env);}
  const routed=await routeTelegramSignal(data,env);if(routed)return routed;
  const msg=data.message;
  if(!msg||msg.chat?.type!=='private'||!msg.from?.id)return json({ok:true,ignored:'NO_PRIVATE_MESSAGE'});
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=text.split(' ')[0].split('@')[0];
- if(!['/start','/language','/lang','/app','/login','/resetlogin','/me','/code','/link','/scalper','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/language','/lang','/app','/login','/resetlogin','/me','/code','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  const language=await userBotLocale(env,telegramId);
@@ -596,6 +601,8 @@ async function telegramWebhook(req,env){
    await audit(env,user.id,'link_telegram_account',target.id);
    await botSend(env,chatId,'✅ Telegram linked to your existing verified email account. Use /login to open it on the website.');
   }catch{await botSend(env,chatId,'Could not link accounts. Request a fresh code.');}
+ }else if(command==='/channels'){
+  await channelsCommand(env,user,chatId,channelHelpers(env,req));
  }else if(command==='/scalper'){
   const rows=(await env.DB.prepare('SELECT account_login,days,encrypted_key,nonce,created_at FROM scalper_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 5').bind(user.id).all()).results||[];
   let out='⚡ <b>DrFX Scalper Pro</b>\nThe AI liquidity radar for XAUUSD on MT5. 7 days free inside the EA, then '+
@@ -695,6 +702,7 @@ async function api(req,env){
  if(path==='/api/connection/test-status'&&req.method==='GET')return testStatus(req,env,user);
  if(path==='/api/webhook/mode'&&req.method==='POST')return setWebhookMode(req,env,user);
  if(path==='/api/checkout'&&req.method==='POST')return createCheckout(req,env,user);
+ if(path.startsWith('/api/channels')){const result=await channelApi(path,req.method,req.method==='POST'?await readBody(req):undefined,env,user,channelHelpers(env,req));if(result)return result;}
  if(path==='/api/scalper'&&req.method==='GET')return json(await scalperOverview(env,scalperHelpers(env),user));
  if(path==='/api/scalper/checkout'&&req.method==='POST')return scalperCheckout(req,env,scalperHelpers(env),user);
  if(path==='/api/orders'&&req.method==='GET'){
@@ -734,6 +742,10 @@ export default {
   if(request.method==='GET'&&url.pathname==='/assets/app.js')return asset(SITE_JS,'text/javascript; charset=utf-8');
   if(request.method==='GET'&&url.pathname==='/assets/design.js')return asset(DESIGN_JS+"\nfunction showToast(message){const t=document.getElementById('toast');if(!t)return;t.textContent=message;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),3400)}\nfunction copyToClipboard(value,message){navigator.clipboard.writeText(value).then(()=>showToast(message)).catch(()=>showToast('Clipboard unavailable'))}\n",'text/javascript; charset=utf-8');
   if(url.pathname==='/internal/signal-relay'&&request.method==='POST'){try{return await relayTradingView(request,env)}catch{return fail('RELAY_UNAVAILABLE',503)}}
+  if(url.pathname.startsWith(CHANNEL_HOOK_PATH)&&request.method==='POST'){
+   if(!env?.DB)return fail('DATABASE_UNAVAILABLE',503);
+   try{return await channelIngest(request,env,url.pathname.slice(CHANNEL_HOOK_PATH.length),channelHelpers(env,request))}catch{return fail('SERVICE_UNAVAILABLE',503)}
+  }
   if(url.pathname.startsWith('/api/')){
    if(!env?.DB)return fail('DATABASE_UNAVAILABLE',503);
    try{return await api(request,env)}catch(error){

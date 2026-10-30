@@ -133,7 +133,7 @@ test('webhook rejects callback forgery and nonprivate selections',async()=>{
 test('deployment command and Telegram API opt into callback_query updates',()=>{
  const ops=readFileSync(new URL('../scripts/configure-company-telegram-bot.mjs',import.meta.url),'utf8');
  const migration=readFileSync(new URL('../site/migrations/0010_bot_language.sql',import.meta.url),'utf8');
- assert.ok(ops.includes("allowed_updates:['message','callback_query']"));
+ assert.ok(ops.includes("allowed_updates:['message','callback_query','my_chat_member']"));
  assert.ok(ops.includes("command:'language'"));
  assert.ok(migration.includes('CHECK(language_code IN ('));
  assert.ok(migration.includes("'hi'"));
