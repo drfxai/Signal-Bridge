@@ -1,0 +1,36 @@
+name: Unified Account CTA Release Bundle (one-time)
+on:
+  push:
+    branches: [feat/unified-auth-portal-cta-20261031]
+    paths: [.github/workflows/unified-account-export-once.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run production source checks
+        run: npm run check
+      - name: Bundle Cloudflare site and Telegram Mini App
+        run: |
+          npm install --no-save --package-lock=false wrangler@4
+          npx wrangler deploy --dry-run --config site/wrangler.jsonc --outdir /tmp/sb-unified-release
+          test -s /tmp/sb-unified-release/worker.js
+      - name: Export GitHub-public compiled Worker with sha256 for direct API deployment
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import zlib from 'node:zlib';
+          const raw=fs.readFileSync('/tmp/sb-unified-release/worker.js');
+          const sha=crypto.createHash('sha256').update(raw).digest('hex');
+          const chunks=zlib.gzipSync(raw,{level:9}).toString('base64').match(/.{1,3500}/g)||[];
+          console.log('UNIFIED_BEGIN '+raw.length+' '+sha+' '+chunks.length);
+          for(let i=0;i<chunks.length;i++)console.log('UNIFIED_DATA '+i+' '+chunks[i]);
+          console.log('UNIFIED_END '+chunks.length+' '+process.env.GITHUB_SHA);
+          EOF
