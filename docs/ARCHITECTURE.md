@@ -94,7 +94,7 @@ The live dashboard remains backend-backed. It observes the execution hub through
 
 ## Compatibility boundary
 
-`agent-windows/` and `/v1/agent/ws` are runtime compatibility artifacts. They are not AI coding assistants or requirements for a new installation. Remove them only after a separate dependency and rollback review.
+`agent-windows/` and `/v1/agent/ws` are runtime compatibility artifacts. They are not required for a new installation. Remove them only after a separate dependency and rollback review.
 
 ## Current safety boundary
 
