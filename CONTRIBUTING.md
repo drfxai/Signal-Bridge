@@ -20,4 +20,4 @@ real-money trading, charging users, or publishing EX5 binaries.
 
 Current safety boundary: automatic signals execute on DEMO only. Separately consented, account-bound LIVE connection tests are distinct from ordinary signals. Connection-test behavior and the 10% default account-wide drawdown guard must be preserved with explicit confirmation, auditability and broker-side safeguards. CI must never place real broker orders.
 
-For a public change, avoid adding assistant-generated instruction files, model/session transcripts, personal prompts, internal account metadata or secrets. Preserve all executable runtime contracts even when internal identifiers contain the word `agent` (these are transport/runtime names, not developer AI tools).
+For a public change, avoid adding internal tooling instructions, session transcripts, private prompts, account metadata or secrets. Preserve executable runtime contracts; internal transport identifiers are not public product branding.
