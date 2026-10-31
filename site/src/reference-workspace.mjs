@@ -1,5 +1,5 @@
 // Reference layout: one shared, scoped system for web and Telegram.
-export const REFERENCE_CSS=String.raw`
+const REFERENCE_RULES=String.raw`
 body.workspace-home{background:#020d16!important;padding:0!important}body.workspace-home .container{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}body.workspace-home #panel-home{padding:0!important}body.workspace-home #connectionActions{margin:0!important}
 #portalOverlay #connectionActions{min-height:0!important}#portalOverlay .portal-content{scrollbar-gutter:auto!important;padding:0!important}
 #connectionActions{--ref-line:#21435b;--ref-blue:#28a9ff;--ref-muted:#adc4da;box-sizing:border-box;background:radial-gradient(ellipse at 60% 0,#04213755,transparent 60%),#020d16;color:#edf6ff;padding:20px 24px;min-height:0;margin:0;border:0;border-radius:0;font-family:Inter,system-ui,sans-serif}
@@ -61,3 +61,31 @@ body.workspace-home{padding-bottom:60px!important}body.workspace-home .container
 @keyframes refFlow{to{background-position:16px 0}}
 @media(prefers-reduced-motion:reduce){#connectionActions *,#connectionActions *:after{animation:none!important;transition:none!important}}
 `;
+
+// The workspace responds to its host, including narrow browser/embedded panels.
+function containerRules(css){
+ let out='',at=0;
+ const re=/@media\((?:min|max)-width:[^{}]+\{/g;
+ for(let m;(m=re.exec(css));){
+  out+=css.slice(at,m.index);let end=re.lastIndex,depth=1;
+  for(;end<css.length&&depth;end++){if(css[end]==='{')depth++;else if(css[end]==='}')depth--;}
+  const parts=m[0].slice(6,-1).trim().split(' and '),width=parts.filter(p=>p.includes('-width:')).join(' and '),other=parts.filter(p=>!p.includes('-width:')).join(' and ');
+  out+=(other?'@media '+other+'{':'')+'@container workspace '+width+'{'+css.slice(re.lastIndex,end-1)+'}'+(other?'}':'');at=end;re.lastIndex=end;
+ }
+ return out+css.slice(at);
+}
+const RESPONSIVE_REFERENCE_CSS=containerRules(REFERENCE_RULES)+String.raw`
+#portalOverlay .portal-content,#panel-home{container-type:inline-size;container-name:workspace;min-width:0}
+#portalOverlay .portal-content{display:block;width:100%;min-height:0;flex:1;padding:0!important}
+#portalOverlay .portal-bar{display:none}#portalOverlay .portal{background:#020d16!important;border:0!important}
+#portalOverlay #connectionActions,#panel-home #connectionActions{width:100%;max-width:none;min-width:0;margin:0!important;padding:var(--workspace-padding,20px 24px)!important}
+#connectionActions .ref-header-actions #portalClose{display:grid;place-items:center;width:30px;height:30px;min-height:30px;padding:0;font-size:20px;border-radius:50%}
+@container workspace (max-width:700px){#connectionActions{--workspace-padding:10px 12px}#connectionActions .sb-mobile-tabs{position:fixed!important;bottom:0;z-index:90;left:var(--workspace-left,0px)!important;right:auto!important;width:var(--workspace-inline-size,100cqw)!important;max-width:none}#connectionActions .sb-top nav{display:none!important}#connectionActions .ref-header-actions #portalClose{width:25px;height:25px;min-height:25px;font-size:17px}}
+@container workspace (max-width:700px){#connectionActions .sb-mobile-tabs button{display:flex;align-items:center;justify-content:center;flex-direction:column}}
+@container workspace (min-width:701px) and (max-width:1000px){#connectionActions{--workspace-padding:14px 16px}}
+@media(max-height:850px){@container workspace (min-width:1001px){#connectionActions{--workspace-padding:10px 20px}}}
+`;
+
+const REFERENCE_BRAND_CSS=String.raw`#connectionActions .sb-logo b{display:flex;align-items:center;gap:7px}#connectionActions .ref-brand-bars{width:22px;height:22px}#connectionActions.sb-tab-setup .sb-logo b{color:#76c8ff}@container workspace (max-width:700px){#connectionActions .ref-brand-bars{width:17px;height:17px}}`;
+
+export const REFERENCE_CSS=RESPONSIVE_REFERENCE_CSS+REFERENCE_BRAND_CSS;

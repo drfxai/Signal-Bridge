@@ -75,7 +75,7 @@ function mountSetup(){
  let online=false;
  function chooseStep(id){if(!['setupStep1','setupStep2','setupStep3'].includes(id))return;if(root.dataset.step&&root.dataset.step!==id){$('setupLicense').type='password';$('setupReveal').setAttribute('aria-pressed','false');$('setupReveal').textContent=document.documentElement.lang==='fa'?'نمایش':'Show';root.querySelectorAll('.su-key-row input').forEach(e=>e.type='password');root.querySelectorAll('.su-key-row button[aria-pressed]').forEach(e=>{e.setAttribute('aria-pressed','false');e.textContent=document.documentElement.lang==='fa'?'نمایش':'Show';});}root.dataset.step=id;root.querySelectorAll('[data-setup-step]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.setupStep===id)));}
  chooseStep('setupStep1');
- root.querySelectorAll('[data-setup-step]').forEach(b=>b.onclick=()=>{chooseStep(b.dataset.setupStep);if(!matchMedia('(max-width:700px)').matches)$(b.dataset.setupStep)?.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});
+ root.querySelectorAll('[data-setup-step]').forEach(b=>b.onclick=()=>{chooseStep(b.dataset.setupStep);if(root.clientWidth>700)$(b.dataset.setupStep)?.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});
  function updateReadiness(){
   const isFa=document.documentElement.lang==='fa',channelReady=!!$('setupChannelHook').value;
   const ready=[online,!!$('setupMt5Hook').value,channelReady],ids=['setupMt5State','setupTvState','setupTgState'];

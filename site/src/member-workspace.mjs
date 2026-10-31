@@ -11,7 +11,7 @@ export function composeWorkspace(html){
  <article><div class="sb-metric-label"><small>Signals received</small>${icon('signals')}</div><strong id="reportSignals">—</strong><div class="sb-target-totals"><span>TP1 <b id="reportTP1">—</b></span><span>TP2 <b id="reportTP2">—</b></span><span>SL <b id="reportStops">—</b></span></div></article>
  <article><div class="sb-metric-label"><small>Floating P/L</small>${icon('pulse')}</div><strong id="reportFloating">—</strong><span>Open positions · account scope</span></article></div>`;
  html=html.slice(0,begin)+metrics+html.slice(end);
- html=html.replace('◉ <b>DrFX</b> <span>SIGNALBRIDGE</span>','<b>▥ DrFX</b> <span>SignalBridge</span>');
+ html=html.replace('◉ <b>DrFX</b> <span>SIGNALBRIDGE</span>','<b><svg viewBox="0 0 24 24" aria-hidden="true" class="ref-brand-bars"><path fill="currentColor" d="M2 11h5v11H2zM10 3h5v19h-5zM18 7h5v15h-5z"/></svg>DrFX</b> <span>SignalBridge</span>');
  html=html.replace('<div class="sb-strip"',`<div class="ref-header-actions"><button type="button" id="refAccount" aria-label="Account settings">${icon('user')}</button><button type="button" id="refHelp" aria-label="Setup help">?</button></div><div class="sb-strip"`);
  html=html.replace('<h2>Account overview','<h2>Daily overview');
  html=html.replace('<button type="button" data-sb-tab="signals">View all signals ↗</button>',`<div class="sb-workspace-tools"><span id="workspaceSyncAge" aria-live="off">Syncing…</span><button id="workspaceRefresh" type="button" aria-label="Refresh account telemetry" title="Refresh account telemetry">${icon('refresh')}</button><button id="workspaceAccount" type="button" aria-label="Account and membership" title="Account and membership">${icon('settings')}</button></div>`);
