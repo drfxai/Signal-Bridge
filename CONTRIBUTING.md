@@ -18,6 +18,6 @@ are subject to project-maintainer review and do not grant rights in the product.
 An independent security and licensing review is required before enabling
 real-money trading, charging users, or publishing EX5 binaries.
 
-Owner-approved scope in EA 0.27.0: separately opted-in and explicitly confirmed LIVE connection tests, as specified in docs/EA_V027_LUXURY_TESTS.md. Ordinary signal execution remains DEMO-only. CI and maintenance work must never submit real broker orders.
+Current safety boundary: automatic signals execute on DEMO only. Separately consented, account-bound LIVE connection tests are distinct from ordinary signals. Connection-test behavior and the 10% default account-wide drawdown guard must be preserved with explicit confirmation, auditability and broker-side safeguards. CI must never place real broker orders.
 
-Owner-approved EA 0.28.0 scope: connection-test inputs enabled by default, arbitrary configured broker test symbols/lots, and a default 10% account-wide daily equity-loss guard. Website/Mini App order consent remains required. The drawdown guard intentionally closes manual/other-EA positions and cancels pending orders, remains latched until explicit reset, and never enables ordinary LIVE signals.
+For a public change, avoid adding assistant-generated instruction files, model/session transcripts, personal prompts, internal account metadata or secrets. Preserve all executable runtime contracts even when internal identifiers contain the word `agent` (these are transport/runtime names, not developer AI tools).
