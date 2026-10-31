@@ -10,9 +10,9 @@ Status on 2026-10-31: this GitHub repository is already **PUBLIC** and distribut
 - [ ] Real-device UI validation on Android, iOS, desktop and Telegram WebView.
 
 ## Intellectual property and provenance
-- [x] No tracked AGENTS.md / CLAUDE.md / assistant-session instruction manifest was found by the initial tree listing.
+- [x] No tracked developer-tool instruction manifest was found by the initial tree listing.
 - [ ] **BLOCKER:** the proprietary `mt5/DrFX_SignalBridge_EA.mq5` is still tracked in this already-public repository and included in history. Separate the private build/release pipeline before claiming compiled-only distribution.
-- [ ] Full Git history scan for secrets, credentials, proprietary source and unwanted assistant attribution; the working-tree audit alone is insufficient.
+- [ ] Full Git history scan for secrets, credentials, proprietary source and unwanted internal development metadata; the working-tree audit alone is insufficient.
 - [ ] Identify any credential actually disclosed and rotate it; history edits alone do not revoke secrets or remove forks/caches.
 - [ ] Review third-party assets and licenses, including imagery, JS dependencies and executable releases.
 - [ ] Configure protected branches and required status checks.
