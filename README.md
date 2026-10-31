@@ -30,15 +30,15 @@ messages. Persian and Arabic use right-to-left layout.
 [![Cloudflare](https://img.shields.io/badge/Edge-Cloudflare-F38020?style=for-the-badge)](#architecture)
 [![DEMO Safe](https://img.shields.io/badge/Execution-DEMO%20Safe-ffcc62?style=for-the-badge)](#safety)
 
-[**Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**V3 Design Preview**](https://signalbridge.drfx.online/experience/) · [**Test Panel**](https://signalbridge.drfx.online/test) · [**Download ZIP**](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)
+[**Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**Interface Preview**](https://signalbridge.drfx.online/experience/) · [**Test Panel**](https://signalbridge.drfx.online/test) · [**Download ZIP**](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)
 
 </div>
 
-SignalBridge is a premium realtime bridge for traders who want **TradingView and Telegram signals delivered into MetaTrader 5 with minimal setup**. The V3 architecture removes the Windows companion Agent from the standard user flow: the MT5 EA connects directly to SignalBridge Cloud over TLS/WebSocket.
+SignalBridge is a premium realtime bridge for traders who want **TradingView and Telegram signals delivered into MetaTrader 5 with minimal setup**. The current architecture connects the MT5 EA directly to SignalBridge Cloud using TLS/WebSocket; no separate local relay is required.
 
 ## 🆕 DrFX Scalper Pro, now in the suite
 
-<p align="center"><a href="products/scalper-pro/README.md"><img src="products/scalper-pro/images/hero.png" alt="DrFX Scalper Pro: the AI liquidity radar for gold" width="100%"></a></p>
+<p align="center"><a href="products/scalper-pro/README.md"><img src="products/scalper-pro/images/hero.png" alt="DrFX Scalper Pro: gold liquidity analysis for MT5" width="100%"></a></p>
 
 **SignalBridge executes the signals you already trust. Scalper Pro finds new ones on gold.** It is an MT5 Expert Advisor that maps the liquidity sweep, marks the Fair Value Gap and Order Block smart money left behind, and scores every setup with a calibrated win %, reach % and EV before you take it.
 
@@ -46,13 +46,13 @@ SignalBridge is a premium realtime bridge for traders who want **TradingView and
 - **Buy and get your key in the Client Portal** at [drfx.company](https://drfx.company/#scalper): enter your MT5 account number, pay with crypto, and the key appears in the portal's **Scalper Pro** tab and in the DrFX Telegram bot (`/scalper`).
 - **Telegram Mini App:** a Scalper Pro tab shows the promo, plans, install steps and your keys.
 
-<p align="center"><img src="products/scalper-pro/images/scan.gif" alt="Scalper Pro AI scan" width="80%"></p>
+<p align="center"><img src="products/scalper-pro/images/scan.gif" alt="Scalper Pro chart scan" width="80%"></p>
 
 ▶ [Promo video](products/scalper-pro/scalper-pro-promo.mp4) · 📘 [Install and user guide](products/scalper-pro/README.md) · 🛠 [Operator setup](site/README.md#scalper-pro)
 
 ## ✨ Product direction
 
-- **One MT5 EA** — no Node.js, no PowerShell, no local Windows Agent.
+- **One MT5 EA** — no Node.js, no PowerShell, and no separate desktop companion for standard installations.
 - **One TradingView webhook** — paste it into the Alert and the route is ready.
 - **Telegram Bot Connector** — paired signal sources feed the same risk pipeline.
 - **Telegram Web App** — mobile-first monitoring and route controls.
@@ -87,14 +87,7 @@ inside:
 MQL5\Experts
 ```
 
-For source/beta testing, the canonical source is:
-
-```text
-mt5/DrFX_SignalBridge_EA.mq5
-```
-
-Current direct-cloud source: **EA v0.29.0**. Only the latest EA source is kept in
-`mt5/`; earlier versions are available through Git history.
+Current direct-cloud EA: **EA v0.29.1**. Install the compiled release artifact from the [EA download](https://github.com/drfxai/Signal-Bridge/releases/tag/ea-latest); the public repository currently also contains development source under `mt5/` pending a separate proprietary-source migration.
 
 See [EA setup and version details](mt5/README.md) and
 [connection test / license controls](docs/EA_V026_CONNECTION_CONTROLS.md).
@@ -131,7 +124,7 @@ https://signalbridge.drfx.online/v1/ingress/tradingview/<YOUR_PRIVATE_CONNECTION
 
 That is the standard installation flow.
 
-**No Node.js. No PowerShell. No Windows Agent.**
+**No Node.js, PowerShell or separate desktop companion is required.**
 
 ## ✈️ Telegram
 
@@ -192,10 +185,10 @@ The option is visible in the UI but intentionally inactive. The current release 
 
 ## 🖥️ Responsive product UI
 
-> The [V3 Design Preview](https://signalbridge.drfx.online/experience/) and Telegram prototypes use **illustrative sample telemetry**; they are not live account dashboards. Real broker state is shown on the authenticated [Live Dashboard](https://signalbridge.drfx.online/dashboard). Subscription checkout and automatic trial activation are not implemented yet.
+> The [Interface Preview](https://signalbridge.drfx.online/experience/) and design prototypes contain **illustrative sample telemetry**, not broker-certified trading results. Account state belongs in the authenticated [Live Dashboard](https://signalbridge.drfx.online/dashboard). Payment completion must be confirmed server-side before any entitlement is issued.
 
 
-The V3 product concept is in:
+The product design reference is in:
 
 ```text
 design/index.html
@@ -240,7 +233,7 @@ Telegram Bot ────────┘          ↓
                          Broker DEMO
 ```
 
-The legacy Windows Agent remains in the repository only as a rollback/reference path. It is **not part of the standard V3 installation experience**.
+The runtime includes a backward-compatibility transport for older integrations; new installations use the direct EA connection.
 
 ## Safety
 
@@ -268,7 +261,7 @@ Actual DEMO broker E2E certification remains a release gate.
 
 | Path | Purpose |
 | --- | --- |
-| [`mt5/`](mt5/) | Single current EA source and installation guide |
+| [`mt5/`](mt5/) | Development EA source and installation guide (public-source exposure under review) |
 | [`site/`](site/) | Website, member/admin portals and Telegram Mini App |
 | [`worker/`](worker/) | Signal ingress, licensing, realtime delivery and database migrations |
 | [`tests/`](tests/) | Regression and integration coverage for the current implementation |
@@ -277,7 +270,7 @@ Actual DEMO broker E2E certification remains a release gate.
 | [`assets/readme/`](assets/readme/) | Repository-hosted promotional images and setup artwork |
 | [`docs/`](docs/) | Architecture, security and deployment guidance |
 
-Historical EA snapshots are recovered from Git history instead of duplicated in the working tree.
+Historical code and metadata remain in Git history; removing a file from the current branch does not erase prior public copies. See the release checklist for source and credential review.
 
 ## Documentation
 
@@ -297,10 +290,4 @@ Historical EA snapshots are recovered from Git history instead of duplicated in 
 
 </div>
 
-Latest redesign: [EA 0.27.0 compact panel and controlled DEMO/LIVE tests](docs/EA_V027_LUXURY_TESTS.md).
-
-Test repair: [EA 0.27.1 broker-symbol detection and reliable test checks](docs/EA_V0271_TEST_REPAIR.md).
-
-Current risk controls: [EA 0.28.0 daily drawdown and configurable tests](docs/EA_V028_DAILY_DRAWDOWN.md).
-
-Approved command center: [EA 0.29.0 target policies, reports and Telegram routing](docs/EA_V029_APPROVED_COMMAND_CENTER.md).
+See [current EA setup](mt5/README.md), [public release gates](docs/PUBLIC_RELEASE_CHECKLIST.md) and [security policy](SECURITY.md).
