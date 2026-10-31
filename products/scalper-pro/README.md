@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="images/hero.png" alt="DrFX Scalper Pro: the AI liquidity radar for gold" width="100%">
+  <img src="images/hero.png" alt="DrFX Scalper Pro: the gold liquidity scanner" width="100%">
 </p>
 
 <h1 align="center">DrFX Scalper Pro</h1>
-<p align="center"><b>The AI liquidity radar for XAUUSD on MetaTrader 5.</b><br>
-One click maps where smart money hunted liquidity, finds the zone it will defend, and scores how likely price is to respect it.</p>
+<p align="center"><b>Gold liquidity mapping for MetaTrader 5.</b><br>
+The scanning tool highlights liquidity sweeps, candidate zones and model-derived setup estimates. Results are indicative, not trade guarantees.</p>
 
 <p align="center">
   <a href="https://drfx.company/#scalper"><img src="https://img.shields.io/badge/Start-7--day%20free%20trial-f0be40?style=for-the-badge&labelColor=0b0d15" alt="Start 7-day free trial"></a>
@@ -14,7 +14,7 @@ One click maps where smart money hunted liquidity, finds the zone it will defend
 
 Scalper Pro is the second product in the DrFX suite, next to SignalBridge. SignalBridge executes the signals you already have; Scalper Pro finds new ones on gold. Both are managed from the same account at [drfx.company](https://drfx.company/) and the DrFX Telegram Mini App.
 
-> The Expert Advisor source code lives in a separate private repository. This folder holds only the public material: promo media, the user guide and the licensing flow.
+> The Scalper Pro Expert Advisor source code is not included in this public product folder. This folder holds only the public material: promo media, the user guide and the licensing flow.
 
 ## Watch it work
 
@@ -29,7 +29,7 @@ Gold rarely moves in straight lines. It sweeps the obvious highs and lows, traps
 - **Finds the sweep.** Equal highs and lows, the Asia range and the previous day's high and low are mapped automatically. A zone only counts if its move first took liquidity.
 - **Marks the zone.** It finds the displacement that broke structure (CHoCH or BOS) and draws the Fair Value Gap and Order Block it left behind.
 - **Counts the trap.** "IDM x3" means three inducement pivots still sit between price and your zone.
-- **Scores every setup.** A model trained on your symbol's own history gives each zone a calibrated win %, a reach % and an expected value in R, graded A+ to C.
+- **Scores every setup.** A model trained on your symbol's own history displays estimated win %, reach % and expected value in R, graded A+ to C.
 - **Trades in one click.** Each card has a limit order with risk-% sizing, a stop beyond the zone, a fixed RR and an automatic expiry. Turn on AUTO and TRADE and it does the same by itself.
 
 | | |
@@ -100,4 +100,4 @@ Support: Telegram bot `/help` or the Client Portal at [drfx.company](https://drf
 - Licence keys are minted by the website worker (`site/src/scalper.mjs`) with the same algorithm as the EA. The signing secret is the Cloudflare secret `SCALPER_LICENSE_SECRET` and must equal `DRFX_SECRET` in the private EA build.
 - `SCALPER_DOWNLOAD_URL` (optional) is the link members see on the download button.
 - Admins can grant keys from the portal's Operations Center (**grant scalper 1m / 3m**) or in Telegram with `/scalperkey MT5_LOGIN 1m|3m [usr_…]`.
-- Deployment steps are in [`site/README.md`](../../site/README.md#scalper-pro).
+- Deployment steps are in [`site/README.md`](../../site/README.md#licensing-and-checkout).
