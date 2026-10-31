@@ -74,7 +74,7 @@ function containerRules(css){
  }
  return out+css.slice(at);
 }
-export const REFERENCE_CSS=containerRules(REFERENCE_RULES)+String.raw`
+const RESPONSIVE_REFERENCE_CSS=containerRules(REFERENCE_RULES)+String.raw`
 #portalOverlay .portal-content,#panel-home{container-type:inline-size;container-name:workspace;min-width:0}
 #portalOverlay .portal-content{display:block;width:100%;min-height:0;flex:1;padding:0!important}
 #portalOverlay .portal-bar{display:none}#portalOverlay .portal{background:#020d16!important;border:0!important}
@@ -84,3 +84,7 @@ export const REFERENCE_CSS=containerRules(REFERENCE_RULES)+String.raw`
 @container workspace (min-width:701px) and (max-width:1000px){#connectionActions{--workspace-padding:14px 16px}}
 @media(max-height:850px){@container workspace (min-width:1001px){#connectionActions{--workspace-padding:10px 20px}}}
 `;
+
+const REFERENCE_BRAND_CSS=String.raw`#connectionActions .sb-logo b{display:flex;align-items:center;gap:7px}#connectionActions .ref-brand-bars{width:22px;height:22px}#connectionActions.sb-tab-setup .sb-logo b{color:#76c8ff}@container workspace (max-width:700px){#connectionActions .ref-brand-bars{width:17px;height:17px}}`;
+
+export const REFERENCE_CSS=RESPONSIVE_REFERENCE_CSS+REFERENCE_BRAND_CSS;
