@@ -71,13 +71,29 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 @media(max-width:420px){.lang-toggle{height:40px;min-width:54px;padding:0 8px;gap:5px}.mini-lang-chevron{display:none}.mini-globe-icon{width:17px;height:17px}}
 ${SXM_CSS}
 ${CHM_CSS}
-${RESPONSIVE_REFRESH}</style>
+${RESPONSIVE_REFRESH}
+/* Two primary account actions shared with the DrFX website. */
+.mini-account-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 0 5px;min-width:0}
+.mini-account-action{display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;min-width:0;padding:10px 8px;text-decoration:none;border-radius:12px;white-space:nowrap;font:750 clamp(11px,3.2vw,14px)/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;transition:transform .2s ease,box-shadow .2s ease}
+.mini-account-action:active{transform:scale(.98)}
+.mini-account-action--auth{background:linear-gradient(105deg,#e9bf52,#ffedac 52%,#c89830);color:#181007;border:1px solid #eed17c;box-shadow:0 5px 21px #c29b4429,inset 0 1px #ffffff75}
+.mini-account-action--portal{background:linear-gradient(125deg,#211a10,#14171a 68%,#40311a);color:#ffecc0;border:1px solid #b89244;box-shadow:inset 0 1px #ffffff15}
+.mini-account-action .mini-account-dot{flex:0 0 7px;height:7px;width:7px;border-radius:50%;background:#40e1a5;box-shadow:0 0 9px #40e1a5}
+.mini-account-action>span:nth-child(2){overflow:hidden;text-overflow:ellipsis}
+.mini-account-action:focus-visible{outline:2px solid #ffe3a1;outline-offset:3px}
+@media(max-width:345px){.mini-account-actions{gap:6px}.mini-account-action{font-size:10.5px;padding-inline:5px;gap:4px}.mini-account-action .mini-account-dot{display:none}}
+@media(prefers-reduced-motion:reduce){.mini-account-action{transition:none}}
+</style>
 <script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
  <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button type="button" id="langToggle" class="lang-toggle" title="Language · زبان" aria-label="Choose app language" aria-expanded="false" aria-haspopup="true" aria-controls="miniLangOptions"><svg class="mini-globe-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.5 4.5 5.5 4.5 9S15 18.5 12 21M12 3C9 5.5 7.5 8.5 7.5 12S9 18.5 12 21"/></svg><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div id="miniLangOptions" class="mini-lang-options" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">LANGUAGE / زبان</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="ar" aria-pressed="false"><b>AR</b><span>العربية</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
+<div class="mini-account-actions" role="group" aria-label="Account access">
+ <a id="miniAuthAction" href="https://drfx.company/?auth=1" rel="noopener noreferrer" class="mini-account-action mini-account-action--auth"><span>Sign In / Sign Up</span><span aria-hidden="true">↗</span></a>
+ <button id="miniClientPortalAction" type="button" class="mini-account-action mini-account-action--portal"><span class="mini-account-dot" aria-hidden="true"></span><span>Client Portal</span><span aria-hidden="true">↗</span></button>
+</div>
 <section class="hero">
  <span class="eyebrow" data-tr="eyebrow">YOUR TRADING WORKSPACE</span>
  <h1><span data-tr="hero1">Your signals.</span><br><em data-tr="hero2">One powerful bridge.</em></h1>
@@ -290,6 +306,15 @@ export const MINI_JS=String.raw`(() => {
  tg?.BackButton?.onClick?.(()=>show('home'));
 
  function navigate(url){try{if(tg?.openLink)tg.openLink(url);else window.location.assign(url);}catch{window.location.assign(url);}}
+ $('miniAuthAction').addEventListener('click',event=>{
+  event.preventDefault();
+  navigate('https://drfx.company/?auth=1');
+ });
+ $('miniClientPortalAction').addEventListener('click',async()=>{
+  if(state.user){show('license');return;}
+  await offerBotLaunch();
+  $('otpLogin').scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth',block:'center'});
+ });
  $('openWebsite').addEventListener('click',()=>navigate('https://drfx.company'));
  $('openPricing').addEventListener('click',()=>navigate('https://drfx.company/#plans'));
  async function api(path,body){
