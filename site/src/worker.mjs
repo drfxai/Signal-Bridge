@@ -72,7 +72,9 @@ function getCookie(req,name){
  return match?match.slice(name.length+1):null;
 }
 const SESSION='__Host-drfx_session';
-const cookie=value=>SESSION+'='+value+'; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=604800';
+// No auth tokens in JavaScript/localStorage: a durable, server-revocable, HttpOnly cookie.
+const SESSION_DAYS=30;
+const cookie=value=>SESSION+'='+value+'; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age='+(SESSION_DAYS*86400);
 const cookieClear=()=>SESSION+'=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0';
 async function authUser(req,env){
  const token=getCookie(req,SESSION);
@@ -85,7 +87,7 @@ async function authUser(req,env){
 }
 async function login(env,userId){
  const token=b64u(rand()),hash=await sha(token);
- await env.DB.prepare("INSERT INTO site_sessions (token_hash,user_id,expires_at) VALUES (?,?,datetime('now','+7 days'))").bind(hash,userId).run();
+ await env.DB.prepare("INSERT INTO site_sessions (token_hash,user_id,expires_at) VALUES (?,?,datetime('now','+30 days'))").bind(hash,userId).run();
  return cookie(token);
 }
 async function audit(env,actor,action,subject,detail=''){
@@ -704,7 +706,11 @@ async function api(req,env){
  const user=await authUser(req,env);
  if(path==='/api/me'&&req.method==='GET'){
   if(!user)return fail('UNAUTHENTICATED',401);
-  return json({ok:true,user:await profile(env,user)});
+  // On a verified session restore, roll the persistent cookie and DB expiration
+  // together. An explicit logout or revoked session cannot be restored.
+  await env.DB.prepare("UPDATE site_sessions SET expires_at=datetime('now','+30 days') WHERE token_hash=?").bind(user.token_hash).run();
+  const token=getCookie(req,SESSION);
+  return json({ok:true,user:await profile(env,user)},200,{'set-cookie':cookie(token)});
  }
  if(path==='/api/auth/logout'&&req.method==='POST'){
   if(user)await env.DB.prepare('DELETE FROM site_sessions WHERE token_hash=?').bind(user.token_hash).run();

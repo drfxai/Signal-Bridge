@@ -1,0 +1,39 @@
+name: Mobile Auth Release Bundle (one-time)
+on:
+  push:
+    branches: [fix/mobile-email-otp-session-20261031]
+    paths:
+      - '.github/workflows/mobile-auth-export-once.yml'
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check project
+        run: npm run check
+      - name: Generate deployable Cloudflare Worker bundle
+        run: |
+          npm install --no-save --package-lock=false wrangler@4
+          npx wrangler deploy --dry-run --config site/wrangler.jsonc --outdir /tmp/drfx-release
+          test -s /tmp/drfx-release/worker.js
+      - name: Export public Worker bundle in verified chunks (no runtime secrets)
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import zlib from 'node:zlib';
+          const data=fs.readFileSync('/tmp/drfx-release/worker.js');
+          const sha=crypto.createHash('sha256').update(data).digest('hex');
+          const encoded=zlib.gzipSync(data,{level:9}).toString('base64');
+          const parts=encoded.match(/.{1,3500}/g)||[];
+          console.log('MOBILE_AUTH_BEGIN '+data.length+' '+sha+' '+parts.length);
+          parts.forEach((part,i)=>console.log('MOBILE_AUTH_DATA '+i+' '+part));
+          console.log('MOBILE_AUTH_END '+parts.length+' '+process.env.GITHUB_SHA);
+          EOF

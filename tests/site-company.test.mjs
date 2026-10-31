@@ -178,8 +178,8 @@ test('live feature readiness is reflected honestly in account and checkout UI',a
  assert.match(SITE_JS,/\/api\/config/);
  assert.match(SITE_JS,/readiness\.payments===false/);
  assert.match(SITE_JS,/\$\('sendEmail'\)\.disabled=!readiness\.email/);
- assert.match(SITE_JS,/Account service is temporarily unavailable/);
- assert.match(SITE_JS,/state\.user=null;hide\('portalOverlay'\)/);
+ assert.match(SITE_JS,/Connection problem: your saved session has not been cleared/);
+ assert.match(SITE_JS,/if\(e\.message==='UNAUTHENTICATED'\)\{state\.user=null;syncLoginEntry\(\);hide\('portalOverlay'\);openAuth\(\);\}/);
  assert.ok(SITE_HTML.includes('loaderFallback'));
  const r=await handler.fetch(new Request('https://drfx.company/api/config'),{DB:{},LICENSE_VAULT_KEY:'configured-but-not-shared'});
  assert.equal(r.status,200);
