@@ -26,7 +26,7 @@ SignalBridge accepts authorized TradingView alerts or Telegram signal messages, 
 
 ## Explicit exclusions
 - Fabricated performance statistics, guaranteed fill prices or guaranteed latency.
-- Autonomous model-generated trading orders or unreviewed ambiguous-signal execution.
+- Unsolicited or unreviewed trading orders or unreviewed ambiguous-signal execution.
 - Unapproved access to Telegram private accounts or broker accounts.
 - LIVE automatic trading without independent certification and authorization.
 
