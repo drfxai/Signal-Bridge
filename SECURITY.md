@@ -20,8 +20,7 @@ Automated execution on real-money accounts is not supported until an explicitly
 reviewed, independently tested release is published.
 
 The Connection Check reads historical license/handshake records. It does not
-guarantee live connectivity. The 0.01-lot timed trade feature is not enabled
-without a supported, compiled EA implementing safe position tracking and closure.
+guarantee live connectivity. The 0.01-lot timed trade feature requires a supported compiled EA, an explicit user confirmation and safe position tracking/closure. Availability in the UI is not proof of a successful broker-side test.
 
 ## Security controls
 
@@ -31,3 +30,7 @@ without a supported, compiled EA implementing safe position tracking and closure
 - Administrator actions require server-side authorization and audit records.
 - All credential rotation or bot webhook changes must preserve production
   integrations and receive appropriate review.
+
+## Public-source and history review
+
+The repository has previously published a development `.mq5` EA file. Removing it from the current tree will **not** remove it from Git history, forks, caches or downloaded copies. Treat it as previously disclosed and separate proprietary distribution from public CI before claiming compiled-only protection. Perform a complete credential/history scan and rotate any exposed credential; do not rewrite shared history without an impact and rollback plan.
