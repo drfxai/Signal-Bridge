@@ -149,6 +149,26 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  await page.close();
 }
 
+// Container width, rather than browser width, must select the compact layout.
+for(const [label,outerWidth,hostWidth,isMobile] of [['embedded-phone',980,390,false],['android-phone',390,390,true],['embedded-tablet',1440,720,false]]){
+ const page=await browser.newPage({viewport:{width:outerWidth,height:960},isMobile,deviceScaleFactor:isMobile?3:1,...(isMobile?{userAgent:'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36'}:{})});
+ page.on('pageerror',e=>errors.push(label+': '+e.message));
+ await page.route('**/api/**',route=>{const path=new URL(route.request().url()).pathname;const data=path==='/api/me'?{ok:true,user}:path==='/api/member/settings'?{ok:true,settings:{policy:{tp1:'BE',tp2:'CLOSE',tp3:'OFF',partial_percent:50,be_buffer_points:0},default_lots:.01,tv_to_mt5:true,tv_to_telegram:true,telegram_to_mt5:true}}:path==='/api/webhook'?{ok:true,webhook:{exists:false}}:path==='/api/channels'?{ok:true,telegram_linked:true,chats:[]}:path==='/api/connection/check'?{ok:true,diagnostic:{license:'active',terminal_online:false,capabilities:[],telemetry:{}}}:{ok:true};return route.fulfill({json:data});});
+ await page.route(/^https:\/\/(?!127\.0\.0\.1)/,r=>r.abort());
+ await page.goto('http://127.0.0.1:4199/telegram',{waitUntil:'networkidle'});
+ await page.addStyleTag({content:'#panel-home{width:'+hostWidth+'px!important;max-width:'+hostWidth+'px!important}'});
+ const root=page.locator('#connectionActions');
+ if(await root.evaluate(e=>e.scrollWidth>e.clientWidth+2))throw Error(label+' daily overflows');
+ const nav=hostWidth<=700?'.sb-mobile-tabs':'.sb-top nav';
+ if(!await page.locator(nav).isVisible())throw Error(label+' wrong responsive navigation');
+ await page.screenshot({path:dir+'/'+label+'-daily.png',fullPage:true});
+ await page.locator(nav+' [data-sb-tab=setup]').click();
+ if(hostWidth<=700){await page.locator('[data-setup-step=setupStep3]').click();if(await page.locator('.su-grid>.su-card:visible').count()!==1)throw Error(label+' stacked setup');}
+ if(await root.evaluate(e=>e.scrollWidth>e.clientWidth+2))throw Error(label+' setup overflows');
+ await page.screenshot({path:dir+'/'+label+'-setup.png',fullPage:true});
+ await page.close();console.log(JSON.stringify({label,hostWidth,isMobile,containerLayout:true}));
+}
+
 // An offline terminal must explain the next action without a tall empty chart.
 for(const [label,url,width,height] of [['offline-web-phone','/',390,844],['offline-telegram-phone','/telegram',390,844],['offline-web-desktop','/',1440,1000],['offline-telegram-desktop','/telegram',1440,1000]]){
  const page=await browser.newPage({viewport:{width,height}});page.on('pageerror',e=>errors.push(label+': '+e.message));
