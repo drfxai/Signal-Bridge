@@ -22,7 +22,8 @@ test('mobile client portal restores an existing authenticated session without ne
  assert.match(SITE_JS,/async function restoreSavedSession\(\)/);
  assert.match(SITE_JS,/const r=await call\('\/api\/me'\);state\.user=r\.user;syncLoginEntry\(\)/);
  assert.match(SITE_JS,/window\.addEventListener\('pageshow',event=>\{if\(event\.persisted\)restoreSavedSession\(\);\}\)/);
- assert.match(SITE_JS,/\$\('loginOpen'\)\.onclick=async\(\)=>\{if\(await refreshProfile\(\)\)show\('portalOverlay'\);\}/);
+ assert.match(SITE_JS,/const accountPortalAction=\(\)=>openPortal\(\)/);
+ assert.match(SITE_JS,/for\(const id of \['clientPortalOpen','mobilePortalOpen'\]\)/);
  assert.match(SITE_JS,/entry\.classList\.toggle\('session-active',!!state\.user\)/);
  assert.match(SITE_JS,/if\(e\.message==='UNAUTHENTICATED'\)/);
  assert.doesNotMatch(SITE_JS,/localStorage\.setItem\([^)]*(token|session|code)/i);
