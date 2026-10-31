@@ -77,10 +77,10 @@ function containerRules(css){
 export const REFERENCE_CSS=containerRules(REFERENCE_RULES)+String.raw`
 #portalOverlay .portal-content,#panel-home{container-type:inline-size;container-name:workspace;min-width:0}
 #portalOverlay .portal-content{display:block;width:100%;min-height:0;flex:1;padding:0!important}
-#portalOverlay .portal-bar{display:none}
+#portalOverlay .portal-bar{display:none}#portalOverlay .portal{background:#020d16!important;border:0!important}
 #portalOverlay #connectionActions,#panel-home #connectionActions{width:100%;max-width:none;min-width:0;margin:0!important;padding:var(--workspace-padding,20px 24px)!important}
 #connectionActions .ref-header-actions #portalClose{display:grid;place-items:center;width:30px;height:30px;min-height:30px;padding:0;font-size:20px;border-radius:50%}
-@container workspace (max-width:700px){#connectionActions{--workspace-padding:10px 12px}#connectionActions .sb-top nav{display:none!important}#connectionActions .ref-header-actions #portalClose{width:25px;height:25px;min-height:25px;font-size:17px}}
+@container workspace (max-width:700px){#connectionActions{--workspace-padding:10px 12px}#connectionActions .sb-mobile-tabs{left:var(--workspace-left,0px)!important;right:auto!important;width:var(--workspace-inline-size,100cqw)!important;max-width:none}#connectionActions .sb-top nav{display:none!important}#connectionActions .ref-header-actions #portalClose{width:25px;height:25px;min-height:25px;font-size:17px}}
 @container workspace (min-width:701px) and (max-width:1000px){#connectionActions{--workspace-padding:14px 16px}}
 @media(max-height:850px){@container workspace (min-width:1001px){#connectionActions{--workspace-padding:10px 20px}}}
 `;
