@@ -30,7 +30,7 @@ messages. Persian and Arabic use right-to-left layout.
 [![Cloudflare](https://img.shields.io/badge/Edge-Cloudflare-F38020?style=for-the-badge)](#architecture)
 [![DEMO Safe](https://img.shields.io/badge/Execution-DEMO%20Safe-ffcc62?style=for-the-badge)](#safety)
 
-[**Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**Interface Preview**](https://signalbridge.drfx.online/experience/) · [**Test Panel**](https://signalbridge.drfx.online/test) · [**Download ZIP**](https://github.com/drfxai/Signal-Bridge/archive/refs/heads/main.zip)
+[**Live Dashboard**](https://signalbridge.drfx.online/dashboard) · [**Interface Preview**](https://signalbridge.drfx.online/experience/) · [**Test Panel**](https://signalbridge.drfx.online/test) · [**Compiled EA Download**](https://github.com/drfxai/Signal-Bridge/releases/tag/ea-latest)
 
 </div>
 
@@ -40,7 +40,7 @@ SignalBridge is a premium realtime bridge for traders who want **TradingView and
 
 <p align="center"><a href="products/scalper-pro/README.md"><img src="products/scalper-pro/images/hero.png" alt="DrFX Scalper Pro: gold liquidity analysis for MT5" width="100%"></a></p>
 
-**SignalBridge executes the signals you already trust. Scalper Pro finds new ones on gold.** It is an MT5 Expert Advisor that maps the liquidity sweep, marks the Fair Value Gap and Order Block smart money left behind, and scores every setup with a calibrated win %, reach % and EV before you take it.
+**SignalBridge executes the signals you already trust. Scalper Pro finds new ones on gold.** It is an MT5 Expert Advisor that maps the liquidity sweep, marks the Fair Value Gap and Order Block smart money left behind, and displays setup grades and model-derived estimates. These are not independently certified probabilities or profit guarantees.
 
 - **7-day free trial** inside the EA, then **$19 / 30 days** or **$49 / 90 days**.
 - **Buy and get your key in the Client Portal** at [drfx.company](https://drfx.company/#scalper): enter your MT5 account number, pay with crypto, and the key appears in the portal's **Scalper Pro** tab and in the DrFX Telegram bot (`/scalper`).
@@ -89,8 +89,7 @@ MQL5\Experts
 
 Current direct-cloud EA: **EA v0.29.1**. Install the compiled release artifact from the [EA download](https://github.com/drfxai/Signal-Bridge/releases/tag/ea-latest); the public repository currently also contains development source under `mt5/` pending a separate proprietary-source migration.
 
-See [EA setup and version details](mt5/README.md) and
-[connection test / license controls](docs/EA_V026_CONNECTION_CONTROLS.md).
+See [EA installation and controls](mt5/README.md) and the [release checklist](docs/PUBLIC_RELEASE_CHECKLIST.md).
 
 ### 2. Enter your SignalBridge Key
 
