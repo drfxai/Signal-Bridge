@@ -1,12 +1,12 @@
 # SignalBridge MT5 EA
 
-The only current source is [`DrFX_SignalBridge_EA.mq5`](DrFX_SignalBridge_EA.mq5),
-**EA v0.29.0**. Older EA snapshots have been removed from the working tree;
+The current development source is [`DrFX_SignalBridge_EA.mq5`](DrFX_SignalBridge_EA.mq5),
+**EA v0.29.1**. Older EA snapshots have been removed from the working tree;
 Git history retains their previous contents.
 
 ## Setup
 
-1. Compile the source with official MetaEditor, or use an independently reviewed compiled EX5 build.
+1. Download the [compiled EA release](https://github.com/drfxai/Signal-Bridge/releases/tag/ea-latest); verify its `README.txt` SHA-256 checksum before installation. Development builds may instead be compiled with MetaEditor.
 2. Place the EX5 in `MQL5/Experts` and attach it to an MT5 **DEMO** chart (or LIVE for separately opted-in connection tests).
 3. Allow `https://signalbridge.drfx.online` in **Tools → Options → Expert Advisors**.
 4. Paste your private 43-character activation code into `InpActivationCode`.
@@ -14,7 +14,7 @@ Git history retains their previous contents.
 6. The optional BUY gold 0.01 / local five-second exit test also requires `InpEnableConnectionTest=true`.
 
 The EA connects directly to `signalbridge.drfx.online:443` at `/v1/ea/ws`
-using TLS/WebSocket. No Windows companion Agent is required.
+using TLS/WebSocket. No desktop companion application is required.
 
 ## Current features
 

@@ -1,5 +1,5 @@
-# SignalBridge — V3 Technical Architecture
-Version 0.4 · Direct-EA beta · 2026-10-29
+# SignalBridge — Direct-EA Architecture
+Technical description aligned to EA v0.29.1 · 2026-10-31
 
 ## Product rule
 
@@ -9,16 +9,16 @@ The standard installation path is intentionally reduced to:
 2. one private SignalBridge Key inside the EA;
 3. one private TradingView webhook URL.
 
-No Node.js, PowerShell or Windows companion Agent is required in the V3 standard flow.
+No Node.js, PowerShell or local companion service is required in the standard flow.
 
 ## Production edge
 
 - Worker: `drfx-signalbridge-ingress`
 - Custom domain: `signalbridge.drfx.online`
 - D1: `signalbridge-ingress`
-- Durable Object: `AgentHub` (legacy internal name; now coordinates both direct EA and legacy Agent clients)
+- Durable Object: `AgentHub` (existing runtime class name; handles direct execution sockets and compatibility traffic)
 - Direct EA WebSocket endpoint: `/v1/ea/ws`
-- Legacy Windows Agent endpoint: `/v1/agent/ws`
+- Backward-compatibility endpoint: `/v1/agent/ws` (not used for new installations)
 
 ## Realtime data flow
 
@@ -29,7 +29,7 @@ flowchart TD
  DASH[Web Dashboard / Telegram Web App] --> W
  W --> DB[(D1)]
  W --> HUB[Durable Object execution hub]
- HUB <-->|Direct TLS/WebSocket| EA[MT5 SignalBridge EA v0.26.0]
+ HUB <-->|Direct TLS/WebSocket| EA[MT5 SignalBridge EA v0.29.1]
  HUB <-->|Read-only WebSocket| DASH
  EA --> BROKER[Broker DEMO]
  BROKER --> EA
@@ -52,7 +52,7 @@ The direct EA transport intentionally uses a compact text protocol inside WebSoc
 - `RCPT|...`
 - `RACK|...`
 
-This avoids putting a JSON parser inside the EA while retaining the same durable command lifecycle as the former Windows Agent path.
+This avoids embedding a general JSON parser inside the EA while preserving durable command acknowledgments and broker reconciliation.
 
 ## Command durability
 
@@ -92,9 +92,9 @@ The personal-account **MTProto connector is Coming Soon and inactive**. No perso
 
 The live dashboard remains backend-backed. It observes the execution hub through a read-only observer WebSocket and displays MT5 state, account telemetry, recent commands, cloud RTT and broker receipts.
 
-## Legacy Agent
+## Compatibility boundary
 
-`agent-windows/` remains for rollback/reference during migration. It is not shown in the standard V3 install flow.
+`agent-windows/` and `/v1/agent/ws` are runtime compatibility artifacts. They are not required for a new installation. Remove them only after a separate dependency and rollback review.
 
 ## Current safety boundary
 
@@ -105,7 +105,7 @@ The live dashboard remains backend-backed. It observes the execution hub through
 
 ## Release gates
 
-EA v0.26.0 has passed official Windows MetaEditor compilation. Before full broker release certification:
+The EA has a compiled release artifact; compilation does not establish broker end-to-end certification. Before full broker release certification:
 - run direct TLS/WebSocket handshake against Production;
 - validate reconnect + replay on DEMO;
 - validate broker-rejection receipt recovery;

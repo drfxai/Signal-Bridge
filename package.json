@@ -3,12 +3,13 @@
   "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "SignalBridge premium direct TradingView/Telegram \u2192 MT5 EA realtime platform",
+  "description": "SignalBridge premium direct TradingView/Telegram → MT5 EA realtime platform",
   "scripts": {
     "dev": "python3 -m http.server 4173 --directory design",
     "test": "node --test tests/*.test.mjs",
-    "check": "node scripts/check-syntax.mjs && npm test",
+    "check": "npm run public:audit && node scripts/check-syntax.mjs && npm test",
     "capacity": "node scripts/load-model.mjs",
-    "generate:ea": "node scripts/generate-ea-connection.mjs"
+    "generate:ea": "node scripts/generate-ea-connection.mjs",
+    "public:audit": "node scripts/public-release-audit.mjs"
   }
 }

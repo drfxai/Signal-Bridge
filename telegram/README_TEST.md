@@ -1,18 +1,13 @@
-# SignalBridge Telegram Test
+# SignalBridge — Telegram Signal Test
 
-Run `SignalBridge-Telegram-Setup.ps1` with the Telegram Bot token, Connection ID, Webhook Secret and one-time Pair Code supplied in the private test configuration.
+The standard user flow uses the existing Telegram bot and the [Client Portal](https://drfx.company/). No separate local setup script is required for users.
 
-The connection does **not** bind to the first arbitrary message. The intended chat/channel must first send:
+1. Sign in to your account, open Setup and enable Telegram → MT5 routing.
+2. Authorize your intended Telegram channel or group through the account's available pairing flow.
+3. Confirm the connected MetaTrader 5 EA is logged into the correct account and licensed.
+4. Test a deterministic message in an approved channel using valid broker-specific prices:
 
-```
-/signalbridge_pair <PAIR_CODE>
-```
-
-A successful one-time pairing stores that chat ID and invalidates the Pair Code. Messages from other chats are ignored.
-
-Supported deterministic test format (English shown; Persian/Arabic labels and digits are also supported):
-
-```
+```text
 XAUUSD BUY
 LOT 0.01
 SL 2700
@@ -21,4 +16,6 @@ TP2 2730
 TP3 2740
 ```
 
-Use prices valid for the current broker quote. Demo execution remains gated by `InpEnableDemoExecution` and a MetaTrader **DEMO** account.
+Only use prices suitable for the current quote and a DEMO account. Confirm signal ingestion, dashboard state, MT5 execution receipts and any broker rejection in the logs. Ordinary live-account automation is not supported.
+
+The test does not authorize an unpaired channel or bypass authenticated account and routing controls.

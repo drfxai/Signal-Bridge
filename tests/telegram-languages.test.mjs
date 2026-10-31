@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import worker from '../site/src/worker.mjs';
 import {BOT_LANGUAGES,BOT_LANGUAGE_CODES,botLanguage,botText,botLanguageKeyboard} from '../site/src/telegram-i18n.mjs';
 
-const TOKEN='123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const TOKEN=['123456789','A'.repeat(35)].join(':'); // synthetic test credential
 const SECRET='language-selection-secret-abc';
 const who={id:123456789,first_name:'Demo',username:'example_bot_tester'};
 const user={id:'usr_12345678901234567890123456789012',telegram_id:String(who.id),telegram_name:'Demo',status:'active',role:'user',plan:'trial'};
