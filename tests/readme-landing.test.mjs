@@ -13,10 +13,10 @@ test('repository home points to the premium product UI and live surfaces',()=>{
  assert.match(readme,/https:\/\/signalbridge\.drfx\.online\/test/);
 });
 
-test('standard V3 install is one EA and one webhook without companion setup',()=>{
+test('standard installation uses one EA and one webhook without local relay setup',()=>{
  assert.match(readme,/One MT5 EA/i);
  assert.match(readme,/one TradingView webhook/i);
- assert.match(readme,/no Node\.js, no PowerShell, no local Windows Agent/i);
+ assert.match(readme,/no Node\.js, no PowerShell, and no separate desktop companion/i);
  assert.doesNotMatch(readme,/Install-SignalBridge\.ps1/);
  assert.doesNotMatch(readme,/Start-SignalBridge-Agent\.cmd/);
 });
@@ -29,7 +29,7 @@ test('README advertises exact launch pricing',()=>{
 });
 
 test('README advertises current direct-EA metadata',()=>{
- assert.match(readme,/EA v0\.29\.0/);
+ assert.match(readme,/EA v0\.29\.1/);
  assert.match(readme,/\/v1\/ea\/ws/);
  assert.equal(rootPkg.version,'3.0.0');
 });
