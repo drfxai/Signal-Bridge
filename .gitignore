@@ -12,3 +12,23 @@ private/
 agent-windows/receipt-outbox.jsonl
 
 artifacts/
+
+# Local credentials and platform state
+.env
+.env.*
+!.env.example
+!.env.sample
+.dev.vars
+.dev.vars.*
+.wrangler/
+*.pem
+*.p12
+*.pfx
+*.key
+*.jks
+*.keystore
+*.credentials.json
+.secrets/
+*.sqlite
+*.sqlite3
+*.db-journal
