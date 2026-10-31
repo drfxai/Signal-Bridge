@@ -20,7 +20,7 @@ The checkout interface alone does not prove funds received. Server-side verified
 - Worker entry: `src/worker.mjs`; UI and modules under `src/`.
 - Config: `site/wrangler.jsonc`; assets: `site/public/`.
 - D1 binding: `DB` using the shared `signalbridge-ingress` database.
-- Durable Object service binding: `AGENT_HUB` (existing internal runtime identifier; not a software-development AI agent).
+- Durable Object service binding: `AGENT_HUB` (existing transport runtime identifier; do not rename without an explicit compatibility migration).
 - Apply all pending migrations from `worker/migrations/` and `site/migrations/` in verified order on a backup/test database before production.
 - From `site/`, deploy through `npx wrangler deploy` using the existing authorized Cloudflare connection. Do not delete D1 bindings or overwrite production secrets.
 - Verify `/api/config` readiness flags, `/api/me` sessions, product pricing, user entitlements and admin isolation after deployment.
