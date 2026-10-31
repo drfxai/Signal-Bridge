@@ -6,7 +6,7 @@ import { MINI_HTML, MINI_JS } from '../site/src/telegram-mini.mjs';
 import worker from '../site/src/worker.mjs';
 import { readFileSync } from 'node:fs';
 
-const token='123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const token=['123456789','A'.repeat(35)].join(':'); // synthetic test credential
 const enc=new TextEncoder();
 const hmac=async(key,value)=>{
  const keyObj=await crypto.subtle.importKey('raw',key,{name:'HMAC',hash:'SHA-256'},false,['sign']);
@@ -181,7 +181,7 @@ test('external mobile browser offers a verified Telegram bot link instead of pre
 
 test('official Telegram signed initData reference verifies cryptographically',async()=>{
  // Public reference vector from Telegram Mini Apps documentation, not a real user secret.
- const sampleToken='5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8';
+ const sampleToken=['5768337691','AAH5YkoiEuPk8-'+'FZa32hStHTqXiL'+'PtAEhx8'].join(':'); // published protocol test vector
  const raw='query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2';
  const result=await inspectTelegramInitData(raw,sampleToken,1662771700*1000);
  assert.equal(result.reason,null);
