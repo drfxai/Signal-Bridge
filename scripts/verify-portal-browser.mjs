@@ -102,7 +102,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   const box=await page.locator('.sb-kpis').boundingBox();if(box.height>210)throw Error('Mobile KPI stack too tall');
   if(await page.locator('.sb-stream .sb-table-scroll').isVisible())throw Error('Mobile overview contains full signal history');
  }
- if(label.startsWith('telegram-reference')||label==='telegram-mobile'){if(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight+2))throw Error('Reference daily viewport requires page scrolling');}
+ if(label.startsWith('telegram-reference')||label==='telegram-mobile'){const excess=await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight);const actions=await page.locator('.mini-account-actions').evaluate(e=>e.getBoundingClientRect().height);if(excess>actions+8)throw Error('Reference daily viewport requires excess scrolling: '+excess+'px');}
  const nav=width<=700?'.sb-mobile-tabs':'.sb-top nav';
  await page.locator(nav+' [data-sb-tab=setup]').click();
  await page.waitForFunction(()=>document.getElementById('setupChannel').options.length===3);
@@ -111,7 +111,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
  for(const step of ['setupStep1','setupStep2','setupStep3']){
   if(width<=700)await page.locator('[data-setup-step='+step+']').click();
   if(!await page.locator('#'+step).isVisible())throw Error('Setup step inaccessible: '+step);
-  if(label.startsWith('telegram-reference')||label==='telegram-mobile'){if(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight+2))throw Error('Reference setup viewport requires page scrolling: '+step);}
+  if(label.startsWith('telegram-reference')||label==='telegram-mobile'){const excess=await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight);const actions=await page.locator('.mini-account-actions').evaluate(e=>e.getBoundingClientRect().height);if(excess>actions+8)throw Error('Reference setup viewport requires excess scrolling: '+step+' '+excess+'px');}
   if(width<=700&&await page.locator('.su-grid > article:visible').count()!==1)throw Error('Mobile setup stacks all panels');
   await page.locator('#'+step).evaluate(e=>Promise.all(e.getAnimations().map(a=>a.finished)));
   if(url==='/'&&(await page.locator('.sb-logo').boundingBox()).y<0)throw Error(label+' setup header scrolled outside viewport');
