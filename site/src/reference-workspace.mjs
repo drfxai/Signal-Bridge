@@ -1,7 +1,7 @@
 // Reference layout: one shared, scoped system for web and Telegram.
 export const REFERENCE_CSS=String.raw`
 body.workspace-home{background:#020d16!important;padding:0!important}body.workspace-home .container{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}body.workspace-home #panel-home{padding:0!important}body.workspace-home #connectionActions{margin:0!important}
-#portalOverlay #connectionActions{min-height:0!important}#portalOverlay .portal-content{scrollbar-gutter:auto!important}
+#portalOverlay #connectionActions{min-height:0!important}#portalOverlay .portal-content{scrollbar-gutter:auto!important;padding:0!important}
 #connectionActions{--ref-line:#21435b;--ref-blue:#28a9ff;--ref-muted:#adc4da;box-sizing:border-box;background:radial-gradient(ellipse at 60% 0,#04213755,transparent 60%),#020d16;color:#edf6ff;padding:20px 24px;min-height:0;margin:0;border:0;border-radius:0;font-family:Inter,system-ui,sans-serif}
 #connectionActions *{box-sizing:border-box}
 #connectionActions .sb-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;min-height:54px;padding:0 0 12px;margin:0 0 16px;border-bottom:1px solid var(--ref-line)}
