@@ -8,7 +8,7 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const dir='artifacts/ui-verification';await mkdir(dir,{recursive:true});
 const user={id:'preview-user',email:'preview@example.test',role:'user',plan:'trial',license_status:'active',expires_at:'2099-01-01 00:00:00',activated_at:'2026-10-29 00:00:00',mt5_account:{login:'DEMO PREVIEW',server:'Preview broker'},activation_code:'',indicator_delivery_ready:false};
 const errors=[];
-for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['website-wide','/',1920,1080],['website-small-phone','/',360,800],['website-tablet','/',820,1180],['website-mobile','/',390,844],['telegram-mobile','/telegram',390,844],['telegram-tablet','/telegram',820,1180],['telegram-desktop','/telegram',1440,1000],['website-live','/',390,844],['telegram-live','/telegram',390,844],['website-risk-hit','/',390,844],['telegram-risk-hit','/telegram',390,844]]){
+for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['website-wide','/',1920,1080],['website-small-phone','/',360,800],['website-tablet','/',820,1180],['website-mobile','/',390,844],['telegram-mobile','/telegram',390,844],['telegram-tablet','/telegram',820,1180],['telegram-desktop','/telegram',1440,1000],['telegram-reference-desktop','/telegram',1200,800],['telegram-reference-tablet','/telegram',720,960],['website-reference-desktop','/',1200,800],['website-reference-tablet','/',720,960],['website-live','/',390,844],['telegram-live','/telegram',390,844],['website-risk-hit','/',390,844],['telegram-risk-hit','/telegram',390,844]]){
  const page=await browser.newPage({viewport:{width,height}});page.on('pageerror',e=>errors.push(label+': '+e.message));
  let testRequested=0,riskResetRequested=0,riskHit=label.includes('risk-hit'),reportResets=0;
  await page.route('**/api/**',async route=>{
@@ -80,14 +80,16 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   const box=await page.locator('.sb-kpis').boundingBox();if(box.height>210)throw Error('Mobile KPI stack too tall');
   if(await page.locator('.sb-stream .sb-table-scroll').isVisible())throw Error('Mobile overview contains full signal history');
  }
+ if(label.startsWith('telegram-reference')||label==='telegram-mobile'){if(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight+2))throw Error('Reference daily viewport requires page scrolling');}
  const nav=width<=700?'.sb-mobile-tabs':'.sb-top nav';
  await page.locator(nav+' [data-sb-tab=setup]').click();
  await page.waitForFunction(()=>document.getElementById('setupChannel').options.length===3);
  if(!await page.locator('#memberSetup').isVisible())throw Error('Setup missing');
  if(await page.locator('#setupLicense').getAttribute('type')!=='password')throw Error('License exposed by default');
  for(const step of ['setupStep1','setupStep2','setupStep3']){
-  await page.locator('[data-setup-step='+step+']').click();
+  if(width<=700)await page.locator('[data-setup-step='+step+']').click();
   if(!await page.locator('#'+step).isVisible())throw Error('Setup step inaccessible: '+step);
+  if(label.startsWith('telegram-reference')||label==='telegram-mobile'){if(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight+2))throw Error('Reference setup viewport requires page scrolling: '+step);}
   if(width<=700&&await page.locator('.su-grid > article:visible').count()!==1)throw Error('Mobile setup stacks all panels');
   await page.locator('#'+step).evaluate(e=>Promise.all(e.getAnimations().map(a=>a.finished)));
   await page.screenshot({path:dir+'/'+label+'-'+step+'.png',fullPage:url!=='/'});
@@ -180,7 +182,7 @@ for(const [label,url,width,height] of [['offline-web-phone','/',390,844],['offli
  await page.waitForFunction(()=>document.getElementById('setupProgress').textContent.includes('0 / 3'));
  if(width<=700&&await page.locator('.su-grid > article:visible').count()!==1)throw Error('Offline setup stacks all steps');
  await page.evaluate(()=>{document.documentElement.lang='fa';document.documentElement.dir='rtl'});
- await page.locator('[data-setup-step=setupStep3]').click();
+ if(width<=700)await page.locator('[data-setup-step=setupStep3]').click();
  if(await page.locator('#setupTitle').textContent()!=='ستاپ')throw Error('Persian setup locale missing');
  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Offline RTL horizontal overflow');
  await page.screenshot({path:dir+'/'+label+'-fa-setup.png',fullPage:url!=='/'});
