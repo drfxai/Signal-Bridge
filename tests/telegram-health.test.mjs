@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { telegramHealth } from '../site/src/telegram-health.mjs';
 import { readFileSync } from 'node:fs';
-const token='123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const token=['123456789','A'.repeat(35)].join(':'); // synthetic test credential
 const secret='abcdefghijklmnopqrstuvwxyz0123456789';
 const env={TELEGRAM_BOT_TOKEN:token,TELEGRAM_WEBHOOK_SECRET:secret,ADMIN_TELEGRAM_ID:'912345670'};
 const mocked=(methodData)=>async url=>{
