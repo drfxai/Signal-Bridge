@@ -22,7 +22,7 @@ export const SETUP_HTML=`<section id="memberSetup" class="su-page" aria-labelled
  <label data-su="symbol">2 · Broker symbol · SECOND input</label><div class="su-symbol"><strong dir="ltr">XAUUSD</strong><span data-su="example">Example: XAUUSD.p or GOLD</span></div>
  <p class="su-help" data-su="symbolHelp">F7 → Inputs: paste your license first; then enter the exact gold symbol shown in Market Watch.</p>
  <div class="su-product su-scalper"><div><b>DrFX Scalper Pro</b><small data-su="scalperHint">Separate EA · separate license</small></div><a id="setupScalperDownload" aria-disabled="true" data-su="download">Download EX5 ↓</a></div>
- <div id="setupScalperKeys" class="su-keys"></div>
+ <details class="ref-scalper-licenses"><summary>Scalper Pro license</summary><div id="setupScalperKeys" class="su-keys"></div></details>
  <details><summary data-su="installHelp">Where do I install the EX5?</summary><ol><li data-su="install1">MT5 desktop → File → Open Data Folder → MQL5 → Experts. Copy the EX5 here.</li><li data-su="install2">Navigator → Expert Advisors → Refresh. Drag the EA onto your broker's gold chart.</li><li data-su="install3">SignalBridge: F7 → Inputs → license, then symbol. Allow https://signalbridge.drfx.online in Tools → Options → Expert Advisors.</li><li data-su="install4">Scalper Pro: attach to an M15 gold chart. Start its trial or enter its own license. Keep MT5 running.</li></ol></details>
  </article>
  <article class="su-card" id="setupStep2"><header>${mark('tradingview')}<div><small data-su="step2">02 · CONNECT TRADINGVIEW</small><h3 data-su="webhookTitle">TradingView</h3></div></header>
