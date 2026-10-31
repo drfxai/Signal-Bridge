@@ -1,48 +1,24 @@
-# SignalBridge Backend Implementation
-V3 direct-EA architecture · 2026-10-28
+# SignalBridge — Cloudflare Runtime
+Updated: 2026-10-31
 
-## Edge components
+## Components
+- `drfx-signalbridge-ingress`: Cloudflare Worker for authorized TradingView ingress and direct MT5 WebSocket transport.
+- `drfx-company-site`: independent membership, subscriptions, website and Telegram Mini App Worker.
+- `signalbridge-ingress`: shared D1 database with carefully ordered migrations.
+- Durable Object `AgentHub`: existing executable class/binding name for socket state, dispatch and broker receipt reconciliation. The name is a runtime compatibility requirement, not a user-facing product name.
 
-- Cloudflare Worker ingress.
-- D1 durable source/command records.
-- Durable Object execution hub (class remains named `AgentHub` internally for migration compatibility).
-- Read-only dashboard observer WebSocket.
-- Direct MT5 EA execution WebSocket.
+## Execution
+The current direct EA uses `GET /v1/ea/ws` for authenticated TLS/WebSocket sessions. The Worker authenticates the connection and forwards an authorized identity to the Durable Object. The EA sends compact protocol frames (`HELLO`, `HB`, `CMD`, `RCPT`, `RACK`) while durable records remain in D1.
 
-## Endpoints
+Existing legacy transport routes may remain reachable for compatibility; do not decommission them without explicit deployed-client dependency tests.
 
-- `POST /v1/ingress/tradingview/:token`
-- `POST /v1/ingress/telegram/:connectionId`
-- `GET /v1/ea/ws` — standard direct MT5 execution transport.
-- `GET /v1/dashboard/ws` — read-only UI observer.
-- `GET /v1/dashboard/summary`
-- `POST /v1/test/signal`
-- `GET /v1/commands/:id`
+## Public UI
+- Member dashboard uses authenticated customer data. Preview UI may display illustrative values only with appropriate labels.
+- Telegram Mini App identity requires server-side signed `initData` verification.
+- Admin authorization must be verified server-side for each privileged route.
+- Payment and license grants must be idempotent and contingent on authenticated provider IPN.
 
-The old `/v1/agent/ws` endpoint remains available only as a rollback transport while V3 is validated.
+## Deployment boundaries
+Do not change production D1 IDs, Durable Object names, webhook secrets or licensing encryption keys as part of cosmetic cleanup. Apply and test migrations before deploying Workers. Keep production changes out of repository-presentation cleanup PRs.
 
-## Direct EA protocol
-
-At the Worker boundary a high-entropy SignalBridge Key is authenticated against the execution connection record.
-
-The Worker strips credentials before forwarding identity to the Durable Object.
-
-The EA-facing WebSocket uses compact text frames so the MQL5 client does not need a JSON parser:
-
-- `READY`
-- `HELLO`
-- `HB`
-- `PING/PONG`
-- `CMD`
-- `RCPT`
-- `RACK`
-
-Commands are still persisted as canonical JSON in D1. The compact frame is only a transport representation.
-
-## Dispatch
-
-A command is not dispatched unless an authenticated execution socket has a verified MT5 account identity. PENDING commands are replayed only after an offline → ready transition.
-
-## Dashboard
-
-Dashboard observer sockets are read-only and can never supersede an execution connection or submit broker commands.
+See [Architecture](ARCHITECTURE.md) and [Public Release Checklist](PUBLIC_RELEASE_CHECKLIST.md).
