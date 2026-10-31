@@ -114,6 +114,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
   if(label.startsWith('telegram-reference')||label==='telegram-mobile'){if(await page.evaluate(()=>document.documentElement.scrollHeight>innerHeight+2))throw Error('Reference setup viewport requires page scrolling: '+step);}
   if(width<=700&&await page.locator('.su-grid > article:visible').count()!==1)throw Error('Mobile setup stacks all panels');
   await page.locator('#'+step).evaluate(e=>Promise.all(e.getAnimations().map(a=>a.finished)));
+  if(url==='/'&&(await page.locator('.sb-logo').boundingBox()).y<0)throw Error(label+' setup header scrolled outside viewport');
   await page.screenshot({path:dir+'/'+label+'-'+step+'.png',fullPage:url!=='/'});
  }
  await page.locator('#setupChannel').selectOption('-1001');

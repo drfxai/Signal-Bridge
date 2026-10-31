@@ -88,4 +88,13 @@ const RESPONSIVE_REFERENCE_CSS=containerRules(REFERENCE_RULES)+String.raw`
 
 const REFERENCE_BRAND_CSS=String.raw`#connectionActions .sb-logo b{display:flex;align-items:center;gap:7px}#connectionActions .ref-brand-bars{width:22px;height:22px}#connectionActions.sb-tab-setup .sb-logo b{color:#76c8ff}@container workspace (max-width:700px){#connectionActions .ref-brand-bars{width:17px;height:17px}}`;
 
-export const REFERENCE_CSS=RESPONSIVE_REFERENCE_CSS+REFERENCE_BRAND_CSS;
+export const REFERENCE_CSS=RESPONSIVE_REFERENCE_CSS+REFERENCE_BRAND_CSS+String.raw`
+/* One scroll owner; compact navigation stays in the workspace flow. */
+#portalOverlay .portal{overflow:hidden!important}
+#portalOverlay .portal-content{height:100%;overflow-y:auto;overflow-x:hidden}
+@container workspace (max-width:700px){
+ #connectionActions.sb-tab-overview,#connectionActions.sb-tab-setup{display:flex;flex-direction:column;min-height:100dvh!important;--workspace-padding:10px 12px 0px}
+ #portalOverlay #connectionActions.sb-tab-overview,#portalOverlay #connectionActions.sb-tab-setup{min-height:calc(100% - 1px)!important}
+ #connectionActions .sb-mobile-tabs{position:sticky!important;bottom:0;left:auto!important;right:auto!important;width:calc(100% + 24px)!important;margin: auto -12px 0!important;flex:none;align-self:stretch}
+}
+`;
