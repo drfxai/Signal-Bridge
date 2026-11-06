@@ -1,3 +1,4 @@
+import {ADMIN_HOME_HTML,ADMIN_PANEL_HTML,ADMIN_CSS,ADMIN_JS} from './admin-mini.mjs';
 import {versionUiAssets} from './ui-release.mjs';
 import {RESPONSIVE_REFRESH} from './responsive-refresh.mjs';
 import { EXECUTION_HTML, EXECUTION_JS } from './portal-execution.mjs';
@@ -72,6 +73,7 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 ${SXM_CSS}
 ${CHM_CSS}
 ${RESPONSIVE_REFRESH}
+${ADMIN_CSS}
 /* Two primary account actions shared with the DrFX website. */
 .mini-account-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 0 5px;min-width:0}
 .mini-account-action{display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;min-width:0;padding:10px 8px;text-decoration:none;border-radius:12px;white-space:nowrap;font:750 clamp(11px,3.2vw,14px)/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;transition:transform .2s ease,box-shadow .2s ease}
@@ -94,6 +96,7 @@ ${RESPONSIVE_REFRESH}
  <a id="miniAuthAction" href="https://drfx.company/?auth=1" rel="noopener noreferrer" class="mini-account-action mini-account-action--auth"><span>Sign In / Sign Up</span><span aria-hidden="true">↗</span></a>
  <button id="miniClientPortalAction" type="button" class="mini-account-action mini-account-action--portal"><span class="mini-account-dot" aria-hidden="true"></span><span>Client Portal</span><span aria-hidden="true">↗</span></button>
 </div>
+${ADMIN_HOME_HTML}
 <section class="hero">
  <span class="eyebrow" data-tr="eyebrow">YOUR TRADING WORKSPACE</span>
  <h1><span data-tr="hero1">Your signals.</span><br><em data-tr="hero2">One powerful bridge.</em></h1>
@@ -169,14 +172,7 @@ ${SXM_PANEL_HTML}${CHM_PANEL_HTML}<section class="tab-panel" data-panel="help" i
   <div class="buttons"><button id="openWebsite" class="btn primary" type="button" data-tr="website">Open DrFX website ↗</button><button id="refreshAccount" class="btn subtle" type="button" data-tr="refresh">Refresh ↻</button></div>
  </div>
 </section>
-<section class="tab-panel" data-panel="admin" id="panel-admin" hidden>
- <div class="tab-kicker">DRFX / ADMIN</div><h2 class="section-title" data-tr="adminTitle">Operations Center</h2>
- <p class="mini-note">Administrator-only customer accounts, membership controls and EA access management.</p>
- <div class="mini-admin-metrics" id="miniAdminMetrics"></div>
- <div class="mini-admin-directory"><label for="miniAdminSearch" data-tr="adminSearch">CUSTOMER DIRECTORY</label><div class="mini-admin-search"><input id="miniAdminSearch" autocomplete="off" placeholder="Email, Telegram, user ID"><button type="button" id="miniAdminRefresh" class="btn subtle" data-tr="adminRefresh">Refresh</button></div>
- <div id="miniAdminUsers" class="mini-admin-users"></div></div>
- <p id="miniAdminStatus" class="mini-note" role="status"></p>
- </section>
+${ADMIN_PANEL_HTML}
 <footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
@@ -220,6 +216,7 @@ export const MINI_JS=String.raw`(() => {
  };
  function language(lang){
   locale=locales.includes(lang)?lang:'en';
+  adminLanguage();
   document.documentElement.lang=locale;
   document.documentElement.dir=['fa','ar'].includes(locale)?'rtl':'ltr';
   document.querySelectorAll('[data-tr]').forEach(el=>{
@@ -271,6 +268,7 @@ export const MINI_JS=String.raw`(() => {
  const set = (id,text) => {const el=$(id);if(el)el.textContent=String(text??'');};
  function message(text,kind='') {const e=$('statusMessage');e.textContent=text;e.className='message '+kind;}
  function clearPrivateAccount(){
+  leaveMiniAdmin(true);
   state.user=null;state.serialVisible=false;document.body.classList.remove('workspace-home');
   $('miniAdminTab').hidden=true;document.body.classList.remove('admin-visible');
   $('miniWebhookUrl').textContent='No webhook created';$('miniCopyWebhook').disabled=true;$('miniRotateWebhook').disabled=true;
@@ -290,10 +288,11 @@ export const MINI_JS=String.raw`(() => {
  function show(tab){
   if(!['home','license','plans','scalper','channels','help','admin'].includes(tab))return;
   if(tab==='admin'&&state.user?.role!=='admin')return;
-  if(tab==='admin')loadMiniAdmin();
+  if(tab!=='admin')leaveMiniAdmin();
   if(tab==='scalper')window.sxMiniLoad?.();else window.sxMiniLeave?.();
   if(tab==='channels')window.chMiniLoad?.();else window.chMiniLeave?.();
   document.body.dataset.tab=tab;
+  if(tab==='admin')loadMiniAdmin();
   document.body.classList.toggle('workspace-home',tab==='home'&&!!state.user);
   document.querySelectorAll('[data-panel]').forEach(e=>e.hidden=e.dataset.panel!==tab);
   document.querySelectorAll('[data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
@@ -322,6 +321,7 @@ export const MINI_JS=String.raw`(() => {
   if(body!==undefined){options.method='POST';options.headers['content-type']='application/json';options.body=JSON.stringify(body);}
   const resp=await fetch(path,options);
   let data;try{data=await resp.json();}catch{throw Error('INVALID_SERVER_RESPONSE');}
+  if(resp.status===401)clearPrivateAccount();
   if(!resp.ok)throw Error(data.error||'SERVICE_UNAVAILABLE');return data;
  }
 async function refreshMiniConnection(){
@@ -349,39 +349,13 @@ $('miniTestConnection').addEventListener('click',refreshMiniConnection);
 $('miniCreateWebhook').addEventListener('click',async()=>{try{const r=await api('/api/webhook/create',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',e.message)}});
 $('miniCopyWebhook').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('miniWebhookUrl').textContent);set('miniWebhookInfo','Copied. Keep the private URL safe.')}catch{set('miniWebhookInfo','Copy not allowed on this device.')}});
 $('miniRotateWebhook').addEventListener('click',async()=>{if(!confirm('Regenerate URL? Your old TradingView alerts will stop reaching SignalBridge.'))return;try{const r=await api('/api/webhook/rotate',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',e.message)}});
-async function loadMiniAdmin(){
- if(state.user?.role!=='admin')return;
- try{
-  const [s,users]=await Promise.all([api('/api/admin/stats'),api('/api/admin/users?q='+encodeURIComponent($('miniAdminSearch').value.trim()))]);
-  const stats=$('miniAdminMetrics');stats.replaceChildren();
-  for(const [label,value] of Object.entries(s.stats||{})){
-   const card=document.createElement('div'),caption=document.createElement('span'),num=document.createElement('strong');
-   caption.textContent=label;num.textContent=String(value??0);card.append(caption,num);stats.append(card);
-  }
-  const grid=$('miniAdminUsers');grid.replaceChildren();
-  for(const user of users.users||[]){
-   const card=document.createElement('article');card.className='mini-admin-user';
-   const title=document.createElement('div');title.className='mini-admin-user-head';
-   const identity=document.createElement('strong');identity.textContent=user.email||user.telegram_name||user.telegram_id||'User';
-   const state=document.createElement('span');state.textContent=user.status;title.append(identity,state);
-   const meta=document.createElement('div');meta.className='mini-admin-user-meta';meta.textContent=user.plan+' · '+user.id;
-   const actions=document.createElement('div');actions.className='mini-admin-user-actions';
-   const select=document.createElement('select');for(const op of ['grant_trial','grant_quarterly','grant_annual','suspend','resume','revoke_license']){
-    const option=document.createElement('option');option.value=op;option.textContent=op.replaceAll('_',' ');select.append(option);
-   }
-   const apply=document.createElement('button');apply.className='btn primary';apply.textContent='Apply';
-   apply.addEventListener('click',async()=>{if(!confirm('Apply '+select.value+' to this account?'))return;apply.disabled=true;try{await api('/api/admin/user',{user_id:user.id,action:select.value});set('miniAdminStatus','Account updated.');await loadMiniAdmin()}catch(e){set('miniAdminStatus',e.message)}finally{apply.disabled=false}});
-   actions.append(select,apply);card.append(title,meta,actions);grid.append(card);
-  }
-  set('miniAdminStatus',(users.users||[]).length+' users loaded · Administrator access verified');
- }catch(e){set('miniAdminStatus','Admin dashboard unavailable: '+e.message);}
-}
-$('miniAdminRefresh').addEventListener('click',loadMiniAdmin);
-$('miniAdminSearch').addEventListener('change',loadMiniAdmin);
+${ADMIN_JS}
  function applyUser(user){
+  if(state.user?.id!==user.id)leaveMiniAdmin(true);
   state.user=user;
   document.body.classList.toggle('workspace-home',!!user&&(!document.body.dataset.tab||document.body.dataset.tab==='home'));
   state.serialVisible=false;
+  $('miniAdminShortcut').hidden=user.role!=='admin';
   $('miniAdminTab').hidden=user.role!=='admin';document.body.classList.toggle('admin-visible',user.role==='admin');
   refreshMiniConnection();
   set('memberPlan',planLabel(user.plan));
