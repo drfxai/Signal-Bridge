@@ -1,3 +1,5 @@
+import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
+import {adminOverview,adminDirectory,adminConnections,adminOrders} from './admin-operations.mjs';
 import {UI_RELEASE} from './ui-release.mjs';
 import {memberControls} from './member-controls.mjs';
 import {relayTradingView,routeTelegramSignal} from './signal-routing.mjs';
@@ -574,8 +576,8 @@ async function telegramWebhook(req,env){
  if(!msg||msg.chat?.type!=='private'||!msg.from?.id)return json({ok:true,ignored:'NO_PRIVATE_MESSAGE'});
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
- const command=text.split(' ')[0].split('@')[0];
- if(!['/start','/language','/lang','/app','/login','/resetlogin','/me','/code','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ const command=normalizeBotCommand(text);
+ if(!['/start','/language','/lang','/app','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  const language=await userBotLocale(env,telegramId);
@@ -594,7 +596,7 @@ async function telegramWebhook(req,env){
     (command==='/resetlogin'?tx('reset')+'\n':'')+tx('loginText')
    );
   }catch{await botSend(env,chatId,tx('loginUnavailable'));}
- }else if(command==='/code'){
+ }else if(command==='/code'||command==='/signalbridge'){
   try{const record=await licenseRecord(env,user);const code=await decryptCode(env,record.encrypted_code,record.nonce);
     await botSend(env,chatId,tx('serialTitle')+'\n<code>'+code+'</code>\n'+tx('serialNotice'));}
   catch{await botSend(env,chatId,tx('licenseUnavailable'));}
@@ -748,6 +750,32 @@ async function api(req,env){
  }
  if(!path.startsWith('/api/admin/'))return fail('NOT_FOUND',404);
  if(user.role!=='admin')return fail('FORBIDDEN',403);
+ if(path==='/api/admin/bot/commands'&&req.method==='POST'){
+  if(!env.TELEGRAM_BOT_TOKEN)return fail('BOT_NOT_CONFIGURED',503);
+  if(!await limited(req,env,'admin:bot-commands:'+user.id,2))return fail('RATE_LIMITED',429);
+  const r=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/setMyCommands',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({commands:BOT_MENU_COMMANDS})});
+  const result=await r.json().catch(()=>null);
+  if(!r.ok||result?.ok!==true)return fail('TELEGRAM_UNAVAILABLE',502);
+  await audit(env,user.id,'bot_commands_synced',user.id);
+  return json({ok:true,commands:BOT_MENU_COMMANDS.map(c=>c.command)});
+ }
+ if(path==='/api/admin/overview'&&req.method==='GET')return json(await adminOverview(env));
+ if(path==='/api/admin/directory'&&req.method==='GET')return json(await adminDirectory(env,u));
+ if(path==='/api/admin/connections'&&req.method==='GET')return json(await adminConnections(env,u));
+ if(path==='/api/admin/orders'&&req.method==='GET')return json(await adminOrders(env,u));
+ if(path==='/api/admin/licenses'&&req.method==='GET'){
+  // No user ID parameter is accepted: even an admin can retrieve only their own keys here.
+  const product=u.searchParams.get('product');
+  if(product==='signalbridge'){
+   const own=await profile(env,user);
+   return json({ok:true,product,license:{activation_code:own.activation_code,plan:own.plan,status:own.license_status,expires_at:own.expires_at,mt5_account:own.mt5_account}});
+  }
+  if(product==='scalper'){
+   const own=await scalperOverview(env,scalperHelpers(env),user);
+   return json({ok:true,product,keys:own.keys});
+  }
+  return fail('INVALID_PRODUCT');
+ }
  if(path==='/api/admin/users'&&req.method==='GET'){
   const q=safeText(u.searchParams.get('q')||'',80),n=Math.max(1,Math.min(100,Number(u.searchParams.get('limit')||50)||50));
   const query=q?'WHERE id LIKE ? OR email LIKE ? OR telegram_id LIKE ?':'';
@@ -787,7 +815,7 @@ export default {
    if(!env?.DB)return fail('DATABASE_UNAVAILABLE',503);
    try{return await api(request,env)}catch(error){
     console.error('site request failed',url.pathname,error?.name||'Error');
-    if(error?.message==='BAD_JSON'||error?.message==='BODY_TOO_LARGE')return fail(error.message,400);
+    if(error?.message==='BAD_JSON'||error?.message==='BODY_TOO_LARGE'||error?.message==='INVALID_CURSOR')return fail(error.message,400);
     if(error?.message==='LICENSE_VAULT_NOT_CONFIGURED')return fail('LICENSING_NOT_READY',503);
     return fail('SERVICE_UNAVAILABLE',503);
    }
