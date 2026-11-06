@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // One-time Telegram BotFather integration setup, performed from a trusted local shell.
 // Reads credentials exclusively from environment variables. Never print either secret.
-import { readFileSync } from 'node:fs';
+import { BOT_MENU_COMMANDS } from '../site/src/bot-commands.mjs';
 const token=process.env.TELEGRAM_BOT_TOKEN;
 const secret=process.env.TELEGRAM_WEBHOOK_SECRET;
 if(!token||!secret||!/^[A-Za-z0-9_-]{16,256}$/.test(secret)){
@@ -30,17 +30,7 @@ try{
   menu_button:{type:'web_app',text:'DrFX App',web_app:{url:'https://drfx.company/telegram'}}
  });
  await call('setMyCommands',{
-  commands:[
-   {command:'start',description:'Choose language and open your DrFX account'},
-   {command:'language',description:'Change bot language · 6 options'},
-   {command:'app',description:'Open Telegram Mini App'},
-   {command:'login',description:'View your permanent website login code'},
-   {command:'resetlogin',description:'Revoke and replace your website login code'},
-   {command:'me',description:'View membership status'},
-   {command:'code',description:'Retrieve your private EA activation code'},
-   {command:'link',description:'Link an already-verified email account'},
-   {command:'channels',description:'TradingView webhook for your channel or group'}
-  ]
+  commands:BOT_MENU_COMMANDS
  });
  console.log('Telegram webhook, Mini App menu button and bot commands registered.');
  console.log('Check /api/config for telegram:true and test /app or /start in a PRIVATE chat.');

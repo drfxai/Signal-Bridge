@@ -258,11 +258,11 @@ test('Mini App exposes private webhook and no-trade connection test for authenti
 });
 test('Mini App admin tab and actions are gated by verified server role',()=>{
  for(const id of ['miniAdminTab','miniAdminMetrics','miniAdminUsers','miniAdminSearch','miniAdminRefresh','miniAdminStatus'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
- assert.ok(MINI_HTML.includes('Operations Center'));
+ assert.ok(MINI_HTML.includes('Command Center'));
  assert.ok(MINI_JS.includes("user.role==='admin'"));
  assert.ok(MINI_JS.includes("state.user?.role!=='admin'"));
- assert.ok(MINI_JS.includes("'/api/admin/stats'"));
- assert.ok(MINI_JS.includes("'/api/admin/users?q='"));
+ assert.ok(MINI_JS.includes("'/api/admin/overview'"));
+ assert.ok(MINI_JS.includes("'/api/admin/directory?'"));
  assert.ok(MINI_JS.includes("'/api/admin/user'"));
  assert.ok(MINI_JS.includes("select.value"));
  assert.ok(MINI_JS.includes("replaceChildren()"));
