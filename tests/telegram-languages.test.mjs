@@ -1,3 +1,4 @@
+import {BOT_MENU_COMMANDS} from '../site/src/bot-commands.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -134,7 +135,7 @@ test('deployment command and Telegram API opt into callback_query updates',()=>{
  const ops=readFileSync(new URL('../scripts/configure-company-telegram-bot.mjs',import.meta.url),'utf8');
  const migration=readFileSync(new URL('../site/migrations/0010_bot_language.sql',import.meta.url),'utf8');
  assert.ok(ops.includes("allowed_updates:['message','callback_query','my_chat_member']"));
- assert.ok(ops.includes("command:'language'"));
+ assert.ok(ops.includes('commands:BOT_MENU_COMMANDS'));assert.ok(BOT_MENU_COMMANDS.some(c=>c.command==='language'));
  assert.ok(migration.includes('CHECK(language_code IN ('));
  assert.ok(migration.includes("'hi'"));
 });
