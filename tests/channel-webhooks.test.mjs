@@ -1,3 +1,4 @@
+import {BOT_MENU_COMMANDS} from '../site/src/bot-commands.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
@@ -144,7 +145,7 @@ test('Mini App ships the Channels flow, nav entry and home card',()=>{
  assert.ok(MINI_JS.includes("'/api/channels'"));assert.ok(MINI_JS.includes('window.chMiniLoad'));
  assert.ok(MINI_JS.includes("['home','license','plans','scalper','channels','help','admin']"));
  const ops=readFileSync(new URL('../scripts/configure-company-telegram-bot.mjs',import.meta.url),'utf8');
- assert.ok(ops.includes("command:'channels'"));
+ assert.ok(ops.includes('commands:BOT_MENU_COMMANDS'));assert.ok(BOT_MENU_COMMANDS.some(c=>c.command==='channels'));
 });
 
 test('EA labels positions and the panel with the signal source',()=>{
