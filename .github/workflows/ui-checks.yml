@@ -40,17 +40,21 @@ jobs:
   browser-controls:
     name: Mobile tablet desktop portal controls and screenshots
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # A cold runner may spend over eight minutes installing Chromium dependencies.
+    # Reserve time for browser checks as well as setup and artifact upload.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install browser verification tools
+        timeout-minutes: 15
         run: |
           npm install --no-save --package-lock=false playwright@1.62.1 wrangler
           npx playwright install --with-deps chromium
       - name: Verify confirmation flow and responsive controls
+        timeout-minutes: 8
         run: |
           npx wrangler deploy --dry-run --config site/wrangler.jsonc --outdir /tmp/signalbridge-built
           SB_WORKER_BUNDLE=file:///tmp/signalbridge-built/worker.js node scripts/verify-portal-browser.mjs
