@@ -1,0 +1,104 @@
+// Guided setup highlights real controls. Navigation never activates trading or reveals a key.
+export const TOUR_HTML=String.raw`<div id="setupTour" hidden>
+ <svg class="st-shade" aria-hidden="true"><defs><mask id="stMask"><rect width="100%" height="100%" fill="white"/><rect id="stHole" rx="13" fill="black"/></mask><marker id="stArrowHead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M1 1 6 4 1 7" fill="none" stroke="#efcf87" stroke-width="1.5"/></marker></defs><rect width="100%" height="100%" fill="#020711" fill-opacity=".83" mask="url(#stMask)"/><path id="stArrow" fill="none" stroke="#efcf87" stroke-width="2" stroke-linecap="round" marker-end="url(#stArrowHead)"/></svg>
+ <div class="st-block" id="stBlockTop"></div><div class="st-block" id="stBlockLeft"></div><div class="st-block" id="stBlockRight"></div><div class="st-block" id="stBlockBottom"></div><div id="stFocus" aria-hidden="true"></div>
+ <section id="stCoach" class="st-coach" role="dialog" aria-modal="true" aria-labelledby="stTitle" aria-describedby="stBody" tabindex="-1">
+  <header><span class="st-brand">DRFX / GUIDED SETUP</span><span id="stCount" class="st-count"></span></header><div class="st-content"><h3 id="stTitle"></h3><p id="stBody"></p><div id="stPath" class="st-path" dir="ltr"></div></div>
+  <div class="st-progress" role="progressbar" id="stProgress" aria-valuemin="0" aria-valuemax="100"><i id="stProgressFill"></i></div><footer><button type="button" id="stEnd">End tour</button><button type="button" id="stNext">Next →</button></footer>
+ </section></div>`;
+export const TOUR_CSS=String.raw`
+#setupTour[hidden]{display:none!important}#setupTour{position:fixed;inset:0;z-index:2147483000;pointer-events:none;color:#ecf2fa;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif}
+#setupTour *{box-sizing:border-box}#setupTour .st-shade{position:fixed;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}#setupTour .st-block{position:fixed;pointer-events:auto;touch-action:none}
+#stFocus{position:fixed;border:2px solid #e9c778;border-radius:13px;pointer-events:none;box-shadow:0 0 0 3px #d7b66f25,0 0 25px #cba85030;transition:box-shadow .2s}
+#setupTour .st-coach{position:fixed;display:flex;flex-direction:column;width:384px;min-height:140px;padding:20px;border:1px solid #8e784b;border-radius:20px;background:radial-gradient(ellipse at 0 0,#2c3d514a,transparent 70%),#101b29;box-shadow:0 22px 75px #0008,inset 0 1px #ffffff08;pointer-events:auto;outline:none;overflow:hidden}
+#stCoach>header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:none;margin-bottom:13px}.st-brand{font-size:8px;font-weight:800;letter-spacing:.13em;color:#dcbd77}.st-count{font-size:11px;font-weight:700;color:#a5b6ca;white-space:nowrap}
+#setupTour .st-content{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#496078 transparent}#setupTour h3{margin:0 0 10px;font-size:21px;font-weight:750;line-height:1.4;letter-spacing:-.025em}#setupTour p{margin:0;font-size:13px;line-height:1.85;color:#bac9db;overflow-wrap:anywhere}
+#setupTour .st-path{margin-top:13px;padding:9px 11px;border:1px solid #344b62;border-radius:9px;background:#071523;color:#acd6f3;font:500 11px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}#setupTour .st-path:empty{display:none}
+#setupTour .st-progress{height:4px;flex:none;border-radius:6px;background:#344255;margin-top:18px;overflow:hidden}#stProgressFill{display:block;height:100%;width:0;background:linear-gradient(90deg,#b49046,#f5d99c);border-radius:inherit;transition:width .25s ease}
+#stCoach>footer{display:flex;justify-content:flex-end;align-items:center;gap:12px;flex:none;margin-top:17px}#stCoach button{min-height:43px;border-radius:11px;padding:10px 15px;font:inherit;font-weight:700;font-size:12px;line-height:1.4;cursor:pointer;touch-action:manipulation}#stCoach button:focus-visible{outline:2px solid #f6dfaa;outline-offset:3px}#stEnd{border:1px solid transparent;background:none;color:#b5c4d7}#stEnd:hover{background:#233347;color:#f0f4fa}#stNext{min-width:101px;border:1px solid #e3c174;background:linear-gradient(110deg,#d5b161,#f6dda5);color:#17130b;box-shadow:0 4px 16px #d3ac4420}#stNext:disabled{opacity:.55;cursor:wait}
+#connectionActions .ref-header-actions #portalClose{border-radius:5px;background:#13202b;color:#b5c7d6;transition:background .15s,color .15s,border-color .15s}#connectionActions .ref-header-actions #portalClose:hover{background:#c42b1c;border-color:#e54a40;color:white}#connectionActions .ref-header-actions #portalClose svg{width:14px;height:14px}
+#connectionActions .ref-header-actions #refHelp{display:grid!important;border-color:#8a7548;color:#ead197;background:#2b2518;font-size:17px;font-weight:650}#connectionActions .ref-header-actions #refHelp:hover,#connectionActions .ref-header-actions #refHelp[aria-expanded=true]{background:#574423;border-color:#d3b26d;color:#ffedbe}
+@media(max-width:420px){#connectionActions .sb-top #testOnline{position:absolute!important;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}#connectionActions .sb-top #testLiveStrip{min-width:6px!important}}
+@container workspace (max-width:420px){#connectionActions .sb-top #testOnline{position:absolute!important;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}#connectionActions .sb-top #testLiveStrip{min-width:6px!important}}
+@media(max-width:600px){#setupTour .st-coach{padding:17px;border-radius:18px}#setupTour h3{font-size:19px}#setupTour p{font-size:12px;line-height:1.85}#stCoach button{min-height:44px;font-size:12px}.st-brand{font-size:7px}}
+@media(prefers-reduced-motion:reduce){#setupTour *{transition:none!important;animation:none!important}}
+`;
+const STEPS=[
+ {target:'#setupBridgeDownload',closest:'.su-product',title:['Download your EA','دانلود اکسپرت'],body:['Download the compiled Signal Bridge EX5 here. Install it in MetaTrader 5 on your computer; the MT5 phone app does not run Expert Advisors.','فایل کامپایل‌شده EX5 سیگنال بریج را از این قسمت دریافت کنید. نصب اکسپرت روی متاتریدر ۵ کامپیوتر انجام می‌شود؛ متاتریدر موبایل اکسپرت اجرا نمی‌کند.'],path:'Signal Bridge → Download EX5'},
+ {target:'#setupLicense',closest:'.su-copy',title:['Get your private license','دریافت لایسنس اختصاصی'],body:['Copy the EA activation code belonging to this signed-in account. Keep it for the Inputs tab in MT5. The code stays masked until you choose to reveal it.','کد فعال‌سازی اکسپرتِ همین حساب را با گزینهٔ کپی دریافت کنید. این کد را برای بخش Inputs متاتریدر نگه دارید؛ نمایش کد تنها با انتخاب خودتان انجام می‌شود.'],path:'Setup → SignalBridge license → Copy'},
+ {target:'[data-su=install1]',guide:'install',title:['Copy the EX5 into MT5','قرار دادن فایل در متاتریدر'],body:['In MT5 desktop, open File → Open Data Folder. Open MQL5, then Experts, and copy the downloaded EX5 into this folder.','در متاتریدر کامپیوتر، از منوی File گزینهٔ Open Data Folder را باز کنید. وارد پوشهٔ MQL5 و سپس Experts شوید و فایل EX5 دانلودشده را آنجا کپی کنید.'],path:'MT5 · File → Open Data Folder → MQL5 → Experts'},
+ {target:'[data-su=install2]',guide:'install',title:['Attach the EA to a chart','افزودن اکسپرت به چارت'],body:['Return to MT5. In Navigator, right-click Expert Advisors and choose Refresh. Open your broker’s gold chart and drag Signal Bridge onto it.','به متاتریدر برگردید. در Navigator روی Expert Advisors راست‌کلیک و Refresh را انتخاب کنید. چارت طلای بروکر را باز کنید و سیگنال بریج را روی آن بکشید.'],path:'Navigator → Expert Advisors → Refresh → Gold chart'},
+ {target:'#setupLicense',closest:'.su-copy',title:['Activate your license in Inputs','فعال‌سازی لایسنس در Inputs'],body:['With the EA on the chart, press F7 and open Inputs. Paste your private code into InpActivationCode, the first input. Confirm the settings after completing the next steps.','پس از افزودن اکسپرت به چارت، F7 را بزنید و Inputs را باز کنید. کد اختصاصی خود را در اولین ورودی، InpActivationCode، قرار دهید. پس از مراحل بعد، تنظیمات را تأیید کنید.'],path:'F7 → Inputs → InpActivationCode'},
+ {target:'#setupStep1 .su-symbol',title:['Use your broker’s exact symbol','انتخاب نام دقیق نماد بروکر'],body:['In Market Watch, find the exact gold symbol, such as XAUUSD.p or GOLD. Enter that exact name in InpGoldSymbol, the second EA input.','در Market Watch نام دقیق نماد طلای بروکر، مانند XAUUSD.p یا GOLD، را پیدا کنید. همین نام را در دومین ورودی اکسپرت، InpGoldSymbol، وارد کنید.'],path:'Market Watch → F7 → Inputs → InpGoldSymbol'},
+ {target:'[data-su=install3]',guide:'install',title:['Allow the Signal Bridge server','اجازهٔ اتصال به سرور سیگنال بریج'],body:['In MT5, open Tools → Options → Expert Advisors. Add the address below to the allowed WebRequest URLs, then save your settings.','در متاتریدر، Tools → Options → Expert Advisors را باز کنید. آدرس زیر را به فهرست URLهای مجاز WebRequest اضافه و تنظیمات را ذخیره کنید.'],path:'https://signalbridge.drfx.online'},
+ {target:'[data-su=installAlgo]',guide:'install',title:['Enable algorithmic trading','فعال کردن معامله‌گری الگوریتمی'],body:['In the EA’s Common settings, allow algorithmic trading. Enable Algo Trading in the MT5 toolbar, confirm the EA settings and keep the terminal running.','در تنظیمات Common اکسپرت، مجوز معامله‌گری الگوریتمی را فعال کنید. دکمهٔ Algo Trading در نوار ابزار متاتریدر را روشن، تنظیمات اکسپرت را تأیید و متاتریدر را باز نگه دارید.'],path:'EA Properties → Common · MT5 toolbar → Algo Trading'},
+ {target:'#setupScalperDownload',closest:'.su-product',title:['Scalper Pro has its own EA','اکسپرت مستقل اسکلپر پرو'],body:['If you also use Scalper Pro, download its separate EX5 here and install it in the same Experts folder. Attach Scalper Pro to an M15 gold chart.','اگر از اسکلپر پرو هم استفاده می‌کنید، فایل EX5 جداگانهٔ آن را از اینجا دریافت و در همان پوشهٔ Experts نصب کنید. اسکلپر پرو را روی چارت M15 طلا قرار دهید.'],path:'Scalper Pro → Download EX5 → Gold M15'},
+ {target:'#setupScalperKeys',guide:'scalper',title:['Use the matching Scalper license','لایسنس مخصوص اسکلپر پرو'],body:['Your issued Scalper keys appear here with their MT5 account numbers. Enter the matching key in Scalper Pro’s license setting. Its built-in 7-day trial is started inside the EA.','کلیدهای صادرشدهٔ اسکلپر به همراه شمارهٔ حساب MT5 در این قسمت قرار دارند. کلید مربوط به حساب خود را در تنظیمات لایسنس اسکلپر وارد کنید. دورهٔ آزمایشی ۷روزه از داخل خود اکسپرت شروع می‌شود.'],path:'Scalper Pro license → Matching MT5 account'},
+ {target:'#checkConnectionAction',view:'overview',title:['Check your EA connection','بررسی اتصال اکسپرت'],body:['Return to this Daily view and choose Check connection to read the EA and license status. A verified online terminal confirms the connection. You can replay this guide any time with the ? button.','در نمای روزانه، «بررسی اتصال» را بزنید تا وضعیت اکسپرت و لایسنس خوانده شود. آنلاین بودنِ تأییدشدهٔ متاتریدر نشان‌دهندهٔ اتصال است. هر زمان بخواهید، با دکمهٔ ؟ این آموزش را دوباره اجرا کنید.'],path:'Daily view → Check connection'}
+];
+export const TOUR_JS='\n(()=>{const steps='+JSON.stringify(STEPS)+';'+String.raw`
+ const $=id=>document.getElementById(id),layer=$('setupTour'),help=$('refHelp'),workspace=$('connectionActions');if(!layer?.querySelector||!help?.addEventListener||!document.body?.append)return;
+ document.body.append(layer);const coach=$('stCoach'),next=$('stNext'),end=$('stEnd'),focus=$('stFocus'),hole=$('stHole');
+ let active=false,index=0,epoch=0,target=null,frame=0,timer=null,returnFocus=null;const details=new Map();
+ const fa=()=>document.documentElement.lang==='fa',text=(en,faText)=>fa()?faText:en,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+ const viewport=()=>({w:window.innerWidth,h:window.visualViewport?.height||window.innerHeight});
+ const visibleRect=el=>{let r=el.getBoundingClientRect(),box={left:r.left,top:r.top,right:r.right,bottom:r.bottom};const v=viewport();box.left=Math.max(8,box.left-5);box.top=Math.max(8,box.top-5);box.right=Math.min(v.w-8,box.right+5);box.bottom=Math.min(v.h-8,box.bottom+5);return {...box,width:Math.max(1,box.right-box.left),height:Math.max(1,box.bottom-box.top)}};
+ function bounds(el,x,y,w,h){Object.assign(el.style,{left:x+'px',top:y+'px',width:Math.max(0,w)+'px',height:Math.max(0,h)+'px'})}
+ function position(){
+  if(!active||!target?.isConnected||!target.getClientRects().length)return;const v=viewport(),m=12,gap=25,r=visibleRect(target),cw=Math.min(384,v.w-m*2);
+  coach.style.width=cw+'px';const beside=r.right+gap+cw<=v.w-m||r.left-gap-cw>=m;const available=beside?v.h-m*2:Math.max(r.top-gap-m,v.h-r.bottom-gap-m);coach.style.maxHeight=Math.max(140,available)+'px';
+  const ch=coach.getBoundingClientRect().height;let x,y,side;
+  if(r.right+gap+cw<=v.w-m){side='right';x=r.right+gap;y=clamp(r.top+r.height/2-ch/2,m,v.h-ch-m)}
+  else if(r.left-gap-cw>=m){side='left';x=r.left-gap-cw;y=clamp(r.top+r.height/2-ch/2,m,v.h-ch-m)}
+  else if(r.bottom+gap+ch<=v.h-m){side='bottom';x=clamp(r.left+r.width/2-cw/2,m,v.w-cw-m);y=r.bottom+gap}
+  else {side='top';x=clamp(r.left+r.width/2-cw/2,m,v.w-cw-m);y=Math.max(m,r.top-gap-ch)}
+  Object.assign(coach.style,{left:x+'px',top:y+'px'});bounds(focus,r.left,r.top,r.width,r.height);
+  for(const [key,value] of Object.entries({x:r.left,y:r.top,width:r.width,height:r.height}))hole.setAttribute(key,String(value));
+  bounds($('stBlockTop'),0,0,v.w,r.top);bounds($('stBlockBottom'),0,r.bottom,v.w,v.h-r.bottom);bounds($('stBlockLeft'),0,r.top,r.left,r.height);bounds($('stBlockRight'),r.right,r.top,v.w-r.right,r.height);
+  const tx=r.left+r.width/2,ty=r.top+r.height/2;let path='';
+  if(side==='top'){const sx=clamp(tx,x+24,x+cw-24),sy=y+ch+4;path='M '+sx+' '+sy+' Q '+(sx-12)+' '+((sy+r.top)/2)+' '+tx+' '+(r.top-7)}
+  if(side==='bottom'){const sx=clamp(tx,x+24,x+cw-24),sy=y-4;path='M '+sx+' '+sy+' Q '+(sx+12)+' '+((sy+r.bottom)/2)+' '+tx+' '+(r.bottom+7)}
+  if(side==='right'){const sy=clamp(ty,y+24,y+ch-24);path='M '+(x-4)+' '+sy+' Q '+((x+r.right)/2)+' '+(sy-14)+' '+(r.right+7)+' '+ty}
+  if(side==='left'){const sy=clamp(ty,y+24,y+ch-24);path='M '+(x+cw+4)+' '+sy+' Q '+((x+cw+r.left)/2)+' '+(sy+14)+' '+(r.left-7)+' '+ty}
+  $('stArrow').setAttribute('d',path);layer.dataset.side=side;
+ }
+ function schedule(){if(active&&!frame)frame=requestAnimationFrame(()=>{frame=0;position()})}
+ const observer=typeof ResizeObserver==='function'?new ResizeObserver(schedule):null;
+ function restoreDetails(){for(const [el] of details)el.open=false}
+ function maskKeys(){if($('setupLicense'))$('setupLicense').type='password';if($('setupReveal')){$('setupReveal').setAttribute('aria-pressed','false');$('setupReveal').textContent=text('Show','نمایش')}document.querySelectorAll('.su-key-row input').forEach(el=>el.type='password')}
+ function finish(){
+  if(!active)return;active=false;epoch++;layer.hidden=true;help.setAttribute('aria-expanded','false');observer?.disconnect();if(frame)cancelAnimationFrame(frame);frame=0;clearInterval(timer);timer=null;maskKeys();
+  for(const [el,open] of details)el.open=open;details.clear();target?.removeAttribute('aria-describedby');target=null;
+  if(returnFocus?.isConnected&&returnFocus.getClientRects().length)returnFocus.focus({preventScroll:true});
+ }
+ function language(){
+  help.title=text('Start guided setup','آموزش گام‌به‌گام');help.setAttribute('aria-label',help.title);end.textContent=text('End tour','اتمام آموزش');
+  if(!active)return;const s=steps[index];coach.dir=fa()?'rtl':'ltr';$('stTitle').textContent=s.title[fa()?1:0];$('stBody').textContent=s.body[fa()?1:0];$('stPath').textContent=s.path;next.textContent=index===steps.length-1?text('Done ✓','تکمیل ✓'):text('Next →','بعدی ←');$('stCount').textContent=new Intl.NumberFormat(document.documentElement.lang||'en').format(index+1)+' / '+new Intl.NumberFormat(document.documentElement.lang||'en').format(steps.length);schedule();
+ }
+ async function showStep(n){
+  if(!active)return;const request=++epoch;index=n;next.disabled=true;target?.removeAttribute('aria-describedby');target=null;restoreDetails();language();layer.dataset.step=String(n+1);
+  const s=steps[n];document.querySelector('.sb-top nav [data-sb-tab='+ (s.view||'setup')+']')?.click();
+  if(!s.view)document.querySelector('[data-setup-step=setupStep1]')?.click();
+  if(s.guide==='install')document.querySelector('#setupStep1 details:last-of-type').open=true;
+  if(s.guide==='scalper')document.querySelector('#setupStep1 .ref-scalper-licenses').open=true;
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));if(!active||request!==epoch)return;
+  let el=document.querySelector(s.target);if(s.closest)el=el?.closest(s.closest);if(!el?.getClientRects().length)el=help;
+  if(el.getBoundingClientRect().height<2)el=el.closest('details')?.querySelector('summary')||help;
+  target=el;target.setAttribute('aria-describedby','stBody');target.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+  await new Promise(resolve=>requestAnimationFrame(resolve));if(!active||request!==epoch)return;
+  const progress=Math.round((n+1)/steps.length*100);$('stProgressFill').style.width=progress+'%';$('stProgress').setAttribute('aria-valuenow',String(progress));$('stProgress').setAttribute('aria-label',text('Setup guide progress','پیشرفت آموزش'));position();observer?.disconnect();observer?.observe(coach);observer?.observe(target);next.disabled=false;next.focus({preventScroll:true});
+ }
+ function start(){
+  if(!workspace?.getClientRects().length)return;if(active)finish();returnFocus=document.activeElement;
+  for(const id of ['profilePanel','workspaceDetail'])if($(id)?.open)$(id).close();
+  document.querySelectorAll('#memberSetup details').forEach(el=>details.set(el,el.open));active=true;index=0;layer.hidden=false;help.setAttribute('aria-expanded','true');maskKeys();timer=setInterval(schedule,250);showStep(0);
+ }
+ next.onclick=()=>{if(!active||next.disabled)return;if(index===steps.length-1)finish();else showStep(index+1)};end.onclick=finish;
+ help.onclick=start;help.setAttribute('aria-haspopup','dialog');help.setAttribute('aria-controls','stCoach');help.setAttribute('aria-expanded','false');
+ const installHelp=document.querySelector('#setupStep1 .ref-service-help');if(installHelp)installHelp.onclick=start;
+ window.addEventListener('signalbridge-start-tour',start);window.addEventListener('signalbridge-signed-out',finish);window.addEventListener('pagehide',finish);
+ document.addEventListener('keydown',e=>{if(!active)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish()}else if(e.key==='Tab'){const buttons=[end,next].filter(b=>!b.disabled),i=buttons.indexOf(document.activeElement);e.preventDefault();buttons[(i+(e.shiftKey?-1:1)+buttons.length)%buttons.length]?.focus()}},true);
+ window.addEventListener('resize',schedule);window.addEventListener('scroll',schedule,true);window.visualViewport?.addEventListener('resize',schedule);window.visualViewport?.addEventListener('scroll',schedule);
+ new MutationObserver(language).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});language();
+})();
+`;

@@ -78,12 +78,12 @@ export const PROFILE_JS='\n(()=>{const copy='+JSON.stringify(COPY)+';'+String.ra
  trigger.onclick=()=>{if(!panel.open){panel.showModal();trigger.setAttribute('aria-expanded','true');render();load()}};
  $('profileClose').onclick=close;panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close()}});panel.addEventListener('cancel',e=>{e.preventDefault();close()});panel.addEventListener('close',()=>trigger.setAttribute('aria-expanded','false'));panel.addEventListener('click',e=>{if(e.target!==panel)return;const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close()});$('profileReload').onclick=load;
  function setup(){close();document.querySelector('.sb-top nav [data-sb-tab=setup]')?.click();document.querySelector('[data-setup-step=setupStep1]')?.click()}
- $('profileManage').onclick=setup;$('profileHelp').onclick=setup;
+ $('profileManage').onclick=setup;$('profileHelp').onclick=()=>{close();window.dispatchEvent(new Event('signalbridge-start-tour'))};
  $('profileSignOut').onclick=async()=>{if(signingOut)return;signingOut=true;epoch++;loading=false;$('profileSignOut').disabled=true;put('profileSignOutText',t('signingOut'));try{const r=await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}'});const result=await r.json();if(!r.ok||result.ok!==true)throw Error();clear();close();window.dispatchEvent(new Event('signalbridge-signed-out'))}catch{notice(t('logoutFailed'),true)}finally{signingOut=false;$('profileSignOut').disabled=false;put('profileSignOutText',t('logout'))}};
  window.addEventListener('signalbridge-signed-out',()=>{clear();close();notice('')});window.addEventListener('pagehide',()=>{clear();close()});
  new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
  const accountMode=$('testAccount');if(accountMode){const paint=()=>{const v=accountMode.textContent,verified=v==='DEMO'||v==='LIVE';accountMode.dataset.verified=String(verified);if(!verified&&v!==t('unverified'))accountMode.textContent=t('unverified')};new MutationObserver(paint).observe(accountMode,{childList:true,characterData:true,subtree:true});paint()}
- const back=$('portalClose');if(back){back.textContent='↗';back.title=t('back');back.setAttribute('aria-label',t('back'))}
+ const back=$('portalClose');if(back){back.innerHTML='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 3 10 10M13 3 3 13" stroke="currentColor" stroke-width="1.5"/></svg>';back.title=t('back');back.setAttribute('aria-label',t('back'))}
  if(typeof IntersectionObserver!=='undefined')new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&!document.hidden)load()},{threshold:.1}).observe(trigger);
  render();
 })();
