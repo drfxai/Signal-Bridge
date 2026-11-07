@@ -70,7 +70,7 @@ $('tjPeriod').addEventListener('change',()=>{loaded=0;load()});$('tjScope').addE
 $('tjRefresh').addEventListener('click',()=>{loaded=0;load(true)});
 $('tjExport').addEventListener('click',()=>{if(!data?.deals?.length)return;
  const cells=[['Deal ticket','MT5 broker time','Symbol','Side','Entry','Volume','Price','Net P/L','Source attributed'],...data.deals.map(x=>[x.deal_ticket,date(x.deal_time_ms),x.symbol,x.side,x.entry_kind,x.volume,x.price,x.net,x.signal_attributed?'yes':'no'])];
- const csv=cells.map(row=>row.map(v=>{let s=String(v??'');if(/^[=+\\-@\\t\\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}).join(',')).join('\r\n');
+ const csv=cells.map(row=>row.map(v=>{let s=String(v??'');if(s && ('=+-@'.includes(s[0])||[9,13].includes(s.charCodeAt(0))))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}).join(',')).join('\r\n');
  const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='drfx-broker-verified-deals.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 new MutationObserver(translate).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});translate();render();
