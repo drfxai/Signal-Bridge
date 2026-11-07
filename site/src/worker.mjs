@@ -1,3 +1,4 @@
+import {resolveOwnerSession} from './owner-account.mjs';
 import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
@@ -83,11 +84,12 @@ const cookieClear=()=>SESSION+'=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Ag
 async function authUser(req,env){
  const token=getCookie(req,SESSION);
  if(!token||!/^[A-Za-z0-9_-]{43}$/.test(token))return null;
- return env.DB.prepare(
+ const session=await env.DB.prepare(
  "SELECT u.id,u.email,u.telegram_id,u.telegram_name,u.role,u.plan,u.status,u.created_at,s.token_hash " +
  "FROM site_sessions s JOIN site_users u ON u.id=s.user_id " +
  "WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP AND u.status='active' LIMIT 1"
  ).bind(await sha(token)).first();
+ return resolveOwnerSession(env,session);
 }
 async function login(env,userId){
  const token=b64u(rand()),hash=await sha(token);
