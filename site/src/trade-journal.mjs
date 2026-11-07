@@ -29,7 +29,7 @@ const cash=x=>typeof x==='number'&&Number.isFinite(x)?x.toLocaleString(undefined
 const money=x=>x===null||!Number.isFinite(Number(x))?'—':cash(Number(x));
 const date=ms=>Number.isFinite(Number(ms))?new Date(Number(ms)).toISOString().slice(0,16).replace('T',' '):'—';
 const positive=x=>Number(x)>=0?'win':'loss';
-function active(){return !loggedOut&&!root.closest('[data-pp-view]')?.hidden&&document.querySelector('[data-pp-product=bridge]')?.getAttribute('aria-pressed')==='true'}
+function active(){return !loggedOut&&!root.closest('[data-pp-view]')?.hidden&&document.querySelector?.('[data-pp-product=bridge]')?.getAttribute('aria-pressed')==='true'}
 function state(message){$('tjStatus').textContent=message}
 function drawCurve(rows){const el=$('tjCurve');if(!rows.length){el.textContent=t('No broker data yet.','هنوز داده‌ای از بروکر وجود ندارد.');return}
 let running=0;const vals=[0,...rows.map(d=>(running+=Number(d.net)||0))],min=Math.min(...vals),max=Math.max(...vals),span=max-min||1;
@@ -65,7 +65,7 @@ function translate(){for(const n of root.querySelectorAll('[data-tj-text]')){con
 window.addEventListener('signalbridge-workspace-tab',e=>{if(e.detail==='analytics'){translate();load()}});
 window.addEventListener('signalbridge-authenticated',()=>{loggedOut=false;loaded=0});
 window.addEventListener('signalbridge-signed-out',()=>{loggedOut=true;serial++;loaded=0;data=null;render();state(t('Sign in to view private trade history.','برای دیدن اطلاعات شخصی وارد شوید.'))});
-document.querySelector('#premiumPortal')?.addEventListener('click',e=>{if(e.target.closest('[data-pp-product]')){loaded=0;queueMicrotask(()=>load())}});
+document.querySelector?.('#premiumPortal')?.addEventListener('click',e=>{if(e.target.closest('[data-pp-product]')){loaded=0;queueMicrotask(()=>load())}});
 $('tjPeriod').addEventListener('change',()=>{loaded=0;load()});$('tjScope').addEventListener('change',()=>{loaded=0;load()});
 $('tjRefresh').addEventListener('click',()=>{loaded=0;load(true)});
 $('tjExport').addEventListener('click',()=>{if(!data?.deals?.length)return;
