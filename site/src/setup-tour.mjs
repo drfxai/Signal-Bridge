@@ -91,12 +91,12 @@ export const TOUR_JS='\n(()=>{const steps='+JSON.stringify(STEPS)+';'+String.raw
  function start(){
   if(!workspace?.getClientRects().length)return;if(active)finish();returnFocus=document.activeElement;
   for(const id of ['profilePanel','workspaceDetail'])if($(id)?.open)$(id).close();
-  document.querySelectorAll('#memberSetup details').forEach(el=>details.set(el,el.open));active=true;index=0;layer.hidden=false;help.setAttribute('aria-expanded','true');maskKeys();timer=setInterval(schedule,250);showStep(0);
+  document.querySelectorAll('#memberSetup details').forEach(el=>details.set(el,el.open));active=true;index=0;layer.hidden=false;help.setAttribute('aria-expanded','true');maskKeys();timer=setInterval(schedule,250);showStep(0);window.dispatchEvent(new Event('signalbridge-tour-started'));
  }
  next.onclick=()=>{if(!active||next.disabled)return;if(index===steps.length-1)finish();else showStep(index+1)};end.onclick=finish;
  help.onclick=start;help.setAttribute('aria-haspopup','dialog');help.setAttribute('aria-controls','stCoach');help.setAttribute('aria-expanded','false');
  const installHelp=document.querySelector('#setupStep1 .ref-service-help');if(installHelp)installHelp.onclick=start;
- window.addEventListener('signalbridge-start-tour',start);window.addEventListener('signalbridge-signed-out',finish);window.addEventListener('pagehide',finish);
+ let authenticated=false,autoStarted=false;function autoStart(){if(authenticated&&!autoStarted&&workspace.getClientRects().length&&!document.hidden){autoStarted=true;start()}}window.addEventListener('signalbridge-authenticated',()=>{authenticated=true;requestAnimationFrame(autoStart)});window.addEventListener('signalbridge-signed-out',()=>{authenticated=false;autoStarted=false});if(typeof IntersectionObserver==='function')new IntersectionObserver(autoStart).observe(workspace);document.addEventListener('visibilitychange',autoStart);window.addEventListener('signalbridge-start-tour',start);window.addEventListener('signalbridge-signed-out',finish);window.addEventListener('pagehide',finish);
  document.addEventListener('keydown',e=>{if(!active)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish()}else if(e.key==='Tab'){const buttons=[end,next].filter(b=>!b.disabled),i=buttons.indexOf(document.activeElement);e.preventDefault();buttons[(i+(e.shiftKey?-1:1)+buttons.length)%buttons.length]?.focus()}},true);
  window.addEventListener('resize',schedule);window.addEventListener('scroll',schedule,true);window.visualViewport?.addEventListener('resize',schedule);window.visualViewport?.addEventListener('scroll',schedule);
  new MutationObserver(language).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});language();

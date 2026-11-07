@@ -124,7 +124,7 @@ async function licenseRecord(env,user){
 }
 async function profile(env,user){
  const row=await licenseRecord(env,user);
- return {id:user.id,email:user.email||null,telegram:user.telegram_name||user.telegram_id||null,role:user.role,plan:user.plan,
+ return {id:user.id,email:user.email||null,telegram:user.telegram_name||user.telegram_id||null,telegram_id:user.telegram_id||null,role:user.role,plan:user.plan,
   account_status:user.status,license_status:row.status,activated_at:row.activated_at,expires_at:row.expires_at,
   mt5_account:row.account_login?{login:row.account_login,server:row.account_server}:null,
   activation_code:await decryptCode(env,row.encrypted_code,row.nonce),

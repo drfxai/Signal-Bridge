@@ -140,7 +140,8 @@ test('Mini App recovers an authenticated browser session without Telegram initDa
  assert.match(MINI_JS,/await api\('\/api\/auth\/telegram\/webapp',\{init_data:tg\.initData\}\)/);
  assert.match(MINI_JS,/if\(!signedIn\)/);
  assert.match(MINI_JS,/document\.documentElement\.lang=locale/);
- assert.match(MINI_JS,/String\(navigator\.language\|\|'en'\)\.slice\(0,2\)/);
+ assert.doesNotMatch(MINI_JS,/navigator\.language/);
+ assert.match(MINI_JS,/let initialLanguage='en'/);
 });
 test('Mini App clears private EA activation material on failed session refresh',()=>{
  assert.match(MINI_JS,/function clearPrivateAccount\(\)/);

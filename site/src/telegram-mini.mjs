@@ -362,7 +362,7 @@ ${ADMIN_JS}
  function applyUser(user){
   try{sessionStorage.removeItem('drfx-explicit-signout')}catch{}
   if(state.user?.id!==user.id)leaveMiniAdmin(true);
-  state.user=user;
+  state.user=user;window.dispatchEvent(new Event('signalbridge-authenticated'));
   document.body.classList.toggle('workspace-home',!!user&&(!document.body.dataset.tab||document.body.dataset.tab==='home'));
   state.serialVisible=false;
   $('miniAdminShortcut').hidden=user.role!=='admin';
@@ -487,10 +487,6 @@ ${ADMIN_JS}
  $('retrySignIn').addEventListener('click',()=>{try{sessionStorage.removeItem('drfx-explicit-signout')}catch{}start()});
  let initialLanguage='en';
  try{initialLanguage=localStorage.getItem('drfx-language')||'en'}catch{}
- if(initialLanguage==='en'){
-  const browserLocale=String(navigator.language||'en').slice(0,2);
-  if(locales.includes(browserLocale))initialLanguage=browserLocale;
- }
  language(initialLanguage);
  show('home');
  start();
