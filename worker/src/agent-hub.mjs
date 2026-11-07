@@ -1,4 +1,5 @@
 import {memberPolicy,policyFields,validatePolicy} from './member-policy.mjs';
+import {ingestDealBatch} from './deal-history.mjs';
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const RECEIPT_STATES=new Set(['PREVIEWED','SUBMITTED','FILLED','BROKER_REJECTED','REJECTED','ACCOUNT_MISMATCH','EXPIRED','ERROR','DUPLICATE']);
 export function receiptTransitionAllowed(from,to){if(from===to)return true;if(from==='PENDING'||from==='DELIVERED')return RECEIPT_STATES.has(to);if(from==='SUBMITTED')return ['FILLED','BROKER_REJECTED','ERROR','DUPLICATE'].includes(to);return false}
@@ -75,6 +76,16 @@ export class AgentHub{
  async handleEaMessage(ws,message,a){
   const p=parseEaLine(message);if(!p){ws.send('ERR|INVALID_MESSAGE');return}
   a.lastSeenAt=new Date().toISOString();
+  if(p[0]==='DEAL_BATCH'){
+   const id=/^[A-Za-z0-9_-]{1,48}$/.test(p[1]||'')?p[1]:'invalid';
+   try{
+    if(!await this.licenseIsValid(a))throw Error('LICENSE_INACTIVE');
+    const stored=await ingestDealBatch(this.env,a,message);
+    a.lastDealBatchAt=Date.now();ws.serializeAttachment(a);
+    ws.send('DEAL_ACK|'+stored.batch_id+'|'+stored.accepted);
+   }catch(e){ws.send('DEAL_NACK|'+id+'|'+safe(e?.message||'DEAL_BATCH_REJECTED',64));}
+   return;
+  }
   if(p[0]==='POLICY_UPDATE'){try{if(!await this.licenseIsValid(a))return;const policy=validatePolicy({tp1:p[1],tp2:p[2],tp3:p[3],partial_percent:Number(p[4]),be_buffer_points:Number(p[5])});const saved=await this.env.DB.prepare('INSERT INTO member_signal_settings(user_id,policy_json) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET policy_json=excluded.policy_json,updated_at=CURRENT_TIMESTAMP').bind(a.tenantId,JSON.stringify(policy)).run();if(!saved?.success)throw Error('POLICY_STORAGE_UNAVAILABLE');a.policySignature=policyFields(policy);ws.serializeAttachment(a);ws.send('POLICY_ACK');}catch{ws.send('POLICY_REJECTED');}return;}
   if(p[0]==='TARGET_EVENT'){const [_,tag,index,state,action]=p;const i=Number(index),v=Number(state),act=Number(action);if(!/^[a-f0-9]{12}$/.test(tag||'')||![0,1,2].includes(i)||![1,2,3].includes(v)||![0,1,2,3].includes(act)||!await this.licenseIsValid(a))return;const id=[a.agentId,tag,i,v].join(':');const stored=await this.env.DB.prepare('INSERT INTO position_events(id,user_id,agent_id,tag,target_index,state,action,created_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(id,a.tenantId,a.agentId,tag,i,v,act,new Date().toISOString()).run();if(!stored?.success)return;ws.send(['EVENT_ACK',tag,i,v].join('|'));return;}
   if(p[0]==='RISK_RESET_ACK'){a.lastRiskReset={request_id:safe(p[1],64),status:safe(p[2],16)};ws.serializeAttachment(a);return;}
@@ -95,7 +106,7 @@ export class AgentHub{
    if(p[31]){const v=p[31].split(';');if(v.length>=10&&['BUY','SELL'].includes(v[1]))account.active_position={symbol:safe(v[0],32),side:v[1],lots:Number(v[2]),entry:Number(v[3]),current:Number(v[4]),sl:Number(v[5]),tp:Number(v[6]),tag:safe(v[7],12),profit:Number(v[8]),be_confirmed:v[9]==='2'};}
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
-   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1','exit-policy-v1','reports-v1'].includes(c));
+   a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1','exit-policy-v1','reports-v1','deal-history-v1'].includes(c));
    const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;
    const config=JSON.stringify(eaConfiguration(a));
    if(a.lastConfigSignature!==config){
