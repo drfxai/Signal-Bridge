@@ -10,6 +10,7 @@ const user={id:'preview-user',email:'preview@example.test',role:'user',plan:'tri
 const errors=[];
 // Container width, rather than browser width, must select the compact layout.
 for(const [label,outerWidth,hostWidth,isMobile,url] of [['embedded-phone',980,390,false,'/telegram'],['android-phone',390,390,true,'/telegram'],['embedded-tablet',1440,720,false,'/telegram'],['embedded-site-phone',980,390,false,'/'],['android-site-phone',390,390,true,'/']]){
+ if(process.env.SB_BROWSER_FILTER&&!label.includes(process.env.SB_BROWSER_FILTER))continue;
  const page=await browser.newPage({viewport:{width:outerWidth,height:960},isMobile,deviceScaleFactor:isMobile?3:1,...(isMobile?{userAgent:'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36'}:{})});
  await page.addInitScript(()=>window.addEventListener('signalbridge-tour-started',()=>{document.getElementById('stEnd')?.click();window.testAutoTourDismissed=true}));page.on('pageerror',e=>errors.push(label+': '+e.message));
  await page.route('**/api/**',route=>{const path=new URL(route.request().url()).pathname;const data=path==='/api/me'?{ok:true,user}:path==='/api/member/settings'?{ok:true,settings:{policy:{tp1:'BE',tp2:'CLOSE',tp3:'OFF',partial_percent:50,be_buffer_points:0},default_lots:.01,tv_to_mt5:true,tv_to_telegram:true,telegram_to_mt5:true}}:path==='/api/webhook'?{ok:true,webhook:{exists:false}}:path==='/api/channels'?{ok:true,telegram_linked:true,chats:[]}:path==='/api/connection/check'?{ok:true,diagnostic:{license:'active',terminal_online:false,capabilities:[],telemetry:{}}}:{ok:true};return route.fulfill({json:data});});
@@ -31,6 +32,7 @@ for(const [label,outerWidth,hostWidth,isMobile,url] of [['embedded-phone',980,39
 }
 
 for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['website-wide','/',1920,1080],['website-small-phone','/',360,800],['website-tablet','/',820,1180],['website-mobile','/',390,844],['telegram-mobile','/telegram',390,844],['telegram-tablet','/telegram',820,1180],['telegram-desktop','/telegram',1440,1000],['telegram-reference-desktop','/telegram',1200,800],['telegram-reference-tablet','/telegram',720,960],['website-reference-desktop','/',1200,800],['website-reference-tablet','/',720,960],['website-live','/',390,844],['telegram-live','/telegram',390,844],['website-risk-hit','/',390,844],['telegram-risk-hit','/telegram',390,844]]){
+ if(process.env.SB_BROWSER_FILTER&&!label.includes(process.env.SB_BROWSER_FILTER))continue;
  const page=await browser.newPage({viewport:{width,height}});await page.addInitScript(()=>window.addEventListener('signalbridge-tour-started',()=>{document.getElementById('stEnd')?.click();window.testAutoTourDismissed=true}));page.on('pageerror',e=>errors.push(label+': '+e.message));
  let testRequested=0,riskResetRequested=0,riskHit=label.includes('risk-hit'),reportResets=0;
  await page.route('**/api/**',async route=>{
@@ -176,6 +178,7 @@ for(const [label,url,width,height] of [['website-desktop','/',1440,1000],['websi
 
 // An offline terminal must explain the next action without a tall empty chart.
 for(const [label,url,width,height] of [['offline-web-phone','/',390,844],['offline-telegram-phone','/telegram',390,844],['offline-web-desktop','/',1440,1000],['offline-telegram-desktop','/telegram',1440,1000]]){
+ if(process.env.SB_BROWSER_FILTER&&!label.includes(process.env.SB_BROWSER_FILTER))continue;
  const page=await browser.newPage({viewport:{width,height}});await page.addInitScript(()=>window.addEventListener('signalbridge-tour-started',()=>{document.getElementById('stEnd')?.click();window.testAutoTourDismissed=true}));page.on('pageerror',e=>errors.push(label+': '+e.message));
  await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname;let data={ok:true};
   if(path==='/api/me')data={ok:true,user};
@@ -192,6 +195,8 @@ for(const [label,url,width,height] of [['offline-web-phone','/',390,844],['offli
  await page.route(/^https:\/\/(?!127\.0\.0\.1)/,route=>route.abort());
  await page.goto('http://127.0.0.1:4199'+url,{waitUntil:'networkidle'});
  if(url==='/')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
+ await page.waitForFunction(()=>window.testAutoTourDismissed===true);
+ await page.evaluate(()=>document.querySelector('.sb-top nav [data-sb-tab=overview]').click());
  await page.locator('#checkConnectionAction').click();
  await page.waitForFunction(()=>document.getElementById('connectionActions').dataset.history==='empty');
  if(await page.locator('#performanceChart svg').count())throw Error('Offline empty state fabricates performance');
@@ -216,6 +221,7 @@ for(const [label,url,width,height] of [['offline-web-phone','/',390,844],['offli
 
 // Email and Telegram sign-in, including short landscape and RTL layouts.
 for(const [label,width,height,rtl] of [['phone',390,844,false],['small-phone',360,740,false],['tablet',820,1180,false],['desktop',1440,1000,false],['landscape',844,390,false],['rtl-phone',390,844,true]]){
+ if(process.env.SB_BROWSER_FILTER&&!('signin-'+label).includes(process.env.SB_BROWSER_FILTER))continue;
  const page=await browser.newPage({viewport:{width,height}});await page.addInitScript(()=>window.addEventListener('signalbridge-tour-started',()=>{document.getElementById('stEnd')?.click();window.testAutoTourDismissed=true}));page.on('pageerror',e=>errors.push(label+': '+e.message));
  await page.route('**/api/**',r=>r.fulfill({json:{ok:true,email:false,telegram:true,licensing:true,payments:false,bot_token_valid:true,bot_username:'PreviewDrfxBot'}}));
  await page.route(/^https:\/\/(?!127\.0\.0\.1)/,r=>r.abort());
