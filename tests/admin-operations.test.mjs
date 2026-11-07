@@ -17,6 +17,36 @@ function fixture(){
  return {db,run,owner,member,otherAdmin,env,request};
 }
 
+test('account profile is self-scoped metadata and never returns license credentials',async()=>{
+ const f=fixture();try{
+  assert.equal((await f.request('/api/account',{user:null})).status,401);
+  const grant=await(await f.request('/api/admin/user',{body:{action:'grant_scalper_3m',user_id:f.owner,account_login:'8718098'}})).json();
+  const own=await(await f.request('/api/account')).json();assert.equal(own.account.email,'Owner@example.test');assert.ok(own.account.created_at);assert.equal(own.scalper.issued_keys,1);assert.equal(own.scalper.purchased_keys,0);assert.equal(own.scalper.active,null);assert.equal(own.scalper.trial,null);assert.equal(own.scalper.licenses[0].purchased,false);
+  const r=await f.request('/api/account?user_id='+f.owner,{user:f.member}),member=await r.json();assert.equal(member.account.id,f.member);assert.equal(member.scalper.issued_keys,0);assert.equal(member.signalbridge,null);assert.equal(r.headers.get('cache-control'),'no-store');
+  const text=JSON.stringify(own);for(const name of ['activation_code','encrypted_key','encrypted_code','nonce',grant.scalper.key])assert.ok(!text.includes(name),name);
+ }finally{f.db.close()}
+});
+
+test('profile distinguishes activation, expiration, trial and verified purchases',async()=>{
+ const f=fixture();try{
+  await f.request('/api/me');let d=await(await f.request('/api/account')).json();assert.equal(d.signalbridge.status,'awaiting_activation');assert.equal(d.summary.active_confirmed,0);assert.equal(d.summary.bridge_trials,1);
+  f.run("UPDATE ea_licenses SET activated_at=datetime('now'),expires_at=datetime('now','+1 month') WHERE id=(SELECT license_id FROM site_licenses WHERE user_id=?)",f.owner);
+  d=await(await f.request('/api/account')).json();assert.equal(d.summary.active_confirmed,1);assert.equal(d.summary.bridge_trials,1);
+  f.run("UPDATE ea_licenses SET expires_at=datetime('now','-1 day') WHERE id=(SELECT license_id FROM site_licenses WHERE user_id=?)",f.owner);
+  d=await(await f.request('/api/account')).json();assert.equal(d.signalbridge.status,'expired');assert.equal(d.summary.active_confirmed,0);assert.equal(d.summary.bridge_trials,0);
+  await f.request('/api/admin/user',{body:{action:'grant_scalper_1m',user_id:f.owner,account_login:'8718098'}});
+  f.run("INSERT INTO scalper_orders(id,user_id,plan,amount_usd,account_login,status) VALUES('profile_paid',?,'scalper_1m',19,'8718098','paid')",f.owner);
+  f.run("UPDATE scalper_keys SET order_id='profile_paid' WHERE user_id=?",f.owner);
+  d=await(await f.request('/api/account')).json();assert.equal(d.scalper.purchased_keys,1);assert.equal(d.summary.purchased_licenses,1);assert.equal(d.scalper.licenses[0].purchased,true);assert.equal(d.summary.active_incomplete,true);
+ }finally{f.db.close()}
+});
+
+test('profile logout deletes the session and prevents subsequent profile access',async()=>{
+ const f=fixture();try{
+  assert.equal((await f.request('/api/account')).status,200);const r=await f.request('/api/auth/logout',{body:{}});assert.equal(r.status,200);assert.match(r.headers.get('set-cookie'),/Max-Age=0/);assert.equal((await f.request('/api/account')).status,401);assert.equal((await f.request('/api/me')).status,401);
+ }finally{f.db.close()}
+});
+
 test('Signal Bridge accepts the requested alias and valid Telegram menu names only as exact commands',()=>{
  for(const x of ['/Signal Bridge','/signal bridge',' /SIGNAL   BRIDGE ','/signalbridge','/SignalBridge@ExampleBot','/signal_bridge','/Signal@ExampleBot Bridge'])assert.equal(normalizeBotCommand(x),'/signalbridge',x);
  assert.equal(normalizeBotCommand('/Signal Bridge user123'),'/signal');assert.equal(normalizeBotCommand('/code@ExampleBot'),'/code');

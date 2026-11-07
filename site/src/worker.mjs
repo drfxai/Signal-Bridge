@@ -1,3 +1,4 @@
+import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
 import {adminOverview,adminDirectory,adminConnections,adminOrders} from './admin-operations.mjs';
@@ -720,6 +721,7 @@ async function api(req,env){
   return json({ok:true},200,{'set-cookie':cookieClear()});
  }
  if(!user)return fail('UNAUTHENTICATED',401);
+ if(path==='/api/account'&&req.method==='GET')return json(await accountProfile(env,user));
  if(path==='/api/auth/link/create'&&req.method==='POST'){
   if(!user.email)return fail('VERIFIED_EMAIL_REQUIRED',403);
   if(!await limited(req,env,'link-code',10))return fail('RATE_LIMITED',429);
