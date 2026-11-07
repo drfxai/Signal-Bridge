@@ -60,7 +60,7 @@ jobs:
           SB_WORKER_BUNDLE=file:///tmp/signalbridge-built/worker.js node scripts/verify-portal-browser.mjs
       - name: Verify private admin console and license visibility
         timeout-minutes: 3
-        run: node scripts/verify-admin-browser.mjs
+        run: SB_WORKER_BUNDLE=file:///tmp/signalbridge-built/worker.js node scripts/verify-admin-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
