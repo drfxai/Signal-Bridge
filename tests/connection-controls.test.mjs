@@ -1,3 +1,4 @@
+import {UI_RELEASE} from '../site/src/ui-release.mjs';
 import {handleRequest as ingressHandle} from '../worker/src/index.mjs';
 import {routeTelegramSignal,relayTradingView} from '../site/src/signal-routing.mjs';
 import test from 'node:test';
@@ -103,7 +104,7 @@ test('missing site-to-ingress hub binding is reported explicitly without dispatc
  const f=fixture();delete f.env.AGENT_HUB;
  const response=await f.request('/api/connection/test-demo',{confirm:true});assert.equal(response.status,503);
  assert.equal((await response.json()).error,'EA_HUB_NOT_CONFIGURED');assert.equal(f.calls.length,0);
- const config=await (await f.request('/api/config')).json();assert.equal(config.ea_hub,false);assert.equal(config.release,'signalbridge-design-20261029.2');f.db.close();
+ const config=await (await f.request('/api/config')).json();assert.equal(config.ea_hub,false);assert.equal(config.release,UI_RELEASE);f.db.close();
 });
 
 test('v2 DEMO test is explicitly account-bound with dedicated execution mode',async()=>{

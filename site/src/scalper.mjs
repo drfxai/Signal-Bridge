@@ -2,6 +2,7 @@
 // Keys match tools/keygen.py and DrFX_License.mqh in the Scalper Pro repo:
 // payload <QHIBB (login u64, days u16, serial u32, plan u8, format=1) + first 9 bytes of
 // HMAC-SHA256(SCALPER_LICENSE_SECRET, payload), base32 (no I O 0 1), "DRFX-" + 8 groups of 5.
+import {eaDownloadCatalog} from './ea-downloads.mjs';
 export const SCALPER_PLANS=Object.freeze({
  scalper_1m:{usd:19,days:30,code:1,label:'Monthly'},
  scalper_3m:{usd:49,days:90,code:3,label:'3 Months'}
@@ -72,7 +73,7 @@ export async function scalperOverview(env,h,user){
  for(const r of rows)keys.push({id:r.id,account_login:r.account_login,plan:r.plan,days:r.days,created_at:r.created_at,key:await h.decryptCode(env,r.encrypted_key,r.nonce)});
  const orders=(await env.DB.prepare('SELECT id,plan,amount_usd,account_login,status,invoice_url,created_at,paid_at FROM scalper_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 30').bind(user.id).all()).results||[];
  return {ok:true,configured:!!env.SCALPER_LICENSE_SECRET,payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),
-  trial_days:SCALPER_TRIAL_DAYS,download_url:env.SCALPER_DOWNLOAD_URL||'https://drfx.company/downloads/DrFX_Scalper_Pro.ex5',
+  trial_days:SCALPER_TRIAL_DAYS,download_url:eaDownloadCatalog().scalper.url,
   plans:Object.entries(SCALPER_PLANS).map(([id,p])=>({id,usd:p.usd,days:p.days,label:p.label})),keys,orders};
 }
 
