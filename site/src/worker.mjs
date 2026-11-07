@@ -696,7 +696,7 @@ async function api(req,env){
  const u=new URL(req.url),path=u.pathname;
  if(path==='/api/telegram/webhook'&&req.method==='POST')return telegramWebhook(req,env);
  if(path==='/api/payments/ipn'&&req.method==='POST')return ipnHandler(req,env);
- if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY,scalper:!!env.SCALPER_LICENSE_SECRET,ea_hub:!!env.AGENT_HUB,release:'signalbridge-design-20261029.2'});
+ if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY,scalper:!!env.SCALPER_LICENSE_SECRET,ea_hub:!!env.AGENT_HUB,release:UI_RELEASE});
  if(path==='/api/telegram/health'&&req.method==='GET'){
   if(!await limited(req,env,'public:telegram-health',5))return fail('RATE_LIMITED',429);
   return json(await telegramHealth(env));
