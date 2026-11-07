@@ -253,3 +253,28 @@ test('portal offers persisted actionable symbol-fix guidance without submitting 
  assert.match(EXECUTION_JS,/InpTestSymbol/);
  assert.match(EXECUTION_JS,/Market Watch/);
 });
+
+test('configured owner email and Telegram sessions share route switches and annual license without merging accounts',async()=>{
+ const f=fixture();
+ try{
+  f.db.exec("UPDATE site_users SET email=NULL,telegram_id='123456789',telegram_name='Owner',role='admin',plan='annual' WHERE id='usr_a'; UPDATE site_users SET role='admin' WHERE id='usr_b'; UPDATE ea_licenses SET plan='annual' WHERE id='lic_a'");
+  f.env.ADMIN_EMAIL='usr_b@example.test';f.env.ADMIN_TELEGRAM_ID='123456789';
+  f.db.exec("INSERT INTO member_signal_settings(user_id,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5) VALUES ('usr_a','123456789',1,1,1); INSERT INTO member_signal_settings(user_id,tv_to_telegram,telegram_to_mt5) VALUES ('usr_b',0,0)");
+  const web=await (await f.request('/api/account',undefined,f.other)).json(),mini=await (await f.request('/api/account')).json();
+  assert.equal(web.account.id,mini.account.id);assert.equal(web.account.id,'usr_a');assert.equal(web.signalbridge.plan,'annual');assert.equal(web.account.email,'usr_b@example.test');
+  const settings=await (await f.request('/api/member/settings',undefined,f.other)).json();assert.equal(settings.settings.telegram_verified,true);
+  for(const enabled of [false,true]){
+   const response=await f.request('/api/member/settings',{...settings.settings,tv_to_telegram:enabled,telegram_to_mt5:enabled,confirm:true},f.other);assert.equal(response.status,200);
+   const same=await (await f.request('/api/member/settings')).json();assert.equal(same.settings.tv_to_telegram,enabled);assert.equal(same.settings.telegram_to_mt5,enabled);
+  }
+  assert.equal(f.db.prepare("SELECT tv_to_telegram FROM member_signal_settings WHERE user_id='usr_b'").get().tv_to_telegram,0);
+  assert.equal(f.db.prepare('SELECT COUNT(*) n FROM site_users').get().n,2);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM site_licenses').get().n,1);
+  assert.equal((await f.request('/api/auth/logout',{},f.other)).status,200);assert.equal((await f.request('/api/member/settings',undefined,f.other)).status,401);assert.equal((await f.request('/api/member/settings')).status,200);
+ }finally{f.db.close()}
+});
+test('matching owner email alone cannot give an ordinary account access to the Telegram owner',async()=>{
+ const f=fixture();try{
+  f.db.exec("UPDATE site_users SET telegram_id='123456789',role='admin' WHERE id='usr_a'");f.env.ADMIN_EMAIL='usr_b@example.test';f.env.ADMIN_TELEGRAM_ID='123456789';
+  const r=await (await f.request('/api/account',undefined,f.other)).json();assert.equal(r.account.id,'usr_b');assert.equal(r.signalbridge,null);
+ }finally{f.db.close()}
+});
