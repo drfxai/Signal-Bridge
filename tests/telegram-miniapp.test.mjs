@@ -149,7 +149,7 @@ test('Mini App clears private EA activation material on failed session refresh',
  assert.match(MINI_JS,/\$\('revealSerial'\)\.disabled=true;\$\('copySerial'\)\.disabled=true/);
  assert.match(MINI_JS,/catch\(error\)\{\s*clearPrivateAccount\(\)/);
  assert.match(MINI_HTML,/id="retrySignIn"[^>]*hidden/);
- assert.match(MINI_JS,/\$\('retrySignIn'\)\.addEventListener\('click',start\)/);
+ assert.match(MINI_JS,/\$\('retrySignIn'\)\.addEventListener\('click',/);assert.ok(MINI_JS.includes("sessionStorage.removeItem('drfx-explicit-signout')"));
  assert.ok(MINI_HTML.includes('telegram-mini.js?v='+UI_RELEASE));
 });
 test('Persian translation covers account safety, MT5 onboarding, and error states',()=>{

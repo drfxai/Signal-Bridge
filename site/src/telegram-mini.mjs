@@ -188,6 +188,7 @@ export const MINI_JS=String.raw`(() => {
  'use strict';
  const $ = id => document.getElementById(id);
  const tg = window.Telegram?.WebApp || null;
+ const explicitlySignedOut=()=>{try{return sessionStorage.getItem('drfx-explicit-signout')==='1'}catch{return false}};
  const state = {user:null, serialVisible:false,telegramEnabled:false};
 
  // Recover readable mobile sizing when a Telegram external/custom tab enforces a desktop-width layout.
@@ -285,6 +286,14 @@ export const MINI_JS=String.raw`(() => {
   $('connection').classList.remove('verified');
   set('connection',ui('Sign-in needed','ورود لازم است'));
  }
+ window.addEventListener('signalbridge-signed-out',()=>{
+  try{sessionStorage.setItem('drfx-explicit-signout','1')}catch{}
+  clearPrivateAccount();show('home');
+  if($('setupLicense'))$('setupLicense').value='';
+  for(const id of ['setupScalperKeys','sxmKeys'])if($(id))$(id).replaceChildren();
+  message(ui('Signed out. Tap Retry sign-in to return.','خارج شدید. برای ورود دوباره، گزینه تلاش مجدد ورود را بزنید.'));
+  $('retrySignIn').hidden=false;
+ });
  function show(tab){
   if(!['home','license','plans','scalper','channels','help','admin'].includes(tab))return;
   if(tab==='admin'&&state.user?.role!=='admin')return;
@@ -351,6 +360,7 @@ $('miniCopyWebhook').addEventListener('click',async()=>{try{await navigator.clip
 $('miniRotateWebhook').addEventListener('click',async()=>{if(!confirm('Regenerate URL? Your old TradingView alerts will stop reaching SignalBridge.'))return;try{const r=await api('/api/webhook/rotate',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',e.message)}});
 ${ADMIN_JS}
  function applyUser(user){
+  try{sessionStorage.removeItem('drfx-explicit-signout')}catch{}
   if(state.user?.id!==user.id)leaveMiniAdmin(true);
   state.user=user;
   document.body.classList.toggle('workspace-home',!!user&&(!document.body.dataset.tab||document.body.dataset.tab==='home'));
@@ -393,7 +403,7 @@ ${ADMIN_JS}
    return false;
   }
  }
- $('refreshAccount').addEventListener('click',()=>refresh());
+ $('refreshAccount').addEventListener('click',()=>{if(explicitlySignedOut()){try{sessionStorage.removeItem('drfx-explicit-signout')}catch{}start()}else refresh()});
  $('otpForm').addEventListener('submit',async event=>{
   event.preventDefault();
   const code=$('otpInput').value.trim();
@@ -439,6 +449,7 @@ ${ADMIN_JS}
   signInRunning=true;$('retrySignIn').disabled=true;$('retrySignIn').hidden=true;
   try{
    try{tg?.ready?.();tg?.expand?.();tg?.setHeaderColor?.('#030406');tg?.setBackgroundColor?.('#030406');}catch{}
+   if(explicitlySignedOut()){clearPrivateAccount();message(ui('You are signed out. Tap Retry sign-in to return.','از حساب خارج شده‌اید؛ برای ورود، تلاش مجدد ورود را بزنید.'));$('retrySignIn').hidden=false;return;}
    const config=await api('/api/config');
    state.telegramEnabled=!!config.telegram;
    set('paymentStatus',config.payments?ui('The payment provider is configured on the website.','درگاه پرداخت در سایت پیکربندی شده است.'):ui('Paid memberships are not accepting payments yet.','پرداخت اشتراک هنوز فعال نیست.'));
@@ -473,7 +484,7 @@ ${ADMIN_JS}
    if(!tg?.initData||['INVALID_TELEGRAM_INIT_DATA','TELEGRAM_INIT_DATA_EXPIRED','LICENSING_NOT_READY'].includes(error.message))await offerBotLaunch();
   }finally{signInRunning=false;$('retrySignIn').disabled=false;}
  }
- $('retrySignIn').addEventListener('click',start);
+ $('retrySignIn').addEventListener('click',()=>{try{sessionStorage.removeItem('drfx-explicit-signout')}catch{}start()});
  let initialLanguage='en';
  try{initialLanguage=localStorage.getItem('drfx-language')||'en'}catch{}
  if(initialLanguage==='en'){
