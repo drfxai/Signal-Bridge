@@ -16,7 +16,7 @@ const errors=[];await mkdir('/tmp/drfx-admin-ui',{recursive:true});
 try{
  for(const [surface,surfacePath] of [['mini','/telegram'],['site','/']]){
  for(const [label,width,locale,role] of [['mobile-en',390,'en','admin'],['mobile-fa',360,'fa','admin'],['desktop-en',1280,'en','admin'],['member',390,'en','user']]){
-  const page=await browser.newPage({viewport:{width,height:900},locale:locale==='fa'?'fa-IR':'en-US'});page.on('pageerror',e=>errors.push(surface+' '+label+': '+e.message));
+  const page=await browser.newPage({viewport:{width,height:900},locale:locale==='fa'?'fa-IR':'en-US'});await page.addInitScript(()=>window.addEventListener('signalbridge-tour-started',()=>document.getElementById('stEnd')?.click()));page.on('pageerror',e=>errors.push(surface+' '+label+': '+e.message));
   await page.addInitScript(locale=>localStorage.setItem('drfx-language',locale),locale);
   await page.route('https://telegram.org/**',r=>r.abort());
   await page.route('**/api/**',async route=>{

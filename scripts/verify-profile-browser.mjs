@@ -12,7 +12,7 @@ await mkdir('/tmp/drfx-profile/screenshots',{recursive:true});const errors=[];
 try{
  for(const [surface,width,height,locale,role] of [['site',1440,1000,'en','admin'],['site',360,800,'fa','user'],['site',844,390,'en','user'],['mini',390,844,'fa','user'],['mini',1280,900,'en','admin']]){
   if(process.env.PROFILE_SURFACE&&process.env.PROFILE_SURFACE!==surface)continue;
-  const label=surface+'-'+width+'-'+locale,page=await browser.newPage({viewport:{width,height}});page.on('pageerror',e=>errors.push(label+': '+e.message));
+  const label=surface+'-'+width+'-'+locale,page=await browser.newPage({viewport:{width,height}});await page.addInitScript(()=>window.addEventListener('signalbridge-tour-started',()=>document.getElementById('stEnd')?.click()));page.on('pageerror',e=>errors.push(label+': '+e.message));
   await page.addInitScript(({locale,surface})=>{localStorage.setItem('drfx-language',locale);if(surface==='mini')window.Telegram={WebApp:{initData:'TEST-ONLY-INIT-DATA',ready(){},expand(){},setHeaderColor(){},setBackgroundColor(){}}}},{locale,surface});
   await page.route(/^https:\/\//,r=>r.abort());let authenticated=true,logoutCalls=0,telegramLogins=0,failLogout=true;
   const user={id:'profile-test-user',email:'alexandra.morgan+long-account-name@international-trading.example',telegram:'Alexandra Morgan',role,plan:'annual',license_status:'active',created_at:'2026-09-12 08:30:00',activation_code:'TEST-PRIVATE-KEY-MUST-NOT-APPEAR-IN-PROFILE',expires_at:'2027-09-12 08:30:00',mt5_account:null};
