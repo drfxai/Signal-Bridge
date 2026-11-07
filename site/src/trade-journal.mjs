@@ -73,5 +73,5 @@ $('tjExport')?.addEventListener?.('click',()=>{if(!data?.deals?.length)return;
  const csv=cells.map(row=>row.map(v=>{let s=String(v??'');if(s && ('=+-@'.includes(s[0])||[9,13].includes(s.charCodeAt(0))))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}).join(',')).join('\r\n');
  const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='drfx-broker-verified-deals.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
-new MutationObserver(translate).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});translate();render();
+if(typeof MutationObserver==='function')new MutationObserver(translate).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});translate();render();
 })();`;
