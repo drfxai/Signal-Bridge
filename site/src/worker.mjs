@@ -1,3 +1,4 @@
+import {productArt} from './product-art.mjs';
 import {resolveOwnerSession} from './owner-account.mjs';
 import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
@@ -798,6 +799,7 @@ async function api(req,env){
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
+  const art=productArt(url.pathname,request.method);if(art)return art;
   if(url.pathname.startsWith('/download/'))return eaDownload(request,env);
   if(request.method==='GET'&&url.pathname==='/')return new Response(SITE_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests"}});
   if(request.method==='GET'&&(url.pathname==='/telegram'||url.pathname==='/telegram/'))return new Response(MINI_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'none'; script-src 'self' https://telegram.org; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"}});

@@ -1,3 +1,4 @@
+import {PRODUCT_ART_URLS} from './product-art.mjs';
 // DrFX Scalper Pro on drfx.company: website showcase, product suite, portal tabs and the
 // licence purchase pane. Composed into SITE_HTML / SITE_CSS / SITE_JS by ui.mjs.
 const PRICE = { m1: 19, m3: 49 };
@@ -12,7 +13,7 @@ export const SX_SUITE_HTML = String.raw`<section id="suite" class="sx-suite" ari
   <div class="sx-suite-grid">
    <a class="sx-product sx-reveal" href="#plans" data-sx-tilt>
     <span class="sx-product-glow" aria-hidden="true"></span>
-    <span class="sx-product-tag">EXECUTION</span>
+    <img class="sx-product-art" src="${PRODUCT_ART_URLS['signal-bridge']}" alt="Signal Bridge: TradingView and Telegram signals connected to MetaTrader 5" width="1536" height="864" loading="lazy" decoding="async"><span class="sx-product-tag">EXECUTION</span>
     <h3>SignalBridge</h3>
     <p>TradingView alerts and Telegram signals become MT5 orders in milliseconds, through your own private webhook and EA licence.</p>
     <ul><li>Private TradingView webhook</li><li>Telegram channel routing</li><li>TP1/TP2/TP3, break-even and daily drawdown guard</li></ul>
@@ -20,7 +21,7 @@ export const SX_SUITE_HTML = String.raw`<section id="suite" class="sx-suite" ari
    </a>
    <a class="sx-product sx-product-gold sx-reveal" href="#scalper" data-sx-tilt>
     <span class="sx-product-glow" aria-hidden="true"></span>
-    <span class="sx-product-tag">NEW · DISCOVERY</span>
+    <img class="sx-product-art" src="${PRODUCT_ART_URLS['scalper-pro']}" alt="Scalper Pro: XAUUSD analysis with liquidity, FVG, order blocks, hidden divergence and trade targets" width="1536" height="864" loading="lazy" decoding="async"><span class="sx-product-tag">NEW · DISCOVERY</span>
     <h3>Scalper Pro</h3>
     <p>An AI liquidity radar for XAUUSD. It maps the sweep, marks the zone smart money will defend, and scores the trade before you take it.</p>
     <ul><li>LIT sweeps, FVG and Order Blocks</li><li>Calibrated win %, reach % and EV in R</li><li>One-click limit orders with risk sizing</li></ul>
@@ -175,6 +176,7 @@ export const SX_CSS = String.raw`
 .sx-suite-grid{display:grid;gap:24px}
 @media(min-width:900px){.sx-suite-grid{grid-template-columns:1fr 1fr}}
 .sx-product{--rx:0deg;--ry:0deg;position:relative;display:flex;flex-direction:column;gap:14px;padding:34px;border-radius:22px;background:linear-gradient(160deg,#10141c,#07090d 70%);border:1px solid #ffffff14;color:#cbd5e1;text-decoration:none;overflow:hidden;transform:perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));transition:transform .25s ease,border-color .3s,box-shadow .3s}
+.sx-product .sx-product-art{display:block;width:calc(100% + 30px);max-width:none;height:auto;aspect-ratio:16/9;object-fit:contain;margin:-15px -15px 6px;border:1px solid #ffffff1f;border-radius:13px;background:#080d14;box-shadow:0 8px 28px #0004}
 .sx-product:hover{border-color:#d4af3766;box-shadow:0 30px 80px #000a,0 0 0 1px #d4af3722}
 .sx-suite-grid{perspective:1200px}
 .sx-product.sx-in{transform:perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(var(--sx-lift,0px));transform-style:preserve-3d;overflow:visible;isolation:isolate;transition:transform .22s ease-out,border-color .3s,box-shadow .3s}
