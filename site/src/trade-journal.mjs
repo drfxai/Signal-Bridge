@@ -61,14 +61,14 @@ async function load(force=false){
  }catch(e){if(id===serial){data=null;render();state(t('Trade history is unavailable until the new EA and database migration are active.','تاریخچه تا فعال‌شدن نسخه جدید EA و مهاجرت دیتابیس در دسترس نیست.'));}}finally{busy=false;}
 }
 const labels={heading:['Trade Journal & Performance','ژورنال و تحلیل معاملات'],intro:['Real deals and closed positions. No simulated results.','دیل‌ها و پوزیشن‌های واقعی بدون آمار ساختگی'],refresh:['Refresh','تازه‌سازی'],period:['Period','بازه زمانی'],scope:['Scope','محدوده'],csv:['Export verified deals','دریافت CSV معاملات'],net:['Net realized P/L','سود و زیان خالص'],wins:['Win rate','درصد برد'],factor:['Profit factor','ضریب سود'],closed:['Closed positions','پوزیشن‌های بسته‌شده'],expectancy:['Expectancy','امید ریاضی'],drawdown:['Closed-trade drawdown','افت سرمایه معاملات بسته‌شده'],curve:['Broker-deal P/L curve','نمودار سود و زیان بروکر'],calendar:['Broker-date performance','تقویم عملکرد بروکر'],positions:['Reconciled closed positions','پوزیشن‌های بسته‌شدهٔ تطبیق‌یافته'],deals:['Broker deal ledger','دفتر دیل‌های بروکر'],footnote:['Fees included. Incomplete trades excluded from win rate. Session R, true equity drawdown and strategy R require further broker/risk data.','هزینه‌ها لحاظ شده‌اند؛ معاملات ناقص از درصد برد حذف شده‌اند. تحلیل R و افت واقعی اکوییتی به داده‌های بیشتر نیاز دارد.']};
-function translate(){for(const n of root.querySelectorAll('[data-tj-text]')){const a=labels[n.dataset.tjText];if(a)n.textContent=t(...a)}}
+function translate(){for(const n of (root.querySelectorAll?.('[data-tj-text]')||[])){const a=labels[n.dataset.tjText];if(a)n.textContent=t(...a)}}
 window.addEventListener('signalbridge-workspace-tab',e=>{if(e.detail==='analytics'){translate();load()}});
 window.addEventListener('signalbridge-authenticated',()=>{loggedOut=false;loaded=0});
 window.addEventListener('signalbridge-signed-out',()=>{loggedOut=true;serial++;loaded=0;data=null;render();state(t('Sign in to view private trade history.','برای دیدن اطلاعات شخصی وارد شوید.'))});
-document.querySelector?.('#premiumPortal')?.addEventListener('click',e=>{if(e.target.closest('[data-pp-product]')){loaded=0;queueMicrotask(()=>load())}});
-$('tjPeriod').addEventListener('change',()=>{loaded=0;load()});$('tjScope').addEventListener('change',()=>{loaded=0;load()});
-$('tjRefresh').addEventListener('click',()=>{loaded=0;load(true)});
-$('tjExport').addEventListener('click',()=>{if(!data?.deals?.length)return;
+document.querySelector?.('#premiumPortal')?.addEventListener?.('click',e=>{if(e.target.closest('[data-pp-product]')){loaded=0;queueMicrotask(()=>load())}});
+$('tjPeriod')?.addEventListener?.('change',()=>{loaded=0;load()});$('tjScope')?.addEventListener?.('change',()=>{loaded=0;load()});
+$('tjRefresh')?.addEventListener?.('click',()=>{loaded=0;load(true)});
+$('tjExport')?.addEventListener?.('click',()=>{if(!data?.deals?.length)return;
  const cells=[['Deal ticket','MT5 broker time','Symbol','Side','Entry','Volume','Price','Net P/L','Source attributed'],...data.deals.map(x=>[x.deal_ticket,date(x.deal_time_ms),x.symbol,x.side,x.entry_kind,x.volume,x.price,x.net,x.signal_attributed?'yes':'no'])];
  const csv=cells.map(row=>row.map(v=>{let s=String(v??'');if(s && ('=+-@'.includes(s[0])||[9,13].includes(s.charCodeAt(0))))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}).join(',')).join('\r\n');
  const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='drfx-broker-verified-deals.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
