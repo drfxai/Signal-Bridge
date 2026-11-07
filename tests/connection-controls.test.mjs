@@ -278,3 +278,11 @@ test('matching owner email alone cannot give an ordinary account access to the T
   const r=await (await f.request('/api/account',undefined,f.other)).json();assert.equal(r.account.id,'usr_b');assert.equal(r.signalbridge,null);
  }finally{f.db.close()}
 });
+
+test('signal inspector exposes only the signed-in tenant trade fields, never raw payload credentials',async()=>{
+ const f=fixture();try{
+  const payload=JSON.stringify({symbol:'XAUUSD',side:'BUY',order:{entry:{price:2671.2},stop_loss:2667,take_profits:[2675,2679],volume:{value:.01}},webhook_secret:'MUST_NOT_APPEAR'});
+  for(const [id,user] of [['inspect_a','usr_a'],['inspect_b','usr_b']])f.db.prepare("INSERT INTO commands(id,tenant_id,source_type,agent_id,execution_mode,payload_json) VALUES (?,?,'tradingview','ea_a','dry_run',?)").run(id,user,payload);
+  const response=await f.request('/api/member/report'),data=await response.json();assert.equal(response.status,200);assert.equal(data.commands.length,1);assert.equal(data.commands[0].id,'inspect_a');assert.equal(data.commands[0].entry,2671.2);assert.equal(data.commands[0].sl,2667);assert.equal(data.commands[0].tp1,2675);assert.equal(data.commands[0].tp2,2679);assert.ok(data.commands[0].updated_at);assert.ok(!JSON.stringify(data).includes('MUST_NOT_APPEAR'));assert.ok(!JSON.stringify(data).includes('payload_json'));
+ }finally{f.db.close()}
+});
