@@ -11,6 +11,10 @@ const HERO_DESC='Connect TradingView alerts and Telegram signals to MetaTrader 5
 function once(html,find,replace){if(!html.includes(find))throw Error('SITE_COMPOSE_MISSING '+find.slice(0,40));return html.replace(find,()=>replace);}
 const BASE_HTML = DESIGN_HTML.replace(/<button id="runConnectionCheck"[^>]*>[^<]*<\/button>/,'<span id="runConnectionCheck" hidden></span>').replace(/<button id="runDemoTrade"[^>]*>[^<]*<\/button>/, '<span id="runDemoTrade" hidden></span>'+EXECUTION_HTML);
 let composed=BASE_HTML;
+composed=composed.replace(/<a href="#plans" onmouseenter="playTickSound\(880\)"([\s\S]*?)<\/a>/,(_,body)=>'<button id="heroBridgeFree" type="button" data-plan="trial" onmouseenter="playTickSound(880)"'+body+'</button>');
+composed=composed.replace('<button onclick="triggerManualSignalPulse()"','<button id="heroScalperFree" type="button" data-sx-open="scalper"');
+composed=composed.replace(/(data-i18n="cta_explore">)[^<]*/, '$1Get Signal Bridge Free').replace(/(data-i18n="cta_simulate">)[^<]*/, '$1Get Scalper Pro Free');
+
 composed=once(composed,'  <!-- NAVIGATION -->',SX_ANNOUNCE_HTML+'  <!-- NAVIGATION -->');
 composed=once(composed,'<a href="#plans" onmouseenter="playTickSound(750)"',NAV_LINK+'<a href="#plans" onmouseenter="playTickSound(750)"');
 composed=once(composed,'<a class="block py-2" href="#plans"','<a class="block py-2" href="#scalper">Scalper Pro <span class="sx-sbtab-new">NEW</span></a><a class="block py-2" href="#plans"');
