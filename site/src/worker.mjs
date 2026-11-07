@@ -1,3 +1,4 @@
+import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
 import {adminOverview,adminDirectory,adminConnections,adminOrders} from './admin-operations.mjs';
 import {UI_RELEASE} from './ui-release.mjs';
@@ -126,7 +127,7 @@ async function profile(env,user){
   account_status:user.status,license_status:row.status,activated_at:row.activated_at,expires_at:row.expires_at,
   mt5_account:row.account_login?{login:row.account_login,server:row.account_server}:null,
   activation_code:await decryptCode(env,row.encrypted_code,row.nonce),
-  pricing:{quarterly:47,annual:165},indicator_delivery_ready:false,ex5_download_ready:false};
+  pricing:{quarterly:47,annual:165},indicator_delivery_ready:false,ex5_download_ready:true};
 }
 async function getOrCreateEmail(env,email){
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE email=?').bind(email).first();
@@ -728,7 +729,7 @@ async function api(req,env){
   if(!await limited(req,env,'rotate',4))return fail('RATE_LIMITED',429);
   const code=await rotateLicense(env,user);return json({ok:true,activation_code:code});
  }
- if(path==='/api/downloads'&&req.method==='GET')return json({ok:true,signalbridge:{version:env.SIGNALBRIDGE_EA_VERSION||'Latest compiled build',url:env.SIGNALBRIDGE_EA_DOWNLOAD_URL||'https://github.com/drfxai/Signal-Bridge/releases/download/ea-latest/DrFX_SignalBridge_EA.ex5'}});
+ if(path==='/api/downloads'&&req.method==='GET')return json({ok:true,...eaDownloadCatalog()});
  if(path==='/api/webhook'&&req.method==='GET')return json({ok:true,webhook:await userWebhook(env,user)});
  if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
  if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);
@@ -793,6 +794,7 @@ async function api(req,env){
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
+  if(url.pathname.startsWith('/download/'))return eaDownload(request,env);
   if(request.method==='GET'&&url.pathname==='/')return new Response(SITE_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; upgrade-insecure-requests"}});
   if(request.method==='GET'&&(url.pathname==='/telegram'||url.pathname==='/telegram/'))return new Response(MINI_HTML,{headers:{...HEAD,'content-type':'text/html; charset=utf-8','content-security-policy':"default-src 'none'; script-src 'self' https://telegram.org; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"}});
   if(request.method==='GET'&&url.pathname==='/assets/i18n.js')return asset(I18N_JS,'text/javascript; charset=utf-8');
