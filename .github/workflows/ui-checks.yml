@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     # A cold runner may spend over eight minutes installing Chromium dependencies.
     # Reserve time for browser checks as well as setup and artifact upload.
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -64,6 +64,9 @@ jobs:
       - name: Verify account profile and session logout
         timeout-minutes: 3
         run: SB_WORKER_BUNDLE=file:///tmp/signalbridge-built/worker.js node scripts/verify-profile-browser.mjs
+      - name: Verify guided EA onboarding
+        timeout-minutes: 3
+        run: SB_WORKER_BUNDLE=file:///tmp/signalbridge-built/worker.js node scripts/verify-tour-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
