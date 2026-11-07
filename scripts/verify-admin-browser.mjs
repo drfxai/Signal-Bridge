@@ -3,7 +3,7 @@ import {createServer} from 'node:http';
 import {mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import worker from '../site/src/worker.mjs';
+const {default:worker}=await import(process.env.SB_WORKER_BUNDLE||'../site/src/worker.mjs');
 const require=createRequire(import.meta.url);
 const {chromium}=require(require.resolve('playwright',{paths:[process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES||process.cwd()]}));
 const server=createServer(async(req,res)=>{try{const r=await worker.fetch(new Request('http://127.0.0.1:4201'+req.url),{});res.writeHead(r.status,Object.fromEntries(r.headers));res.end(Buffer.from(await r.arrayBuffer()))}catch{res.writeHead(500);res.end()}});
@@ -14,8 +14,9 @@ const counts={users:12,valid_licenses:11,trials:6,subscriptions:5,quarterly:3,an
 const overview={ok:true,generated_at:new Date().toISOString(),users:{total:18,new_7d:4,suspended:1},signalbridge:{...counts,orders:{paid:4,pending:1,paid_usd:306}},scalper:{users:5,issued_keys:7,monthly_keys:3,quarterly_keys:4,orders:{paid:5,paid_usd:155}},health:{licensing:true,scalper_signing:true,payments:true,telegram:true,email:true,ea_hub:true},registrations:[{day:new Date().toISOString().slice(0,10),count:4}],activity:[{id:'aud_test',action:'grant_plan',subject_id:owner,detail:'annual',telegram_name:'Owner',occurred_at:new Date().toISOString()}]};
 const errors=[];await mkdir('/tmp/drfx-admin-ui',{recursive:true});
 try{
+ for(const [surface,surfacePath] of [['mini','/telegram'],['site','/']]){
  for(const [label,width,locale,role] of [['mobile-en',390,'en','admin'],['mobile-fa',360,'fa','admin'],['desktop-en',1280,'en','admin'],['member',390,'en','user']]){
-  const page=await browser.newPage({viewport:{width,height:900},locale:locale==='fa'?'fa-IR':'en-US'});page.on('pageerror',e=>errors.push(label+': '+e.message));
+  const page=await browser.newPage({viewport:{width,height:900},locale:locale==='fa'?'fa-IR':'en-US'});page.on('pageerror',e=>errors.push(surface+' '+label+': '+e.message));
   await page.addInitScript(locale=>localStorage.setItem('drfx-language',locale),locale);
   await page.route('https://telegram.org/**',r=>r.abort());
   await page.route('**/api/**',async route=>{
@@ -31,9 +32,10 @@ try{
    else if(p==='/api/connection/check')data={ok:true,diagnostic:{license:'active',terminal_online:false,capabilities:[],telemetry:{}}};
    await route.fulfill({json:data});
   });
-  await page.goto('http://127.0.0.1:4201/telegram',{waitUntil:'networkidle'});
-  if(role==='user'){assert.equal(await page.locator('#miniAdminTab').isVisible(),false);assert.equal(await page.locator('#miniAdminShortcut').isVisible(),false);await page.close();continue}
-  await page.locator('#miniAdminShortcut').click();await page.waitForFunction(()=>document.querySelector('#opsBridgeMetrics').children.length===6&&document.querySelector('#opsConnections').children.length>0);
+  await page.goto('http://127.0.0.1:4201'+surfacePath,{waitUntil:'networkidle'});
+  if(surface==='site')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
+  if(role==='user'){if(surface==='site'){assert.equal(await page.locator('#siteAdminOpen').isVisible(),false);await page.locator('#siteAdminOpen').evaluate(e=>e.click());assert.equal(await page.locator('#siteAdminDialog').evaluate(e=>e.open),false)}else{assert.equal(await page.locator('#miniAdminTab').isVisible(),false);assert.equal(await page.locator('#miniAdminShortcut').isVisible(),false)}await page.close();continue}
+  await page.locator(surface==='site'?'#siteAdminOpen':'#miniAdminShortcut').click();await page.waitForFunction(()=>document.querySelector('#opsBridgeMetrics').children.length===6&&document.querySelector('#opsConnections').children.length>0);
   for(const tab of ['overview','licenses','customers','orders','activity']){
    await page.locator('[data-ops-tab="'+tab+'"]').click();
    if(tab==='customers')await page.waitForSelector('.ops-user');if(tab==='orders')await page.waitForSelector('.ops-order');
@@ -44,11 +46,16 @@ try{
     await page.locator('[data-ops-hide="signalbridge"]').click();assert.ok(!(await page.locator('#opsBridgeKey').textContent()).includes(key));
    }
    await page.waitForTimeout(400);
-   if(tab==='overview'||(label==='mobile-fa'&&tab==='licenses'))await page.screenshot({path:'/tmp/drfx-admin-ui/'+label+'-'+tab+'.png',fullPage:true});
+   if(tab==='overview'||(label==='mobile-fa'&&tab==='licenses')){const path='/tmp/drfx-admin-ui/'+surface+'-'+label+'-'+tab+'.png';if(surface==='site')await page.locator('#siteAdminDialog').screenshot({path});else await page.screenshot({path,fullPage:true});}
   }
   assert.ok(!(await page.locator('#opsScalperKey').textContent()).includes(key),'keys clear on subview exit');
-  await page.locator('.bottom [data-tab="home"]').click();assert.equal(await page.locator('#panel-admin').isVisible(),false);
+  if(surface==='site'){
+   await page.locator('[data-ops-tab=licenses]').click();await page.locator('[data-ops-reveal=scalper]').click();await page.waitForFunction(key=>document.getElementById('opsScalperKey').textContent.includes(key),key);
+   await page.locator('#siteAdminClose').click();assert.equal(await page.locator('#siteAdminDialog').evaluate(e=>e.open),false);assert.ok(!(await page.locator('#opsScalperKey').textContent()).includes(key));
+   await page.locator('#siteAdminOpen').click();await page.waitForSelector('#siteAdminDialog[open]');await page.evaluate(()=>{state.user=null;syncLoginEntry();hide('portalOverlay')});await page.waitForFunction(()=>!document.getElementById('siteAdminDialog').open);assert.equal(await page.locator('#siteAdminOpen').isVisible(),false);
+  }else await page.locator('.bottom [data-tab="home"]').click();assert.equal(await page.locator('#panel-admin').isVisible(),false);
   await page.close();
  }
- assert.deepEqual(errors,[]);console.log('PASS: phone EN/FA and desktop layouts; all admin views; key reveal/hide/leave; ordinary user visibility; no browser errors.');
+ }
+ assert.deepEqual(errors,[]);console.log('PASS: website and Mini App; phone EN/FA and desktop layouts; all admin views; key reveal/hide/leave; ordinary user visibility; no browser errors.');
 }finally{await browser.close();server.close()}
