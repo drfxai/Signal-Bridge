@@ -6,6 +6,7 @@ import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
 import {adminOverview,adminDirectory,adminConnections,adminOrders} from './admin-operations.mjs';
 import {UI_RELEASE} from './ui-release.mjs';
 import {memberControls} from './member-controls.mjs';
+import {tradeAnalyticsEndpoint} from './trade-analytics.mjs';
 import {relayTradingView,routeTelegramSignal} from './signal-routing.mjs';
 import { createAndDispatch } from '../../worker/src/command.mjs';
 import { demoReadiness, testReadiness, makeConnectionTest } from './execution-control.mjs';
@@ -738,6 +739,7 @@ async function api(req,env){
  if(path==='/api/webhook'&&req.method==='GET')return json({ok:true,webhook:await userWebhook(env,user)});
  if(path==='/api/webhook/create'&&req.method==='POST')return provisionUserWebhook(req,env,user);
  if(path==='/api/webhook/rotate'&&req.method==='POST')return rotateUserWebhook(req,env,user);
+ if(path==='/api/member/trade-analytics'&&req.method==='GET')return tradeAnalyticsEndpoint(env,user,u.searchParams);
  if(path.startsWith('/api/member/')&&['GET','POST'].includes(req.method)){const result=await memberControls(path,req.method==='POST'?await readBody(req):undefined,env,user,()=>connectionDiagnostic(env,user));if(result)return result;}
  if(path==='/api/risk/reset'&&req.method==='POST')return resetDailyRisk(req,env,user);
  if(path==='/api/connection/check'&&req.method==='GET')return json({ok:true,diagnostic:await connectionDiagnostic(env,user)});
