@@ -34,3 +34,18 @@ test('existing secure bot webhook processes widget_query but never executes a tr
  assert.match(worker,/editMessageWidgetData/);
  assert.match(setup,/allowed_updates:\['message','callback_query','widget_query','my_chat_member'\]/);
 });
+
+test('widget API is deadline-bounded, data-only and bubble height is adaptive',()=>{
+ const worker=readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
+ assert.match(worker,/q\.type\?\.type!=='data'/);
+ assert.match(worker,/signal:AbortSignal\.timeout\(8000\)/);
+ for(const name of ['sendMemberWidget','sendLatestSignalWidget','sendScalperWidget']){
+  const start=worker.indexOf('async function '+name+'(');
+  assert.ok(start>0,name);
+  const end=worker.indexOf('\nasync function ',start+16);
+  const block=worker.slice(start,end>start?end:undefined);
+  assert.match(block,/telegramWidgetApi\(env,'sendWidget'/);
+  assert.match(block,/allow_queries:true/);
+  assert.doesNotMatch(block,/height:/);
+ }
+});
