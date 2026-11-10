@@ -536,7 +536,7 @@ async function botSend(env,chatId,text,keyboard){
 
 async function telegramWidgetApi(env,method,body){
  const response=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{
-  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)
+  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(8000)
  });
  const payload=await response.json().catch(()=>({ok:false}));
  if(!response.ok||payload.ok!==true)throw Error('Telegram widget API failed: '+method);
@@ -547,8 +547,7 @@ async function sendMemberWidget(env,chatId,user){
  const data=bridgeWidgetData({plan:user.plan,licenseStatus:rec.status,expiresAt:rec.expires_at,accountStatus:user.status});
  await telegramWidgetApi(env,'sendWidget',{
   chat_id:chatId,html:SIGNAL_BRIDGE_WIDGET_HTML,chat_data:data,
-  caption:'DrFXAi Signal Bridge · Private member status',height:265,
-  allow_queries:true,protect_content:true
+  caption:'DrFXAi Signal Bridge · Private member status',allow_queries:true,protect_content:true
  });
 }
 async function latestSignalWidgetData(env,member){
@@ -560,7 +559,7 @@ async function sendLatestSignalWidget(env,chatId,user){
  await telegramWidgetApi(env,'sendWidget',{
   chat_id:chatId,html:SIGNAL_HISTORY_WIDGET_HTML,chat_data:data,
   caption:'DrFXAi · Last recorded TradingView alert (not a live market quote)',
-  height:370,allow_queries:true,protect_content:true
+  allow_queries:true,protect_content:true
  });
 }
 async function latestScalperWidgetData(env,member){
@@ -572,7 +571,7 @@ async function sendScalperWidget(env,chatId,user){
  await telegramWidgetApi(env,'sendWidget',{
   chat_id:chatId,html:SCALPER_WIDGET_HTML,chat_data:data,
   caption:'DrFXAi Scalper Pro · Private issuance overview (no keys)',
-  height:260,allow_queries:true,protect_content:true
+  allow_queries:true,protect_content:true
  });
 }
 async function signalBridgeWidgetQuery(q,env){
@@ -583,7 +582,7 @@ async function signalBridgeWidgetQuery(q,env){
   try{await telegramWidgetApi(env,'answerWidgetQuery',{widget_query_id:q.id,data:JSON.stringify(payload)});}
   catch(e){console.warn('Member widget reply failed: '+String(e?.message||e).slice(0,80));}
  };
- if(!allowed||!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)){
+ if(!allowed||q.type?.type!=='data'||!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)){
   await answer({message:'Request not allowed'});
   return json({ok:true,ignored:'NOT_ALLOWED'});
  }
