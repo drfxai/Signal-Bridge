@@ -595,10 +595,14 @@ async function sendScalperWidget(env,chatId,user){
   allow_queries:true,protect_content:true
  });
 }
-const commerceHelpers=()=>({api:telegramWidgetApi,licenseRecord,encryptCode,decryptCode,uid});
+const commerceHelpers=()=>({api:telegramWidgetApi,licenseRecord,encryptCode,decryptCode,uid,reconcile:reconcileWidgetBot});
 async function sendLicenseShop(env,user){
  const prices=Object.fromEntries(Object.keys(STAR_PLANS).map(p=>[p,starPrice(env,p)]));
- await telegramWidgetApi(env,'sendWidget',{chat_id:user.telegram_id,html:LICENSE_SHOP_WIDGET_HTML,chat_data:JSON.stringify({prices}),caption:'DrFX licenses · Review plans, retrieve your keys and pay with Telegram Stars',allow_queries:true,protect_content:true});
+ try{await telegramWidgetApi(env,'sendWidget',{chat_id:user.telegram_id,html:LICENSE_SHOP_WIDGET_HTML,chat_data:JSON.stringify({prices}),caption:'DrFX licenses · Review plans, retrieve your keys and pay with Telegram Stars',allow_queries:true,protect_content:true});}
+ catch{
+  const text=Object.keys(STAR_PLANS).map(p=>STAR_PLANS[p].label+' · '+(prices[p]||'Unavailable')+' Stars\\n/buy '+p+(p.startsWith('scalper_')?' YOUR_MT5_LOGIN':'')).join('\\n\\n')+'\\n\\nRetrieve keys: /code or /scalper\\nPurchase history: /orders · Terms: /terms · Help: /paysupport';
+  await telegramWidgetApi(env,'sendMessage',{chat_id:user.telegram_id,text,protect_content:true});
+ }
 }
 async function signalBridgeWidgetQuery(q,env,req){
  if(!q?.id)return json({ok:true,ignored:'MISSING_QUERY'});
