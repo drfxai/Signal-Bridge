@@ -19,7 +19,7 @@ test('last-signal widget fits Telegram 10.4 profile and size',()=>{
  assert.match(SIGNAL_HISTORY_WIDGET_HTML,/request\('sb:signal:refresh'\)/);
  assert.doesNotMatch(SIGNAL_HISTORY_WIDGET_HTML,/<(?:input|textarea|iframe|script\s+src)/i);
  assert.doesNotMatch(SIGNAL_HISTORY_WIDGET_HTML,/fetch\s*\(/);
- assert.match(SIGNAL_HISTORY_WIDGET_HTML,/not live price/i);
+ assert.match(SIGNAL_HISTORY_WIDGET_HTML,/not a live price/i);
 });
 
 test('registered TradingView alert uses broker-unverified server record without invented prices',()=>{
