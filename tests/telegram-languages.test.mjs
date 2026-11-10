@@ -1,3 +1,4 @@
+import {unpackWorkspaceView} from '../site/src/telegram-workspace.mjs';
 import {BOT_MENU_COMMANDS} from '../site/src/bot-commands.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -74,15 +75,17 @@ test('English is the default and six language options are consistently defined',
  }
  assert.equal(BOT_LANGUAGES.fa.name,'فارسی');
 });
-test('/start shows native language selection before any welcome or code',async()=>{
+test('/start shows the private workspace with an explicit language selector',async()=>{
  const env={...fakeDB(),TELEGRAM_BOT_TOKEN:TOKEN,TELEGRAM_WEBHOOK_SECRET:SECRET};
  await withTelegramStub(async(calls)=>{
   const result=await worker.fetch(botRequest(botMessage('/start')),env);
   assert.equal(result.status,200);
   assert.equal(calls.length,1);
-  assert.equal(calls[0].method,'sendMessage');
-  assert.match(calls[0].body.text,/Choose your language/);
-  assert.equal(calls[0].body.reply_markup.inline_keyboard.flat().length,6);
+  assert.equal(calls[0].method,'sendWidget');
+  const view=unpackWorkspaceView(JSON.parse(calls[0].body.chat_data));
+  assert.equal(view.page,'home');
+  assert.ok(view.buttons.some(b=>b.action==='ui:page:language'));
+  assert.doesNotMatch(calls[0].body.chat_data,/mock-cipher|mock-nonce/);
   assert.equal(env.preferences.size,0);
   assert.ok(!env.sqlCalls.some(x=>x.includes('INSERT INTO site_bot_preferences')));
  });
@@ -94,13 +97,13 @@ test('inline-language callback saves locale and delivers localized welcome with 
   assert.equal(result.status,200);
   assert.equal(env.preferences.get(String(who.id)),'fa');
   assert.ok(calls.some(x=>x.method==='answerCallbackQuery'));
-  const welcome=calls.filter(x=>x.method==='sendMessage');
+  const welcome=calls.filter(x=>x.method==='sendWidget');
   assert.equal(welcome.length,1);
-  assert.match(welcome[0].body.text,/به DrFX Company خوش آمدید/);
+  assert.match(unpackWorkspaceView(JSON.parse(welcome[0].body.chat_data)).subtitle,/به DrFX Company خوش آمدید/);
   assert.ok(welcome[0].body.reply_markup.inline_keyboard[0][0].web_app.url.endsWith('/telegram'));
   const second=await worker.fetch(botRequest(botMessage('/language')),env);
   assert.equal(second.status,200);
-  assert.match(calls.at(-1).body.text,/زبان خود را انتخاب کنید/);
+  assert.match(unpackWorkspaceView(JSON.parse(calls.at(-1).body.chat_data)).subtitle,/زبان خود را انتخاب کنید/);
  });
 });
 test('all six selections persist and localize subsequent bot /start or /app',async()=>{
@@ -110,7 +113,7 @@ test('all six selections persist and localize subsequent bot /start or /app',asy
    await worker.fetch(botRequest(botCallback(lang)),env);
    assert.equal(env.preferences.get(String(who.id)),lang);
    await worker.fetch(botRequest(botMessage('/app')),env);
-   assert.equal(calls.at(-1).body.text,botText(lang,'app'));
+   assert.equal(unpackWorkspaceView(JSON.parse(calls.at(-1).body.chat_data)).subtitle,botText(lang,'app'));
   }
  });
 });
@@ -139,3 +142,4 @@ test('deployment command and Telegram API opt into callback_query updates',()=>{
  assert.ok(migration.includes('CHECK(language_code IN ('));
  assert.ok(migration.includes("'hi'"));
 });
+
