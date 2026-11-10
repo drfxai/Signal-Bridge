@@ -23,9 +23,12 @@ export async function routeTelegramSignal(update,env){
   parsed=parsed||(telegramMessageFresh(msg)?parseSignalMessage(msg.text,Date.now(),{defaultLots:row.default_lots}):{ok:false,reason:'STALE_SIGNAL'});
   if(!parsed.ok){await env.DB.prepare('INSERT INTO signal_review_queue(id,user_id,source_ref,reason) VALUES (?,?,?,?) ON CONFLICT(user_id,source_ref) DO NOTHING').bind(crypto.randomUUID(),row.user_id,ref,parsed.reason).run();await feedback('Signal not executed · '+parsed.reason+'\nInclude one entry, BUY/SELL, symbol, SL and TP1–TP3. Old forwarded signals and multiple entries require review.');continue;}
   // Ordinary execution remains DEMO-gated in MT5, with the existing dry-run switch respected.
-  const route=await env.DB.prepare('SELECT delivery_mode FROM ingress_connections WHERE tenant_id=? AND status=\'active\' LIMIT 1').bind(row.user_id).first();
+  // Never borrow execution settings from another agent belonging to the same member.
+  // A missing agent-matched route fails closed to dry_run, even when a different EA uses demo_execute.
+  const route=await env.DB.prepare("SELECT delivery_mode FROM ingress_connections WHERE tenant_id=? AND agent_id=? AND provider='tradingview' AND status='active' ORDER BY created_at DESC,id DESC LIMIT 1").bind(row.user_id,row.agent_id).first();
   const dispatched=await createAndDispatch(env,{tenantId:row.user_id,agentId:row.agent_id,sourceType:'telegram',sourceRef:ref,signal:parsed.signal,mode:route?.delivery_mode||'dry_run'});
-  await feedback('Recognized: '+parsed.signal.side+' '+parsed.signal.symbol+'\nStatus: '+dispatched.status+(dispatched.reason?' · '+dispatched.reason:'')+'\nExecution is confirmed by the EA receipt in your Daily view.');
+  const signalLabel=parsed.signal.action==='MANAGE'?'Management '+String(parsed.signal.management_event||'request'):parsed.signal.side+' '+parsed.signal.symbol;
+  await feedback('Recognized: '+signalLabel+'\nStatus: '+dispatched.status+(dispatched.reason?' · '+dispatched.reason:'')+'\nExecution is confirmed only by an EA/broker receipt in your Daily view.');
  }
  return Response.json({ok:true,routed:true});
 }
