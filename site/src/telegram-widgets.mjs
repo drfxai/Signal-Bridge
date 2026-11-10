@@ -3,7 +3,7 @@
  * Fixed HTML, data-only state, no external network or trading action.
  * https://core.telegram.org/bots/widgets
  */
-export const SIGNAL_BRIDGE_WIDGET_HTML = String.raw\`<!doctype html>
+export const SIGNAL_BRIDGE_WIDGET_HTML = String.raw`<!doctype html>
 <html><style>
 body{margin:0;padding:12px;font:14px system-ui,sans-serif;color:var(--tg-theme-text-color)}
 section{border-radius:13px;border:1px solid var(--tg-theme-section-separator-color);padding:13px}
@@ -51,7 +51,7 @@ draw();e('message').textContent=v.message||'Status checked';
 if(T)T.onEvent('chatDataChanged',function(){try{s=JSON.parse(T.chatData||'{}');draw()}catch(x){}});
 draw();
 })();
-</script></body></html>\`;
+</script></body></html>`;
 
 export function bridgeWidgetData({plan,licenseStatus,expiresAt,accountStatus}={}){
  // No secret/license key, MT5 account identifier or personal email is included.
