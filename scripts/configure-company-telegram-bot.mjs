@@ -22,7 +22,7 @@ try{
  await call('setWebhook',{
   url:'https://drfx.company/api/telegram/webhook',
   secret_token:secret,
-  allowed_updates:['message','callback_query','my_chat_member'],
+  allowed_updates:['message','callback_query','widget_query','my_chat_member'],
   drop_pending_updates:false,
   max_connections:10
  });
