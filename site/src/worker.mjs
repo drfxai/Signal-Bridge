@@ -5,6 +5,7 @@ import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
 import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
 import {SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
+import {SCALPER_WIDGET_HTML,scalperWidgetData} from './telegram-scalper-widget.mjs';
 import {adminOverview,adminDirectory,adminConnections,adminOrders} from './admin-operations.mjs';
 import {UI_RELEASE} from './ui-release.mjs';
 import {memberControls} from './member-controls.mjs';
@@ -562,6 +563,18 @@ async function sendLatestSignalWidget(env,chatId,user){
   height:370,allow_queries:true,protect_content:true
  });
 }
+async function latestScalperWidgetData(env,member){
+ const row=await env.DB.prepare("SELECT plan,days,created_at,(SELECT COUNT(*) FROM scalper_keys WHERE user_id=?) AS total FROM scalper_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 1").bind(member.id,member.id).first();
+ return scalperWidgetData(row);
+}
+async function sendScalperWidget(env,chatId,user){
+ const data=await latestScalperWidgetData(env,user);
+ await telegramWidgetApi(env,'sendWidget',{
+  chat_id:chatId,html:SCALPER_WIDGET_HTML,chat_data:data,
+  caption:'DrFXAi Scalper Pro · Private issuance overview (no keys)',
+  height:260,allow_queries:true,protect_content:true
+ });
+}
 async function signalBridgeWidgetQuery(q,env){
  if(!q?.id)return json({ok:true,ignored:'MISSING_QUERY'});
  const allowed=q.chat?.type==='private'&&q.from?.id&&
@@ -570,7 +583,7 @@ async function signalBridgeWidgetQuery(q,env){
   try{await telegramWidgetApi(env,'answerWidgetQuery',{widget_query_id:q.id,data:JSON.stringify(payload)});}
   catch(e){console.warn('Member widget reply failed: '+String(e?.message||e).slice(0,80));}
  };
- if(!allowed||!['sb:refresh','sb:signal:refresh'].includes(q.data)){
+ if(!allowed||!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)){
   await answer({message:'Request not allowed'});
   return json({ok:true,ignored:'NOT_ALLOWED'});
  }
@@ -578,6 +591,13 @@ async function signalBridgeWidgetQuery(q,env){
  const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(!user||user.status!=='active'){await answer({message:'Account unavailable. Use /start.'});return json({ok:true,ignored:'NO_ACTIVE_MEMBER'});}
  try{
+  if(q.data==='sb:scalper:refresh'){
+   const data=await latestScalperWidgetData(env,user);
+   await answer({data:JSON.parse(data),message:'Issued license summary refreshed. Activation state is not verified.'});
+   await telegramWidgetApi(env,'editMessageWidgetData',{chat_id:q.chat.id,message_id:q.message_id,chat_data:data})
+    .catch(e=>console.warn('Scalper widget not updated: '+String(e?.message||e).slice(0,80)));
+   return json({ok:true,scalper_refreshed:true});
+  }
   if(q.data==='sb:signal:refresh'){
    const data=await latestSignalWidgetData(env,user);
    await answer({data:JSON.parse(data),message:'Last recorded alert checked. Not a live market quote.'});
@@ -648,7 +668,7 @@ async function telegramWebhook(req,env){
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=normalizeBotCommand(text);
- if(!['/start','/language','/lang','/app','/widget','/signal','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/language','/lang','/app','/widget','/signal','/scalperwidget','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  const language=await userBotLocale(env,telegramId);
@@ -664,6 +684,9 @@ async function telegramWebhook(req,env){
  }else if(command==='/signal'){
   try{await sendLatestSignalWidget(env,chatId,user);}
   catch{await botSend(env,chatId,'Signal history is temporarily unavailable. Open /app instead.');}
+ }else if(command==='/scalperwidget'){
+  try{await sendScalperWidget(env,chatId,user);}
+  catch{await botSend(env,chatId,'Scalper summary is temporarily unavailable. Open /app instead.');}
  }else if(command==='/login'||command==='/resetlogin'){
   if(!await limited(req,env,'bot:code:'+telegramId,8)){await botSend(env,chatId,tx('tooMany'));return json({ok:true});}
   try{
