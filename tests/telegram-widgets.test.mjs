@@ -29,7 +29,7 @@ test('existing secure bot webhook processes widget_query but never executes a tr
  const setup=readFileSync(new URL('../scripts/configure-company-telegram-bot.mjs',import.meta.url),'utf8');
  assert.match(worker,/if\(data\.widget_query\)return signalBridgeWidgetQuery/);
  assert.match(worker,/String\(q\.chat\.id\)===String\(q\.from\.id\)/);
- assert.match(worker,/\['sb:refresh','sb:signal:refresh'\]\.includes\(q\.data\)/);
+ assert.match(worker,/\['sb:refresh','sb:signal:refresh','sb:scalper:refresh'\]\.includes\(q\.data\)/);
  assert.match(worker,/telegram_id=\?/);
  assert.match(worker,/editMessageWidgetData/);
  assert.match(setup,/allowed_updates:\['message','callback_query','widget_query','my_chat_member'\]/);
