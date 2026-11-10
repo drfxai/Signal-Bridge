@@ -7,6 +7,9 @@ export function normalizeBotCommand(value){
  return command==='/signal_bridge'?'/signalbridge':command;
 }
 export const BOT_MENU_COMMANDS=Object.freeze([
+ {command:'menu',description:'Open the interactive command center'},
+ {command:'help',description:'Setup guide and support widgets'},
+ {command:'setup',description:'Connect your license, EA and signal sources'},
  {command:'start',description:'Choose language and open your DrFX account'},
  {command:'language',description:'Change bot language · 6 options'},
  {command:'app',description:'Open Telegram Mini App'},
@@ -27,3 +30,4 @@ export const BOT_MENU_COMMANDS=Object.freeze([
  {command:'link',description:'Link an already-verified email account'},
  {command:'channels',description:'TradingView webhook for your channel or group'}
 ]);
+
