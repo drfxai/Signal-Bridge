@@ -12,6 +12,7 @@ export const BOT_MENU_COMMANDS=Object.freeze([
  {command:'app',description:'Open Telegram Mini App'},
  {command:'widget',description:'View your private Signal Bridge status widget'},
  {command:'signal',description:'View your last recorded TradingView signal'},
+ {command:'scalperwidget',description:'View your private Scalper Pro license summary'},
  {command:'signalbridge',description:'Signal Bridge · Retrieve your private EA license'},
  {command:'scalper',description:'Scalper Pro · Retrieve your own license keys'},
  {command:'login',description:'View your permanent website login code'},
