@@ -85,6 +85,29 @@ ${ADMIN_CSS}
 .mini-account-action:focus-visible{outline:2px solid #ffe3a1;outline-offset:3px}
 @media(max-width:345px){.mini-account-actions{gap:6px}.mini-account-action{font-size:10.5px;padding-inline:5px;gap:4px}.mini-account-action .mini-account-dot{display:none}}
 @media(prefers-reduced-motion:reduce){.mini-account-action{transition:none}}
+
+/* DrFXAi Prism System · visual parity with Telegram-native widgets */
+:root{--prism-cyan:#46e8dc;--prism-gold:#f1d293;--prism-mint:#65f2cb;--prism-blue:#2a9cc0}
+body{background:radial-gradient(ellipse 85% 290px at 70% 0%,rgba(17,131,153,.15),transparent 76%),radial-gradient(ellipse 65% 270px at 9% 40%,rgba(185,136,51,.09),transparent 76%),#050a13!important}
+.brand-bar{border-bottom-color:#23748655}.mark{background:linear-gradient(135deg,#0b5b65,#0a2238 66%,#402d19)!important;border-color:#489a9f!important;color:#a6fff0!important;box-shadow:inset 0 1px #bdfcf433,0 0 18px #188f9638!important}
+.hero .eyebrow{color:#84ecde}.hero .eyebrow:before{background:#58efc8;box-shadow:0 0 9px #49dcb0}
+.hero h1 em,.section-title span{color:#e8ce9d!important}.hero-kicker span{border-color:#287f805e!important;background:#0d2c3f!important}
+.route-stage{border-color:#329ba082!important;background:radial-gradient(ellipse at 40% 30%,#115c6438,transparent 60%),linear-gradient(135deg,#0b3141,#081622 82%)!important;box-shadow:inset 0 1px #b8fff01a,0 12px 36px #0005!important}
+.route-head small{color:#66e9cf!important}.route-node svg{stroke:#75e6d6}.route-line{background:linear-gradient(90deg,#287883,#7cead7,#d4af37)}
+.card,.small,.sxm-features>div{border-color:#2b667486!important;background:radial-gradient(ellipse at 100% 0%,#12516b2c,transparent 65%),linear-gradient(145deg,#102c3b,#111723 80%)!important;box-shadow:inset 0 1px #d0fff014,0 12px 30px #0003}
+.card.gold{border-color:#ba9d5688!important;background:radial-gradient(ellipse at 95% 0%,#14717a2a,transparent 60%),linear-gradient(145deg,#262419,#0b1a27)!important}
+.btn.primary{background:linear-gradient(117deg,#169887,#177baf)!important;color:#f9ffff!important;border:1px solid #56e6cf!important;box-shadow:0 0 17px #069f984a!important;font-weight:850!important}
+.btn.subtle{border-color:#357588!important;background:linear-gradient(115deg,#102e43,#102233)!important;color:#d4f4f5!important}
+.micro,.tab-kicker{color:#8ce9d4}.indicator{border-color:#2ca6a3!important;color:#84f6d9!important;background:#0d545644!important}
+.status[data-active=true]{border-color:#38b592;color:#81fbd2;background:#0c483c}.status:not([data-active=true]){border-color:#94784d;color:#ffdea7}
+.sxm-promo{border-color:#33b6af99!important;background:radial-gradient(ellipse at 0 50%,#137c733a,transparent 67%),linear-gradient(155deg,#0b3341,#111820 85%)!important}
+.sxm-promo em{background:#42eed0!important;color:#07302e!important}.sxm-promo b{letter-spacing:-.02em}
+.sxm-video,.sxm-status-card{box-shadow:0 0 23px #0d8a9d21,0 16px 40px #0009!important}
+nav.bottom{border-top:1px solid #28697475!important;background:#071421fa!important}
+nav.bottom button[aria-selected=true]{color:#66f3d7!important}
+@media(max-width:420px){.container{padding:0 13px}.hero{padding-top:17px}.route-stage{border-radius:17px}.card{border-radius:17px}}
+@media(prefers-reduced-motion:reduce){.route-line:after{animation:none!important}}
+
 </style>
 <script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
 <body data-tab="home"><main class="container">
