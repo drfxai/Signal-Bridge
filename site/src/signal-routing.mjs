@@ -14,7 +14,12 @@ export async function routeTelegramSignal(update,env){
  const original=update.message||update.channel_post||update.edited_message||update.edited_channel_post;const msg=original?{...original,text:original.text||original.caption}:null;if(!msg?.text||msg.text.startsWith('/')||msg.from?.is_bot||msg.text.startsWith('DrFX SignalBridge\n'))return null;
  const chatId=String(msg.chat?.id||'');if(!chatId)return null;
  async function feedback(text){if(msg.chat?.type!=='private'||!env.TELEGRAM_BOT_TOKEN)return;try{await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:chatId,text,reply_parameters:{message_id:msg.message_id}}),signal:AbortSignal.timeout(8000)});}catch{}}
- const rows=await env.DB.prepare("SELECT m.*,sl.agent_id FROM member_signal_settings m JOIN site_users u ON u.id=m.user_id JOIN site_licenses sl ON sl.user_id=u.id WHERE (m.telegram_chat_id=? OR (u.telegram_id=? AND ?='private')) AND m.telegram_verified=1 AND m.telegram_to_mt5=1 AND u.status='active'").bind(chatId,String(msg.from?.id||''),msg.chat?.type||'').all();if(!rows.results?.length){if(msg.chat?.type==='private'&&/BUY|SELL|GOLD|XAU|خرید|فروش|طلا/i.test(msg.text)){await feedback('Telegram → MT5 is not enabled for your account. Open Mini App → Setup → Account & advanced options → Signal routing; verify your Telegram channel and enable Telegram → MT5. Then forward a fresh signal here.');return Response.json({ok:true,ignored:'ROUTE_NOT_CONFIGURED'});}return null;}
+ // Private chats must belong to their authenticated Telegram sender. Channel routes
+ // use the verified chat ID; separate queries allow SQLite to use narrow indexes.
+ const privateChat=msg.chat?.type==='private';
+ if(privateChat&&String(msg.from?.id||'')!==chatId)return Response.json({ok:true,ignored:'PRIVATE_SENDER_MISMATCH'});
+ const ownership=privateChat?'u.telegram_id=?':'m.telegram_chat_id=?';
+ const rows=await env.DB.prepare('SELECT m.*,sl.agent_id FROM member_signal_settings m JOIN site_users u ON u.id=m.user_id JOIN site_licenses sl ON sl.user_id=u.id WHERE '+ownership+" AND m.telegram_verified=1 AND m.telegram_to_mt5=1 AND u.status='active'").bind(chatId).all();if(!rows.results?.length){if(msg.chat?.type==='private'&&/BUY|SELL|GOLD|XAU|خرید|فروش|طلا/i.test(msg.text)){await feedback('Telegram → MT5 is not enabled for your account. Open Mini App → Setup → Account & advanced options → Signal routing; verify your Telegram channel and enable Telegram → MT5. Then forward a fresh signal here.');return Response.json({ok:true,ignored:'ROUTE_NOT_CONFIGURED'});}return null;}
 
  for(const row of rows.results){
   const ref='member-tg:'+chatId+':'+msg.message_id;
