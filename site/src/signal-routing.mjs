@@ -1,14 +1,28 @@
+import {SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
 import {parseSignalMessage,telegramMessageFresh,parseManagement} from '../../worker/src/signal-adapters.mjs';
 import {createAndDispatch} from '../../worker/src/command.mjs';
 export function telegramSignalText(signal,id){const o=signal.order||{};return ['DrFX SignalBridge',signal.side+' '+signal.symbol,'LOT: '+(o.volume?.value??''),...(o.reference_price?['ENTRY: '+o.reference_price]:[]),'SL: '+o.stop_loss,...(o.take_profits||[]).map((v,i)=>'TP'+(i+1)+': '+v),'Signal ID: '+id,'Source: TradingView'].join('\n');}
 export async function relayTradingView(req,env){
  const token=(req.headers.get('authorization')||'').replace(/^Bearer /,'');if(!/^[A-Za-z0-9_-]{43}$/.test(token))return Response.json({error:'UNAUTHORIZED'},{status:401});
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))),x=>x.toString(16).padStart(2,'0')).join('');const b=await req.json();
- const row=await env.DB.prepare("SELECT s.id,s.normalized_json,s.tenant_id,m.telegram_chat_id FROM received_signals s JOIN ingress_connections c ON c.id=s.connection_id JOIN member_signal_settings m ON m.user_id=s.tenant_id JOIN site_users u ON u.id=s.tenant_id WHERE s.id=? AND c.token_sha256=? AND c.status='active' AND u.status='active' AND m.tv_to_telegram=1 AND m.telegram_verified=1").bind(b.signal_id,hash).first();
+ const row=await env.DB.prepare("SELECT s.id,s.normalized_json,s.tenant_id,s.received_at,m.telegram_chat_id,u.telegram_id FROM received_signals s JOIN ingress_connections c ON c.id=s.connection_id JOIN member_signal_settings m ON m.user_id=s.tenant_id JOIN site_users u ON u.id=s.tenant_id WHERE s.id=? AND c.token_sha256=? AND c.status='active' AND u.status='active' AND m.tv_to_telegram=1 AND m.telegram_verified=1").bind(b.signal_id,hash).first();
  if(!row||!env.TELEGRAM_BOT_TOKEN)return Response.json({ok:true,ignored:'ROUTE_DISABLED'});
  const id=crypto.randomUUID();await env.DB.prepare("INSERT INTO telegram_signal_outbox(id,user_id,signal_id,chat_id) VALUES (?,?,?,?) ON CONFLICT(user_id,signal_id) DO NOTHING").bind(id,row.tenant_id,row.id,row.telegram_chat_id).run();
  const claim=await env.DB.prepare("UPDATE telegram_signal_outbox SET status='SENDING' WHERE user_id=? AND signal_id=? AND status='PENDING'").bind(row.tenant_id,row.id).run();if(claim.meta?.changes!==1)return Response.json({ok:true,duplicate:true});
- try{const r=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:row.telegram_chat_id,text:telegramSignalText(JSON.parse(row.normalized_json),row.id),protect_content:true}),signal:AbortSignal.timeout(8000)});const j=await r.json();await env.DB.prepare('UPDATE telegram_signal_outbox SET status=?,message_id=?,detail=? WHERE user_id=? AND signal_id=?').bind(j.ok?'SENT':'FAILED',j.ok?String(j.result.message_id):null,j.ok?null:'Telegram rejected delivery',row.tenant_id,row.id).run();return Response.json({ok:!!j.ok});}catch{await env.DB.prepare("UPDATE telegram_signal_outbox SET status='UNKNOWN',detail='Delivery uncertain; no automatic duplicate retry' WHERE user_id=? AND signal_id=?").bind(row.tenant_id,row.id).run();return Response.json({ok:false,status:'UNKNOWN'});}
+ try{
+ const text=telegramSignalText(JSON.parse(row.normalized_json),row.id);
+ const privateWidget=String(row.telegram_chat_id)===String(row.telegram_id)&&Number(row.telegram_chat_id)>0;
+ const send=async(method,body)=>{
+  const r=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(8000)});
+  return r.json();
+ };
+ let j;
+ if(privateWidget){
+  j=await send('sendWidget',{chat_id:row.telegram_chat_id,html:SIGNAL_HISTORY_WIDGET_HTML,chat_data:signalHistoryWidgetData(row),caption:text,allow_queries:true,protect_content:true});
+  // Fall back only after an explicit API rejection; timeouts remain UNKNOWN to avoid duplicate signals.
+  if(j.ok===false&&j.error_code===400)j=await send('sendMessage',{chat_id:row.telegram_chat_id,text,protect_content:true});
+ }else j=await send('sendMessage',{chat_id:row.telegram_chat_id,text,protect_content:true});
+await env.DB.prepare('UPDATE telegram_signal_outbox SET status=?,message_id=?,detail=? WHERE user_id=? AND signal_id=?').bind(j.ok?'SENT':'FAILED',j.ok?String(j.result.message_id):null,j.ok?null:'Telegram rejected delivery',row.tenant_id,row.id).run();return Response.json({ok:!!j.ok});}catch{await env.DB.prepare("UPDATE telegram_signal_outbox SET status='UNKNOWN',detail='Delivery uncertain; no automatic duplicate retry' WHERE user_id=? AND signal_id=?").bind(row.tenant_id,row.id).run();return Response.json({ok:false,status:'UNKNOWN'});}
 }
 export async function routeTelegramSignal(update,env){
  const original=update.message||update.channel_post||update.edited_message||update.edited_channel_post;const msg=original?{...original,text:original.text||original.caption}:null;if(!msg?.text||msg.text.startsWith('/')||msg.from?.is_bot||msg.text.startsWith('DrFX SignalBridge\n'))return null;

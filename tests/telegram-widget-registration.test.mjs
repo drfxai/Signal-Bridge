@@ -8,7 +8,7 @@ test('widget registration preserves existing Telegram webhook updates and secret
  assert.match(code,/async function reconcileWidgetBot\(env\)/);
  assert.match(code,/getWebhookInfo/);
  assert.match(code,/current\?\.url!==target\|\|!existing\.includes\('widget_query'\)/);
- assert.match(code,/\[\.\.\.new Set\(\[\.\.\.existing,'message','callback_query','widget_query','my_chat_member'\]\)\]/);
+ assert.match(code,/concat\('pre_checkout_query'\)/);
  assert.match(code,/secret_token:env\.TELEGRAM_WEBHOOK_SECRET/);
  assert.match(code,/drop_pending_updates:false/);
  assert.match(code,/setMyCommands'.+commands:BOT_MENU_COMMANDS/);

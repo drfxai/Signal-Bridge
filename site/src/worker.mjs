@@ -3,6 +3,8 @@ import {resolveOwnerSession} from './owner-account.mjs';
 import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
+import {LICENSE_SHOP_WIDGET_HTML} from './telegram-license-shop.mjs';
+import {STAR_PLANS,starPrice,LICENSE_TERMS,sendPrivateLicenses,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,starOrders} from './telegram-commerce.mjs';
 import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
 import {SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
 import {SCALPER_WIDGET_HTML,scalperWidgetData} from './telegram-scalper-widget.mjs';
@@ -552,8 +554,8 @@ async function reconcileWidgetBot(env){
  const target='https://drfx.company/api/telegram/webhook';
  const current=await telegramWidgetApi(env,'getWebhookInfo',{});
  const existing=Array.isArray(current?.allowed_updates)?current.allowed_updates:[];
- if(current?.url!==target||!existing.includes('widget_query')){
-  const allowed=[...new Set([...existing,'message','callback_query','widget_query','my_chat_member'])];
+ if(current?.url!==target||!existing.includes('widget_query')||!existing.includes('pre_checkout_query')){
+  const allowed=[...new Set([...existing,'message','callback_query','widget_query','my_chat_member'].concat('pre_checkout_query'))];
   await telegramWidgetApi(env,'setWebhook',{url:target,secret_token:env.TELEGRAM_WEBHOOK_SECRET,
    allowed_updates:allowed,drop_pending_updates:false,max_connections:10});
  }
@@ -593,7 +595,16 @@ async function sendScalperWidget(env,chatId,user){
   allow_queries:true,protect_content:true
  });
 }
-async function signalBridgeWidgetQuery(q,env){
+const commerceHelpers=()=>({api:telegramWidgetApi,licenseRecord,encryptCode,decryptCode,uid,reconcile:reconcileWidgetBot});
+async function sendLicenseShop(env,user){
+ const prices=Object.fromEntries(Object.keys(STAR_PLANS).map(p=>[p,starPrice(env,p)]));
+ try{await telegramWidgetApi(env,'sendWidget',{chat_id:user.telegram_id,html:LICENSE_SHOP_WIDGET_HTML,chat_data:JSON.stringify({prices}),caption:'DrFX licenses · Review plans, retrieve your keys and pay with Telegram Stars',allow_queries:true,protect_content:true});}
+ catch{
+  const text=Object.keys(STAR_PLANS).map(p=>STAR_PLANS[p].label+' · '+(prices[p]||'Unavailable')+' Stars\\n/buy '+p+(p.startsWith('scalper_')?' YOUR_MT5_LOGIN':'')).join('\\n\\n')+'\\n\\nRetrieve keys: /code or /scalper\\nPurchase history: /orders · Terms: /terms · Help: /paysupport';
+  await telegramWidgetApi(env,'sendMessage',{chat_id:user.telegram_id,text,protect_content:true});
+ }
+}
+async function signalBridgeWidgetQuery(q,env,req){
  if(!q?.id)return json({ok:true,ignored:'MISSING_QUERY'});
  const allowed=q.chat?.type==='private'&&q.from?.id&&
   String(q.chat.id)===String(q.from.id)&&Number.isSafeInteger(Number(q.message_id))&&!q.inline_message_id;
@@ -601,13 +612,26 @@ async function signalBridgeWidgetQuery(q,env){
   try{await telegramWidgetApi(env,'answerWidgetQuery',{widget_query_id:q.id,data:JSON.stringify(payload)});}
   catch(e){console.warn('Member widget reply failed: '+String(e?.message||e).slice(0,80));}
  };
- if(!allowed||q.type?.type!=='data'||!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)){
+ if(!allowed||q.type?.type!=='data'||(!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)&&!['sb:license','sb:keys','sb:shop','sb:orders','sb:terms',...Object.keys(STAR_PLANS).map(p=>'sb:buy:'+p)].includes(q.data))){
   await answer({message:'Request not allowed'});
   return json({ok:true,ignored:'NOT_ALLOWED'});
  }
  const telegramId=String(q.from.id);
  const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(!user||user.status!=='active'){await answer({message:'Account unavailable. Use /start.'});return json({ok:true,ignored:'NO_ACTIVE_MEMBER'});}
+ if(!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)){
+  if(!await limited(req,env,'widget:commerce:'+telegramId,8)){await answer({message:'Too many requests. Please wait a minute.'});return json({ok:true});}
+  await answer({message:'Preparing your request. Check the new message in this chat.'});
+  try{
+   const h=commerceHelpers();
+   if(q.data==='sb:shop')await sendLicenseShop(env,user);
+   else if(q.data==='sb:license'||q.data==='sb:keys')await sendPrivateLicenses(env,h,user,q.data==='sb:keys'?'scalper':'bridge');
+   else if(q.data==='sb:orders')await starOrders(env,h,user);
+   else if(q.data==='sb:terms')await telegramWidgetApi(env,'sendMessage',{chat_id:telegramId,text:LICENSE_TERMS});
+   else await purchaseQuote(env,h,user,q.data.slice(7));
+  }catch{await telegramWidgetApi(env,'sendMessage',{chat_id:telegramId,text:'Request temporarily unavailable. Use /buy, /code or /scalper to retry.'}).catch(()=>{});}
+  return json({ok:true});
+ }
  try{
   if(q.data==='sb:scalper:refresh'){
    const data=await latestScalperWidgetData(env,user);
@@ -677,9 +701,11 @@ async function telegramWebhook(req,env,ctx){
  const secret=req.headers.get('x-telegram-bot-api-secret-token')||'';
  if(!safeEq(secret,env.TELEGRAM_WEBHOOK_SECRET))return fail('UNAUTHORIZED',401);
  const data=await readBody(req,16384);
- if(data.widget_query)return signalBridgeWidgetQuery(data.widget_query,env);
+ if(data.pre_checkout_query)return json(await starPreCheckout(data.pre_checkout_query,env,commerceHelpers()));
+ if(data.message?.successful_payment)return json(await starSuccessfulPayment(data.message,env,commerceHelpers()));
+ if(data.widget_query)return signalBridgeWidgetQuery(data.widget_query,env,req);
  if(data.my_chat_member)return onBotMembership(data,env,channelHelpers(env,req));
- if(data.callback_query){const handled=await channelCallback(data,env,channelHelpers(env,req));if(handled)return handled;return botLanguageCallback(data,env);}
+ if(data.callback_query){if(await acceptStarQuote(data.callback_query,env,commerceHelpers()))return json({ok:true});const handled=await channelCallback(data,env,channelHelpers(env,req));if(handled)return handled;return botLanguageCallback(data,env);}
  const routed=await routeTelegramSignal(data,env);if(routed)return routed;
  const msg=data.message;
  if(!msg||msg.chat?.type!=='private'||!msg.from?.id)return json({ok:true,ignored:'NO_PRIVATE_MESSAGE'});
@@ -689,7 +715,7 @@ async function telegramWebhook(req,env,ctx){
  if(ctx?.waitUntil&&['/start','/widget','/signal','/scalperwidget'].includes(command)){
   ctx.waitUntil(reconcileWidgetBot(env).catch(e=>console.warn('Telegram widget bot setup pending: '+String(e?.message||e).slice(0,100))));
  }
- if(!['/start','/language','/lang','/app','/widget','/signal','/scalperwidget','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/language','/lang','/app','/buy','/licenses','/orders','/terms','/paysupport','/widget','/signal','/scalperwidget','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  const language=await userBotLocale(env,telegramId);
@@ -699,6 +725,23 @@ async function telegramWebhook(req,env,ctx){
   await botSend(env,chatId,tx('choose'),botLanguageKeyboard());
  }else if(command==='/app'){
   await botSend(env,chatId,tx('app'),true);
+ }else if(command==='/buy'||command==='/licenses'){
+  if(!await limited(req,env,'bot:buy:'+telegramId,8)){await botSend(env,chatId,tx('tooMany'));return json({ok:true});}
+  const args=text.split(/\s+/);
+  try{
+   if(command==='/licenses'||args.length===1)await sendLicenseShop(env,user);
+   else if(args.length<=3&&Object.hasOwn(STAR_PLANS,args[1]))await purchaseQuote(env,commerceHelpers(),user,args[1],args[2]);
+   else await botSend(env,chatId,'Send /buy to view plans. For Scalper: /buy scalper_1m MT5_LOGIN or /buy scalper_3m MT5_LOGIN.');
+  }catch{await botSend(env,chatId,'License store is temporarily unavailable. Please retry shortly.');}
+ }else if(command==='/orders'){
+  await starOrders(env,commerceHelpers(),user);
+ }else if(command==='/terms'){
+  await botSend(env,chatId,LICENSE_TERMS);
+ }else if(command==='/paysupport'){
+  const detail=text.slice(text.indexOf(' ')+1).trim();
+  if(detail===text||detail.length<8)await botSend(env,chatId,'For payment or refund help send: /paysupport ORDER_ID your message\nUse /orders to find your Telegram purchase. Your request will be recorded for the DrFX admin.');
+  else if(!await limited(req,env,'bot:support:'+telegramId,5))await botSend(env,chatId,tx('tooMany'));
+  else{await audit(env,user.id,'payment_support_request',user.id,detail);await botSend(env,chatId,'Your payment support request has been recorded for the DrFX admin. Keep your order ID.');}
  }else if(command==='/widget'){
   try{await sendMemberWidget(env,chatId,user);}
   catch{await botSend(env,chatId,'Widget is temporarily unavailable. Open /app instead.');}
@@ -760,9 +803,9 @@ async function telegramWebhook(req,env,ctx){
  }else if(command==='/scalper'){
   const rows=(await env.DB.prepare('SELECT account_login,days,encrypted_key,nonce,created_at FROM scalper_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 5').bind(user.id).all()).results||[];
   let out='⚡ <b>DrFX Scalper Pro</b>\nThe AI liquidity radar for XAUUSD on MT5. 7 days free inside the EA, then '+
-   Object.values(SCALPER_PLANS).map(p=>p.label+' $'+p.usd).join(' · ')+'.\n';
+   Object.keys(STAR_PLANS).filter(p=>p.startsWith('scalper_')).map(p=>STAR_PLANS[p].label+' · '+starPrice(env,p)+' Stars').join(' · ')+'.\n';
   for(const r of rows)out+='\nMT5 #'+r.account_login+' · '+r.days+' days\n<code>'+await decryptCode(env,r.encrypted_key,r.nonce)+'</code>';
-  out+=rows.length?'\n\nPaste a key on the panel: ENTER LICENCE KEY → ACTIVATE.':'\n\nBuy a plan in your dashboard: '+API_ORIGIN+'/#scalper';
+  out+=rows.length?'\n\nPaste a key on the panel: ENTER LICENCE KEY → ACTIVATE.':'\n\nSend /buy to purchase with Telegram Stars.';
   await botSend(env,chatId,out,true);
  }else if(command==='/scalperkey'&&user.role==='admin'){
   const args=text.split(/\s+/),login=args[1],plan=({'1m':'scalper_1m','3m':'scalper_3m'})[args[2]],target=args[3]||user.id;
