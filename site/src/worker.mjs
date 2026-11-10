@@ -686,9 +686,8 @@ async function telegramWebhook(req,env,ctx){
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=normalizeBotCommand(text);
- if(['/start','/widget','/signal','/scalperwidget'].includes(command)){
-  const job=reconcileWidgetBot(env).catch(e=>console.warn('Telegram widget bot setup pending: '+String(e?.message||e).slice(0,100)));
-  if(ctx?.waitUntil)ctx.waitUntil(job);else await job;
+ if(ctx?.waitUntil&&['/start','/widget','/signal','/scalperwidget'].includes(command)){
+  ctx.waitUntil(reconcileWidgetBot(env).catch(e=>console.warn('Telegram widget bot setup pending: '+String(e?.message||e).slice(0,100))));
  }
  if(!['/start','/language','/lang','/app','/widget','/signal','/scalperwidget','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
