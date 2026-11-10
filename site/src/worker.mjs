@@ -542,6 +542,25 @@ async function telegramWidgetApi(env,method,body){
  if(!response.ok||payload.ok!==true)throw Error('Telegram widget API failed: '+method);
  return payload.result;
 }
+
+// Reconcile Telegram Bot API 10.4 widget subscriptions without replacing the current bot.
+// Isolate-level cooldown reduces repeated calls; the scheduled handler makes it durable.
+let widgetSetupLast=0;
+async function reconcileWidgetBot(env){
+ if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_WEBHOOK_SECRET)return;
+ if(Date.now()-widgetSetupLast<3600000)return;
+ const target='https://drfx.company/api/telegram/webhook';
+ const current=await telegramWidgetApi(env,'getWebhookInfo',{});
+ const existing=Array.isArray(current?.allowed_updates)?current.allowed_updates:[];
+ if(current?.url!==target||!existing.includes('widget_query')){
+  const allowed=[...new Set([...existing,'message','callback_query','widget_query','my_chat_member'])];
+  await telegramWidgetApi(env,'setWebhook',{url:target,secret_token:env.TELEGRAM_WEBHOOK_SECRET,
+   allowed_updates:allowed,drop_pending_updates:false,max_connections:10});
+ }
+ await telegramWidgetApi(env,'setMyCommands',{commands:BOT_MENU_COMMANDS});
+ widgetSetupLast=Date.now();
+}
+
 async function sendMemberWidget(env,chatId,user){
  const rec=await licenseRecord(env,user);
  const data=bridgeWidgetData({plan:user.plan,licenseStatus:rec.status,expiresAt:rec.expires_at,accountStatus:user.status});
@@ -653,7 +672,7 @@ async function botLanguageCallback(update,env){
  await botWelcome(env,chatId,user,lang);
  return json({ok:true});
 }
-async function telegramWebhook(req,env){
+async function telegramWebhook(req,env,ctx){
  if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_WEBHOOK_SECRET)return fail('BOT_NOT_CONFIGURED',503);
  const secret=req.headers.get('x-telegram-bot-api-secret-token')||'';
  if(!safeEq(secret,env.TELEGRAM_WEBHOOK_SECRET))return fail('UNAUTHORIZED',401);
@@ -667,6 +686,9 @@ async function telegramWebhook(req,env){
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=normalizeBotCommand(text);
+ if(ctx?.waitUntil&&['/start','/widget','/signal','/scalperwidget'].includes(command)){
+  ctx.waitUntil(reconcileWidgetBot(env).catch(e=>console.warn('Telegram widget bot setup pending: '+String(e?.message||e).slice(0,100))));
+ }
  if(!['/start','/language','/lang','/app','/widget','/signal','/scalperwidget','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
@@ -790,9 +812,9 @@ async function telegramWebhook(req,env){
  }
  return json({ok:true});
 }
-async function api(req,env){
+async function api(req,env,ctx){
  const u=new URL(req.url),path=u.pathname;
- if(path==='/api/telegram/webhook'&&req.method==='POST')return telegramWebhook(req,env);
+ if(path==='/api/telegram/webhook'&&req.method==='POST')return telegramWebhook(req,env,ctx);
  if(path==='/api/payments/ipn'&&req.method==='POST')return ipnHandler(req,env);
  if(path==='/api/config'&&req.method==='GET')return json({ok:true,email:!!(env.MAIL_FROM&&(env.RESEND_API_KEY||env.EMAIL)),telegram:!!(env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_WEBHOOK_SECRET),payments:!!(env.NOWPAYMENTS_API_KEY&&env.NOWPAYMENTS_IPN_SECRET),licensing:!!env.LICENSE_VAULT_KEY,scalper:!!env.SCALPER_LICENSE_SECRET,ea_hub:!!env.AGENT_HUB,release:UI_RELEASE});
  if(path==='/api/telegram/health'&&req.method==='GET'){
@@ -892,7 +914,7 @@ async function api(req,env){
  return fail('NOT_FOUND',404);
 }
 export default {
- async fetch(request,env){
+ async fetch(request,env,ctx){
   const url=new URL(request.url);
   const art=productArt(url.pathname,request.method);if(art)return art;
   if(url.pathname.startsWith('/download/'))return eaDownload(request,env);
@@ -916,7 +938,7 @@ export default {
   }
   if(url.pathname.startsWith('/api/')){
    if(!env?.DB)return fail('DATABASE_UNAVAILABLE',503);
-   try{return await api(request,env)}catch(error){
+   try{return await api(request,env,ctx)}catch(error){
     console.error('site request failed',url.pathname,error?.name||'Error');
     if(error?.message==='BAD_JSON'||error?.message==='BODY_TOO_LARGE'||error?.message==='INVALID_CURSOR')return fail(error.message,400);
     if(error?.message==='LICENSE_VAULT_NOT_CONFIGURED')return fail('LICENSING_NOT_READY',503);
@@ -924,6 +946,8 @@ export default {
    }
   }
   return new Response('Not found',{status:404,headers:HEAD});
+ },
+ async scheduled(controller,env){
+  try{await reconcileWidgetBot(env)}catch(e){console.warn('Telegram widget registration check failed: '+String(e?.message||e).slice(0,120))}
  }
 };
-
