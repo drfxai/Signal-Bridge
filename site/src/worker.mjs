@@ -3,6 +3,7 @@ import {resolveOwnerSession} from './owner-account.mjs';
 import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
+import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
 import {adminOverview,adminDirectory,adminConnections,adminOrders} from './admin-operations.mjs';
 import {UI_RELEASE} from './ui-release.mjs';
 import {memberControls} from './member-controls.mjs';
@@ -530,6 +531,49 @@ async function botSend(env,chatId,text,keyboard){
   method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)
  });
 }
+
+async function telegramWidgetApi(env,method,body){
+ const response=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{
+  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)
+ });
+ const payload=await response.json().catch(()=>({ok:false}));
+ if(!response.ok||payload.ok!==true)throw Error('Telegram widget API failed: '+method);
+ return payload.result;
+}
+async function sendMemberWidget(env,chatId,user){
+ const rec=await licenseRecord(env,user);
+ const data=bridgeWidgetData({plan:user.plan,licenseStatus:rec.status,expiresAt:rec.expires_at,accountStatus:user.status});
+ await telegramWidgetApi(env,'sendWidget',{
+  chat_id:chatId,html:SIGNAL_BRIDGE_WIDGET_HTML,chat_data:data,
+  caption:'DrFXAi Signal Bridge · Private member status',height:265,
+  allow_queries:true,protect_content:true
+ });
+}
+async function signalBridgeWidgetQuery(q,env){
+ if(!q?.id)return json({ok:true,ignored:'MISSING_QUERY'});
+ const allowed=q.chat?.type==='private'&&q.from?.id&&
+  String(q.chat.id)===String(q.from.id)&&Number.isSafeInteger(Number(q.message_id))&&!q.inline_message_id;
+ const answer=async(payload)=>{
+  try{await telegramWidgetApi(env,'answerWidgetQuery',{widget_query_id:q.id,data:JSON.stringify(payload)});}
+  catch(e){console.warn('Member widget reply failed: '+String(e?.message||e).slice(0,80));}
+ };
+ if(!allowed||q.data!=='sb:refresh'){
+  await answer({message:'Request not allowed'});
+  return json({ok:true,ignored:'NOT_ALLOWED'});
+ }
+ const telegramId=String(q.from.id);
+ const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
+ if(!user){await answer({message:'Account not found. Use /start.'});return json({ok:true,ignored:'NO_MEMBER'});}
+ try{
+  const rec=await licenseRecord(env,user);
+  const data=bridgeWidgetData({plan:user.plan,licenseStatus:rec.status,expiresAt:rec.expires_at,accountStatus:user.status});
+  await answer({...JSON.parse(data),message:'Account status refreshed'});
+  await telegramWidgetApi(env,'editMessageWidgetData',{chat_id:q.chat.id,message_id:q.message_id,chat_data:data})
+   .catch(e=>console.warn('Member widget state not updated: '+String(e?.message||e).slice(0,80)));
+ }catch(e){await answer({message:'Account status temporarily unavailable'});}
+ return json({ok:true,refreshed:true});
+}
+
 async function userBotLocale(env,telegramId){
  const row=await env.DB.prepare("SELECT language_code FROM site_bot_preferences WHERE telegram_id=?").bind(telegramId).first();
  return botLanguage(row?.language_code);
@@ -575,6 +619,7 @@ async function telegramWebhook(req,env){
  const secret=req.headers.get('x-telegram-bot-api-secret-token')||'';
  if(!safeEq(secret,env.TELEGRAM_WEBHOOK_SECRET))return fail('UNAUTHORIZED',401);
  const data=await readBody(req,16384);
+ if(data.widget_query)return signalBridgeWidgetQuery(data.widget_query,env);
  if(data.my_chat_member)return onBotMembership(data,env,channelHelpers(env,req));
  if(data.callback_query){const handled=await channelCallback(data,env,channelHelpers(env,req));if(handled)return handled;return botLanguageCallback(data,env);}
  const routed=await routeTelegramSignal(data,env);if(routed)return routed;
@@ -583,7 +628,7 @@ async function telegramWebhook(req,env){
  const telegramId=String(msg.from.id),chatId=String(msg.chat.id),username=msg.from.username||msg.from.first_name||'Trader';
  const text=safeText(msg.text||'',220);
  const command=normalizeBotCommand(text);
- if(!['/start','/language','/lang','/app','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
+ if(!['/start','/language','/lang','/app','/widget','/login','/resetlogin','/me','/code','/signalbridge','/link','/scalper','/channels','/admin','/users','/detail','/grant','/scalperkey','/suspend','/resume','/revoke'].includes(command))return json({ok:true,ignored:'UNKNOWN_COMMAND'});
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(command!=='/link'&&!user)user=await getOrCreateTelegram(env,telegramId,username);
  const language=await userBotLocale(env,telegramId);
@@ -593,6 +638,9 @@ async function telegramWebhook(req,env){
   await botSend(env,chatId,tx('choose'),botLanguageKeyboard());
  }else if(command==='/app'){
   await botSend(env,chatId,tx('app'),true);
+ }else if(command==='/widget'){
+  try{await sendMemberWidget(env,chatId,user);}
+  catch{await botSend(env,chatId,'Widget is temporarily unavailable. Open /app instead.');}
  }else if(command==='/login'||command==='/resetlogin'){
   if(!await limited(req,env,'bot:code:'+telegramId,8)){await botSend(env,chatId,tx('tooMany'));return json({ok:true});}
   try{
