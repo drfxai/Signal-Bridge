@@ -19,3 +19,11 @@ Rollback: revert this PR and redeploy the previous Worker. No D1 migration is ne
 
 Platform limitation: production widgets currently work in bot private chats only, not channels, groups or forwards.
 Reference: https://core.telegram.org/bots/widgets
+
+## Read-only widgets in this branch
+
+- /widget: authenticated Signal Bridge membership plan, license state and expiry.
+- /signal: newest TradingView alert found in the member's own received_signals rows. Includes recorded entry (if supplied), SL, TP1-3 and timestamp. It is not a live quote, EA execution report or TP-hit monitor.
+- /scalperwidget: counts the member's issued Scalper Pro licenses and displays the latest plan, duration and issue date; it never shares keys, activation state or MT5 account identifiers.
+
+All three are private-chat-only, require a verified Telegram numeric sender, use at most 1024 UTF-8 bytes of chat_data, and refresh on an explicit tap. No background polling, trading commands or payment transactions are introduced.
