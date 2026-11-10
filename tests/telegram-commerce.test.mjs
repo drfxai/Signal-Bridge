@@ -8,7 +8,7 @@ import {LICENSE_SHOP_WIDGET_HTML} from '../site/src/telegram-license-shop.mjs';
 
 function fixture(){
  const db=new DatabaseSync(':memory:');
- db.exec("CREATE TABLE site_users(id TEXT PRIMARY KEY,telegram_id TEXT,status TEXT,plan TEXT,updated_at TEXT); INSERT INTO site_users VALUES('u1','123','active','trial',NULL); CREATE TABLE ea_licenses(agent_id TEXT PRIMARY KEY,plan TEXT,duration_modifier TEXT,status TEXT,expires_at TEXT,activated_at TEXT,updated_at TEXT); INSERT INTO ea_licenses VALUES('ea1','trial','+1 month','active','2099-01-01','2026-01-01',NULL);");
+ db.exec("CREATE TABLE site_users(id TEXT PRIMARY KEY,telegram_id TEXT,status TEXT,plan TEXT,updated_at TEXT); INSERT INTO site_users VALUES('u1','123','active','trial',NULL); CREATE TABLE site_audit(id TEXT PRIMARY KEY,actor_id TEXT,action TEXT,subject_id TEXT,detail TEXT); CREATE TABLE ea_licenses(agent_id TEXT PRIMARY KEY,plan TEXT,duration_modifier TEXT,status TEXT,expires_at TEXT,activated_at TEXT,updated_at TEXT); INSERT INTO ea_licenses VALUES('ea1','trial','+1 month','active','2099-01-01','2026-01-01',NULL);");
  db.exec(readFileSync(new URL('../site/migrations/0014_scalper_pro.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../site/migrations/20261111_telegram_stars.sql',import.meta.url),'utf8'));
  const DB={prepare(sql){
@@ -77,6 +77,7 @@ test('payment grants exactly once and preserves the existing activation code',as
  const license=f.db.prepare('SELECT * FROM ea_licenses').get();
  assert.equal(license.plan,'quarterly');assert.equal(license.expires_at,'2099-04-01 00:00:00');
  assert.equal(f.db.prepare('SELECT charge_id FROM telegram_star_orders').get().charge_id,'charge-1');
+ assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM site_audit WHERE action='telegram_stars_paid'").get().n,1);
  assert.equal(f.calls.filter(c=>c.method==='sendMessage'&&c.body.text.includes('Payment received')).length,1);
  assert.ok(f.calls.some(c=>c.body.protect_content&&c.body.text?.includes('test-activation-code')));
  await assert.rejects(starSuccessfulPayment(f.payment(id,'different-charge'),f.env,f.h),/DUPLICATE_CHARGE/);
