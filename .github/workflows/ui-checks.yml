@@ -70,9 +70,13 @@ jobs:
       - name: Verify Telegram route switches
         timeout-minutes: 3
         run: SB_WORKER_BUNDLE=file:///tmp/signalbridge-built/worker.js node scripts/verify-route-browser.mjs
+      - name: Verify Telegram widget layouts
+        timeout-minutes: 3
+        run: node scripts/verify-telegram-workspace.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: portal-responsive-ui-previews
           path: artifacts/ui-verification/
           if-no-files-found: warn
+
