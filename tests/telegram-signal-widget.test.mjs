@@ -44,9 +44,13 @@ test('missing, malformed and stale-free empty data are visibly empty, not live',
 
 test('the latest alert query is tenant-scoped and read-only',()=>{
  const worker=readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
- assert.match(worker,/FROM received_signals WHERE tenant_id=\?/);
+ const workspace=readFileSync(new URL('../site/src/telegram-workspace.mjs',import.meta.url),'utf8');
+ assert.match(workspace,/FROM received_signals WHERE tenant_id=\?/);
+ assert.match(workspace,/FROM commands WHERE tenant_id=\? AND source_type='telegram'/);
+ assert.match(worker,/signalRecords\(env,member\)/);
  assert.match(worker,/sb:signal:refresh/);
  assert.match(worker,/sendLatestSignalWidget\(env,chatId,user\)/);
  assert.match(worker,/editMessageWidgetData/);
  assert.match(worker,/!user\|\|user.status!=='active'/);
 });
+
