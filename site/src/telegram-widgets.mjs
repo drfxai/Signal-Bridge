@@ -3,55 +3,7 @@
  * Fixed HTML, data-only state, no external network or trading action.
  * https://core.telegram.org/bots/widgets
  */
-export const SIGNAL_BRIDGE_WIDGET_HTML = String.raw`<!doctype html>
-<html><style>
-body{margin:0;padding:12px;font:14px system-ui,sans-serif;color:var(--tg-theme-text-color)}
-section{border-radius:13px;border:1px solid var(--tg-theme-section-separator-color);padding:13px}
-h3{margin:0;font-size:1.1em}small{color:var(--tg-theme-hint-color)}
-.top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:15px}
-.pill{font-weight:700;color:var(--tg-theme-accent-text-color)}
-.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.metric{padding:10px;border-radius:10px;background:var(--tg-theme-secondary-bg-color)}
-.label{color:var(--tg-theme-hint-color);font-size:.8em}
-.value{font-size:1em;font-weight:700;margin-top:4px;overflow-wrap:anywhere}
-.actions{display:flex;gap:8px;margin-top:12px}
-button,.link{flex:1;text-align:center;padding:10px 7px;border:0;border-radius:10px;font:700 13px system-ui,sans-serif;text-decoration:none}
-button{background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)}
-.link{background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-link-color)}
-#message{margin-top:11px;min-height:16px}
-</style><body><section>
-<div class="top"><div><h3>DrFXAi · Signal Bridge</h3><small>Private account status</small></div><span class="pill" id="state">—</span></div>
-<div class="metrics">
-<div class="metric"><div class="label">Membership</div><div class="value" id="plan">—</div></div>
-<div class="metric"><div class="label">EA license</div><div class="value" id="license">—</div></div>
-<div class="metric" style="grid-column:span 2"><div class="label">License expiry</div><div class="value" id="expires">—</div></div>
-</div>
-<div class="actions"><button id="refresh">↻ Refresh</button><a class="link" href="https://drfx.company/telegram">Open dashboard</a></div>
-<small id="message">Read-only status. No trading is triggered.</small>
-</section><script>
-(function(){
-var T=window.TelegramWidget,d=document,s={};
-try{s=JSON.parse(T&&T.chatData||'{}')}catch(e){}
-function e(n){return d.getElementById(n)}
-function draw(){
-e('state').textContent=s.account==='active'?'ACTIVE':'ACCOUNT';
-e('plan').textContent=s.plan||'—';
-e('license').textContent=s.license||'—';
-e('expires').textContent=s.expires||'Not activated';
-}
-e('refresh').onclick=function(){
-if(!T){e('message').textContent='Preview mode';return;}
-e('message').textContent='Checking...';
-T.request('sb:refresh').then(function(r){
-var v={};try{v=JSON.parse(r.result||'{}')}catch(x){}
-if(v.account)s=v;
-draw();e('message').textContent=v.message||'Status checked';
-},function(x){e('message').textContent='Refresh failed: '+(x.code||'FAILED')});
-};
-if(T)T.onEvent('chatDataChanged',function(){try{s=JSON.parse(T.chatData||'{}');draw()}catch(x){}});
-draw();
-})();
-</script></body></html>`;
+export const SIGNAL_BRIDGE_WIDGET_HTML = "<!doctype html><html><style>*{box-sizing:border-box}body{margin:0;padding:0;font:13px system-ui,sans-serif;color:#e6f5ff;background:#061422}.shell{padding:14px;border:1px solid #178a9c;border-radius:19px;background:radial-gradient(ellipse at 100% 0%,#09475a,transparent 52%),linear-gradient(140deg,#061c2d,#06101e 80%);box-shadow:inset 0 0 0 1px #174861,0 0 17px #063d52;overflow:hidden}.row{display:flex;align-items:center;justify-content:space-between;gap:9px}.logo{font-size:19px;font-weight:900;letter-spacing:-.7px}.logo em{font-style:normal;color:#4cebd8}.minor{font-size:9px;letter-spacing:1.45px;color:#87aabe}.badge{font-size:9px;color:#65f4d0;border:1px solid #228d83;background:#083c37;border-radius:18px;padding:5px 9px;font-weight:800}.gold{color:#ffdfa4}.green{color:#5debd3}.red{color:#ff8497}h2{font-weight:900;font-size:23px;line-height:1.15;margin:7px 0 4px;letter-spacing:-.5px}.hint{color:#a7c4d5;font-size:10px}.panel{border:1px solid #25566a;border-radius:12px;background:linear-gradient(135deg,#0e2a40,#081928);padding:11px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.cell{border-radius:10px;background:#112d40;border:1px solid #245066;padding:9px}.cell small{display:block;color:#89a9bd;font-size:9px;letter-spacing:.5px}.cell b{display:block;color:#f3f9ff;font-size:15px;font-weight:900;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;margin-top:4px}.cell.negative b{color:#ff8295}.cell.positive b{color:#6ef8d4}.chip{font-size:9px;border:1px solid #296274;background:#113147;border-radius:15px;padding:5px 9px;color:#9bd6e7}.actions{display:flex;gap:8px;margin-top:12px}button,a.cta{flex:1;min-width:0;text-align:center;font:800 11px system-ui,sans-serif;text-decoration:none;border-radius:10px;padding:12px 5px;border:1px solid #249fb1;color:#f1faff;background:linear-gradient(120deg,#087b75,#12669d);box-shadow:0 0 11px #073c62}a.cta.alt{border-color:#38627b;color:#c6ecfc;background:linear-gradient(120deg,#123750,#132940);box-shadow:none}.foot{font-size:9px;color:#8dabc0;line-height:1.5;margin-top:10px}.hr{height:1px;background:linear-gradient(90deg,transparent,#268da1,transparent);margin:12px 0}.metric{font-size:10px;color:#a4bbce}.pill{border:1px solid #2c917d;border-radius:15px;background:#0b3b3e;padding:5px 8px;font-weight:800;font-size:10px;color:#6af2d4}.stack{display:flex;flex-wrap:wrap;gap:6px}@media(prefers-color-scheme:light){body{background:#eaf4f6}.shell{background:linear-gradient(140deg,#0e3549,#081c2f)}}@media(prefers-reduced-motion:no-preference){.badge{animation:glow 3s ease-in-out infinite}@keyframes glow{50%{box-shadow:0 0 9px #148e90}}}</style><body><div class=\"shell\">\n<div class=\"row\"><div><div class=\"logo\">DrFX<em>Ai</em> <span style=\"font-weight:400\">| Bridge</span></div><div class=\"minor\">AUTOMATION ACCESS CENTER</div></div><span class=\"badge\" id=\"state\">● ACCOUNT</span></div>\n<div class=\"hr\"></div><div class=\"panel\">\n<div class=\"minor gold\">YOUR EXECUTION LICENSE</div><h2 id=\"plan\">Membership</h2><div class=\"hint\">TradingView and Telegram → MT5 infrastructure</div>\n<div class=\"grid\"><div class=\"cell\"><small>LICENSE STATE</small><b id=\"license\">—</b></div><div class=\"cell\"><small>EXPIRES (UTC)</small><b id=\"expires\">—</b></div></div></div>\n<div style=\"margin-top:12px\"><div class=\"row\"><b class=\"minor\">SIGNAL ROUTING</b><span class=\"hint\">Workflow · status not verified</span></div>\n<div class=\"row\" style=\"margin-top:8px\"><span class=\"chip\">◈ TradingView</span><span class=\"green\">→</span><span class=\"chip\">✈ Telegram</span><span class=\"green\">→</span><span class=\"chip\">↗ MT5</span></div></div>\n<div class=\"actions\"><button id=\"refresh\">↻ Refresh License</button><a class=\"cta alt\" href=\"https://drfx.company/telegram\">Open Dashboard</a></div>\n<div id=\"message\" class=\"foot\">Private account status. This view cannot execute a trade.</div>\n<div class=\"row\" style=\"margin-top:7px\"><span class=\"minor\">DrFXAi · SIGNAL BRIDGE</span><span class=\"minor\">SECURE VIEW</span></div>\n</div><script>(function(){var T=window.TelegramWidget,d=document,s={};try{s=JSON.parse(T&&T.chatData||'{}')}catch(x){}\nfunction e(k){return d.getElementById(k)}function set(k,v){e(k).textContent=v===null||v===undefined||v===''?'—':String(v)}\nfunction draw(){set('state',s.account==='active'?'● ACCOUNT ACTIVE':'● ACCOUNT STATUS');set('plan',String(s.plan||'Unknown').toUpperCase());set('license',String(s.license||'unknown').toUpperCase());set('expires',s.expires||'Not activated')}\ne('refresh').onclick=function(){if(!T){set('message','Browser preview mode');return}set('message','Checking membership…');T.request('sb:refresh').then(function(v){var a={};try{a=JSON.parse(v.result||'{}')}catch(x){}if(a.account)s=a;draw();set('message',a.message||'Account refreshed')},function(x){set('message','Refresh failed: '+(x.code||'ERROR'))})};\nif(T)T.onEvent('chatDataChanged',function(){try{s=JSON.parse(T.chatData||'{}');draw()}catch(x){}});\ndraw();if(T&&T.ready)T.ready()})();</script></body></html>";
 
 export function bridgeWidgetData({plan,licenseStatus,expiresAt,accountStatus}={}){
  // No secret/license key, MT5 account identifier or personal email is included.
