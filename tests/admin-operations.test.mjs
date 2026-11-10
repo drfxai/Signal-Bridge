@@ -115,8 +115,8 @@ test('private Telegram /Signal Bridge returns only the signed sender license; gr
  const webhook=body=>worker.fetch(new Request('https://drfx.company/api/telegram/webhook',{method:'POST',headers:{'content-type':'application/json','x-telegram-bot-api-secret-token':'test-webhook-secret'},body:JSON.stringify(body)}),f.env);
  try{
   const own=await(await f.request('/api/admin/licenses?product=signalbridge')).json();
-  assert.equal((await webhook({message:{chat:{id:123,type:'private'},from:{id:123},text:'/Signal Bridge'}})).status,200);assert.ok(sent.some(x=>x.chat_id==='123'&&x.text.includes(own.license.activation_code)));
-  sent.length=0;await webhook({message:{chat:{id:456,type:'private'},from:{id:456},text:'/Signal Bridge'}});assert.ok(sent.length>0);assert.ok(sent.every(x=>!x.text?.includes(own.license.activation_code)));
+  assert.equal((await webhook({message:{chat:{id:123,type:'private'},from:{id:123},text:'/Signal Bridge'}})).status,200);assert.ok(sent.some(x=>x.chat_id==='123'&&(x.caption||x.text||'').includes(own.license.activation_code)));
+  sent.length=0;await webhook({message:{chat:{id:456,type:'private'},from:{id:456},text:'/Signal Bridge'}});assert.ok(sent.length>0);assert.ok(sent.every(x=>!(x.caption||x.text||'').includes(own.license.activation_code)));
   sent.length=0;await webhook({message:{chat:{id:-1,type:'group'},from:{id:123},text:'/Signal Bridge'}});assert.equal(sent.length,0);
  }finally{globalThis.fetch=real;f.db.close()}
 });
@@ -130,3 +130,4 @@ test('bot command synchronization requires admin and uses server-bound credentia
   const r=await f.request('/api/admin/bot/commands',{body:{}});assert.equal(r.status,200);assert.ok(!(await r.text()).includes('bot-test'));
  }finally{globalThis.fetch=real;f.db.close()}
 });
+

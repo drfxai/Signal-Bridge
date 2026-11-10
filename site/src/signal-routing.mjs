@@ -1,3 +1,4 @@
+import {BOT_WORKSPACE_WIDGET_HTML,noticeView,widgetViewData} from './telegram-workspace.mjs';
 import {SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
 import {parseSignalMessage,telegramMessageFresh,parseManagement} from '../../worker/src/signal-adapters.mjs';
 import {createAndDispatch} from '../../worker/src/command.mjs';
@@ -27,7 +28,16 @@ await env.DB.prepare('UPDATE telegram_signal_outbox SET status=?,message_id=?,de
 export async function routeTelegramSignal(update,env){
  const original=update.message||update.channel_post||update.edited_message||update.edited_channel_post;const msg=original?{...original,text:original.text||original.caption}:null;if(!msg?.text||msg.text.startsWith('/')||msg.from?.is_bot||msg.text.startsWith('DrFX SignalBridge\n'))return null;
  const chatId=String(msg.chat?.id||'');if(!chatId)return null;
- async function feedback(text){if(msg.chat?.type!=='private'||!env.TELEGRAM_BOT_TOKEN)return;try{await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:chatId,text,reply_parameters:{message_id:msg.message_id}}),signal:AbortSignal.timeout(8000)});}catch{}}
+ async function feedback(text,signal=null){
+  if(msg.chat?.type!=='private'||!env.TELEGRAM_BOT_TOKEN)return;
+  try{
+   const card=signal?.action==='OPEN';
+   const body={chat_id:chatId,html:card?SIGNAL_HISTORY_WIDGET_HTML:BOT_WORKSPACE_WIDGET_HTML,chat_data:card?signalHistoryWidgetData({normalized_json:JSON.stringify(signal),received_at:new Date().toISOString()}):widgetViewData(noticeView(text)),caption:card?text:'DrFXAi · Signal routing update',allow_queries:true,protect_content:true,reply_parameters:{message_id:msg.message_id}};
+   const r=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/sendWidget',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(8000)});
+   const result=await r.json();
+   if(result.ok===false&&result.error_code===400)await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:chatId,text,protect_content:true,reply_parameters:{message_id:msg.message_id}}),signal:AbortSignal.timeout(8000)});
+  }catch{/* Delivery uncertainty must never repeat trade dispatch. */}
+ }
  // Private chats must belong to their authenticated Telegram sender. Channel routes
  // use the verified chat ID; separate queries allow SQLite to use narrow indexes.
  const privateChat=msg.chat?.type==='private';
@@ -47,7 +57,8 @@ export async function routeTelegramSignal(update,env){
   const route=await env.DB.prepare("SELECT delivery_mode FROM ingress_connections WHERE tenant_id=? AND agent_id=? AND provider='tradingview' AND status='active' ORDER BY created_at DESC,id DESC LIMIT 1").bind(row.user_id,row.agent_id).first();
   const dispatched=await createAndDispatch(env,{tenantId:row.user_id,agentId:row.agent_id,sourceType:'telegram',sourceRef:ref,signal:parsed.signal,mode:route?.delivery_mode||'dry_run'});
   const signalLabel=parsed.signal.action==='MANAGE'?'Management '+String(parsed.signal.management_event||'request'):parsed.signal.side+' '+parsed.signal.symbol;
-  await feedback('Recognized: '+signalLabel+'\nStatus: '+dispatched.status+(dispatched.reason?' · '+dispatched.reason:'')+'\nExecution is confirmed only by an EA/broker receipt in your Daily view.');
+  await feedback('Recognized: '+signalLabel+'\nStatus: '+dispatched.status+(dispatched.reason?' · '+dispatched.reason:'')+'\nExecution is confirmed only by an EA/broker receipt in your Daily view.',parsed.signal);
  }
  return Response.json({ok:true,routed:true});
 }
+
