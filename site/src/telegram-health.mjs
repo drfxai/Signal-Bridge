@@ -18,12 +18,13 @@ export async function telegramHealth(env,fetcher=fetch,now=Date.now()){
  const validAdminId=typeof env.ADMIN_TELEGRAM_ID==='string'&&/^[0-9]{5,20}$/.test(env.ADMIN_TELEGRAM_ID);
  const configured=hasToken&&validSecret;
  if(cached&&now<expires&&cached.configured===configured&&cached.admin_id_format_valid===validAdminId&&cached.webhook_secret_format_valid===validSecret)return cached;
- let bot=null,hook=null,menu=null;
+ let bot=null,hook=null,menu=null,commands=null;
  if(hasToken){
-  [bot,hook,menu]=await Promise.all([
+  [bot,hook,menu,commands]=await Promise.all([
    probe(env.TELEGRAM_BOT_TOKEN,'getMe',fetcher),
    probe(env.TELEGRAM_BOT_TOKEN,'getWebhookInfo',fetcher),
-   probe(env.TELEGRAM_BOT_TOKEN,'getChatMenuButton',fetcher)
+   probe(env.TELEGRAM_BOT_TOKEN,'getChatMenuButton',fetcher),
+   probe(env.TELEGRAM_BOT_TOKEN,'getMyCommands',fetcher)
   ]);
  }
  const out={
@@ -36,6 +37,8 @@ export async function telegramHealth(env,fetcher=fetch,now=Date.now()){
   admin_id_format_valid:validAdminId,
   webhook_registered:typeof hook?.url==='string'&&hook.url.length>0,
   webhook_matches:hook?.url===EXPECTED_WEBHOOK,
+  widget_queries_registered:Array.isArray(hook?.allowed_updates)&&hook.allowed_updates.includes('widget_query'),
+  widget_commands_registered:Array.isArray(commands)&&['widget','signal','scalperwidget'].every(cmd=>commands.some(c=>c.command===cmd)),
   mini_app_menu_configured:menu?.type==='web_app'&&menu.web_app?.url===EXPECTED_MINI_APP,
   webhook_pending_updates:typeof hook?.pending_update_count==='number'?hook.pending_update_count:null
  };
