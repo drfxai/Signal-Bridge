@@ -1,3 +1,4 @@
+import {unpackWorkspaceView} from '../site/src/telegram-workspace.mjs';
 import {BOT_MENU_COMMANDS} from '../site/src/bot-commands.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,7 +31,7 @@ function telegramMock(state={admin:true}){
  globalThis.fetch=async(url,init)=>{
   const u=String(url);
   if(!u.includes('api.telegram.org'))return real(url,init);
-  const method=u.split('/').pop(),body=JSON.parse(init.body||'{}');calls.push({method,body});
+  const method=u.split('/').pop(),body=JSON.parse(init.body||'{}');if(method==='sendWidget'){const v=unpackWorkspaceView(JSON.parse(body.chat_data));body.text=body.caption==='DrFXAi · Account response'?(v.pages||[]).join('\n'):body.caption;}calls.push({method,body});
   if(method==='getChatMember')return Response.json({ok:true,result:{status:state.admin?'administrator':'member'}});
   if(method==='sendMessage'&&state.blocked)return Response.json({ok:false,error_code:403,description:'Forbidden: bot is not a member of the channel chat'});
   return Response.json({ok:true,result:{message_id:1}});
@@ -55,8 +56,8 @@ test('bot added as admin -> chat listed -> unique webhook posts TradingView aler
  const f=fixture(),tg=telegramMock();
  try{
   assert.equal((await f.bot(added())).status,200);
-  const dm=tg.calls.find(c=>c.method==='sendMessage');
-  assert.equal(dm.body.chat_id,'777');assert.match(dm.body.text,/Gold &lt;Signals&gt;/);
+  const dm=tg.calls.find(c=>['sendMessage','sendWidget'].includes(c.method));
+  assert.equal(dm.body.chat_id,'777');assert.match(dm.body.text,/Gold <Signals>/);
   assert.equal(dm.body.reply_markup.inline_keyboard[0][0].callback_data,'cwh:'+CHAT);
   let list=await (await f.request('/api/channels')).json();
   assert.equal(list.bot_username,'DrFXSignalBot');assert.match(list.add_links.channel,/startchannel=true&admin=post_messages/);
@@ -72,7 +73,7 @@ test('bot added as admin -> chat listed -> unique webhook posts TradingView aler
   const before=tg.calls.length,commands=f.db.prepare('SELECT COUNT(*) n FROM commands').get().n;
   const r=await f.tv(created.url,JSON.stringify({symbol:'XAUUSD',side:'sell',entry:'2351',sl:'2360',tp1:'2340'}));
   assert.equal(r.status,200);assert.deepEqual(await r.json(),{ok:true,delivered:true,route:'tradingview_to_telegram',mt5:false});
-  const post=tg.calls.slice(before).find(c=>c.method==='sendMessage');
+  const post=tg.calls.slice(before).find(c=>['sendMessage','sendWidget'].includes(c.method));
   assert.equal(post.body.chat_id,CHAT);assert.equal(post.body.parse_mode,'HTML');assert.match(post.body.text,/^🔴 <b>SELL XAUUSD<\/b>/);
   assert.equal(f.db.prepare('SELECT COUNT(*) n FROM commands').get().n,commands);
   assert.equal(f.db.prepare('SELECT sent_count FROM tg_channel_webhooks').get().sent_count,1);
@@ -105,7 +106,7 @@ test('only chat admins get a webhook; the bot needs the post permission; bad tok
   assert.equal(denied.status,403);assert.equal((await denied.json()).error,'ADMIN_RIGHTS_REQUIRED');
   state.admin=true;
   await f.bot(added('administrator',{can_post_messages:false}));
-  assert.match(tg.calls.filter(c=>c.method==='sendMessage').at(-1).body.text,/Post messages/);
+  assert.match(tg.calls.filter(c=>['sendMessage','sendWidget'].includes(c.method)).at(-1).body.text,/Post messages/);
   assert.equal((await (await f.request('/api/channels/webhook',{chat_id:CHAT})).json()).error,'BOT_CANNOT_POST');
   assert.equal((await f.request('/api/channels/webhook',{chat_id:'abc'})).status,400);
   assert.equal((await f.tv('https://drfx.company/tv/ch/short','{}')).status,404);
@@ -123,16 +124,16 @@ test('/channels lists chats as buttons and the cwh: button sends the webhook in 
  const f=fixture(),tg=telegramMock();
  try{
   await f.bot({update_id:2,message:{message_id:5,chat:{id:777,type:'private'},from:{id:777,first_name:'Ana'},text:'/channels'}});
-  const empty=tg.calls.filter(c=>c.method==='sendMessage').at(-1).body;
-  assert.match(empty.text,/Add this bot as an <b>admin<\/b>/);
+  const empty=tg.calls.filter(c=>['sendMessage','sendWidget'].includes(c.method)).at(-1).body;
+  assert.match(empty.text,/Add this bot as an admin/);
   assert.ok(JSON.stringify(empty.reply_markup).includes('startchannel=true'));
   await f.bot(added());
   await f.bot({update_id:3,message:{message_id:6,chat:{id:777,type:'private'},from:{id:777,first_name:'Ana'},text:'/channels'}});
-  const listMsg=tg.calls.filter(c=>c.method==='sendMessage').at(-1).body;
+  const listMsg=tg.calls.filter(c=>['sendMessage','sendWidget'].includes(c.method)).at(-1).body;
   assert.equal(listMsg.reply_markup.inline_keyboard[0][0].callback_data,'cwh:'+CHAT);
   await f.bot({update_id:4,callback_query:{id:'cb1',from:{id:777,first_name:'Ana'},data:'cwh:'+CHAT,message:{message_id:7,chat:{id:777,type:'private'}}}});
   assert.ok(tg.calls.some(c=>c.method==='answerCallbackQuery'));
-  const hook=tg.calls.filter(c=>c.method==='sendMessage').at(-1).body;
+  const hook=tg.calls.filter(c=>['sendMessage','sendWidget'].includes(c.method)).at(-1).body;
   assert.match(hook.text,/TradingView webhook for “Gold &lt;Signals&gt;”/);
   assert.match(hook.text,/<code>https:\/\/drfx\.company\/tv\/ch\/[A-Za-z0-9_-]{43}<\/code>/);
   assert.equal(hook.reply_markup.inline_keyboard[0][0].web_app.url,'https://drfx.company/telegram?tab=channels');
@@ -158,3 +159,4 @@ test('EA labels positions and the panel with the signal source',()=>{
  // the longest comment fits MT5's 31-character limit
  assert.ok(('SB:'+'x'.repeat(12)+':TradingView').length<=31);
 });
+
