@@ -101,6 +101,7 @@ export async function starSuccessfulPayment(msg,env,h){
   statements.push(env.DB.prepare("UPDATE ea_licenses SET plan=?,duration_modifier=?,status='active',expires_at=CASE WHEN activated_at IS NULL THEN NULL ELSE datetime(CASE WHEN expires_at>CURRENT_TIMESTAMP THEN expires_at ELSE CURRENT_TIMESTAMP END,?) END,updated_at=CURRENT_TIMESTAMP WHERE agent_id=? AND EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')").bind(o.plan,plan.duration,plan.duration,r.agent_id,o.id));
   statements.push(env.DB.prepare("UPDATE site_users SET plan=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')").bind(o.plan,user.id,o.id));
  }
+ statements.push(env.DB.prepare("INSERT INTO site_audit (id,actor_id,action,subject_id,detail) SELECT ?,?,'telegram_stars_paid',?,? WHERE EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')").bind(h.uid('aud'),user.id,user.id,o.id+' · '+o.plan+' · '+o.stars+' Stars',o.id));
  statements.push(env.DB.prepare("UPDATE telegram_star_orders SET status='paid',charge_id=?,paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(payment.telegram_payment_charge_id,o.id));
  // All entitlement writes and the unique charge claim commit together or roll back together.
  const results=await env.DB.batch(statements);
