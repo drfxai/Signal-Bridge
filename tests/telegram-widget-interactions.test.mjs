@@ -47,11 +47,11 @@ test('signal card renders only the recorded alert and refreshes through its own 
 test('Scalper card renders issued licenses but never reveals secret keys',async()=>{
  const init=scalperWidgetData({total:2,plan:'quarterly',days:90,created_at:'2026-11-10 10:00:00'});
  const w=boot(SCALPER_WIDGET_HTML,init,{'sb:scalper:refresh':{data:{total:3,plan:'annual',days:365,issued:'2026-11-10'},message:'Licenses refreshed'}});
- assert.equal(w.get('total').textContent,2);
+ assert.equal(w.get('total').textContent,'2');
  assert.equal(w.get('days').textContent,'90 days');
  w.get('refresh').onclick();await tick();
  assert.ok(w.calls.includes('sb:scalper:refresh'));
- assert.equal(w.get('total').textContent,3);
+ assert.equal(w.get('total').textContent,'3');
  assert.equal(w.get('plan').textContent,'annual');
  for(const html of [SIGNAL_BRIDGE_WIDGET_HTML,SIGNAL_HISTORY_WIDGET_HTML,SCALPER_WIDGET_HTML])assert.doesNotMatch(html,/api\.telegram\.org|bot\d+:[A-Za-z0-9_-]{20,}/);
 });
@@ -59,6 +59,6 @@ test('chatDataChanged redraws the widget without a network call',()=>{
  const w=boot(SCALPER_WIDGET_HTML,JSON.stringify({total:1,plan:'trial'}));
  w.widget.chatData=JSON.stringify({total:6,plan:'annual',days:365});
  w.events.get('chatDataChanged')();
- assert.equal(w.get('total').textContent,6);
+ assert.equal(w.get('total').textContent,'6');
  assert.deepEqual(w.calls,['ready']);
 });
