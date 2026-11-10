@@ -66,7 +66,7 @@ test('checkout validates plan and MT5 account, then a verified payment issues on
   // the key is stored encrypted, never in clear text
   assert.ok(!JSON.stringify(f.db.prepare('SELECT * FROM scalper_keys').all()).includes(view.keys[0].key));
   // buyer receives the key in Telegram
-  assert.ok(sent.some(x=>x.telegram&&x.telegram.text.includes(view.keys[0].key)));
+  assert.ok(sent.some(x=>x.telegram&&(x.telegram.caption||x.telegram.text||'').includes(view.keys[0].key)));
  }finally{globalThis.fetch=real;f.db.close();}
 });
 test('Scalper checkout fails closed without the signing secret',async()=>{
@@ -98,3 +98,4 @@ test('Scalper Pro is on the website, in the portal and in the Mini App',async()=
  assert.equal((worker.match(/media-src 'self'/g)||[]).length,2);
  assert.ok(fs.readFileSync(new URL('../site/wrangler.jsonc',import.meta.url),'utf8').includes('"directory": "./public"'));
 });
+
