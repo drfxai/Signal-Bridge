@@ -36,6 +36,7 @@ export async function sendPrivateLicenses(env,h,user,product='bridge'){
  }
 }
 export async function purchaseQuote(env,h,user,plan,accountLogin){
+ if(h.reconcile)await h.reconcile(env);
  const p=STAR_PLANS[plan],stars=starPrice(env,plan);
  if(!p||!stars)throw Error('PLAN_UNAVAILABLE');
  if(!env.LICENSE_VAULT_KEY||(p.days&&!env.SCALPER_LICENSE_SECRET))throw Error('LICENSING_NOT_CONFIGURED');
