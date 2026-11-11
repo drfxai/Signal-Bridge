@@ -4,7 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {createHash,createHmac} from 'node:crypto';
 import handler from '../site/src/worker.mjs';
-import {makeScalperKey,parseScalperKey,validLogin,SCALPER_PLANS} from '../site/src/scalper.mjs';
+import {makeScalperKey,parseScalperKey,validLogin,SCALPER_PLANS,claimScalperTrial} from '../site/src/scalper.mjs';
 const digest=s=>createHash('sha256').update(s).digest('hex');
 
 test('Scalper Pro keys match the EA / keygen.py format byte for byte',async()=>{
@@ -99,3 +99,26 @@ test('Scalper Pro is on the website, in the portal and in the Mini App',async()=
  assert.ok(fs.readFileSync(new URL('../site/wrangler.jsonc',import.meta.url),'utf8').includes('"directory": "./public"'));
 });
 
+
+test('seven-day self-service keys are account-bound and a concurrent claim cannot issue a second key',async()=>{
+ const sqlite=new DatabaseSync(':memory:');
+ sqlite.exec('CREATE TABLE site_users (id TEXT PRIMARY KEY); INSERT INTO site_users VALUES (\'one\'),(\'two\')');
+ sqlite.exec(readFileSync('site/migrations/0014_scalper_pro.sql','utf8'));
+ const env={SCALPER_LICENSE_SECRET:'test-secret',LICENSE_VAULT_KEY:'test-vault',
+  DB:{prepare(sql){return {bind(...args){return {
+   async first(){const row=sqlite.prepare(sql).get(...args);return row?{...row}:null},
+   async run(){return {meta:{changes:sqlite.prepare(sql).run(...args).changes}}}
+  }}}}}};
+ const h={uid:prefix=>prefix+'_'+crypto.randomUUID().replaceAll('-',''),encryptCode:async (_env,code)=>({cipher:code,iv:'mock'})};
+ const [a,b]=await Promise.all([claimScalperTrial(env,h,'one','12345678'),claimScalperTrial(env,h,'one','12345678')]);
+ assert.deepEqual(a,b);
+ const row=sqlite.prepare('SELECT * FROM scalper_keys WHERE id=?').get(a.id);
+ assert.equal(row.plan,'scalper_trial');
+ assert.equal(row.days,7);
+ assert.equal((await parseScalperKey('test-secret',row.encrypted_key)).account_login,'12345678');
+ assert.deepEqual(await claimScalperTrial(env,h,'one','98765432'),a);
+ await assert.rejects(claimScalperTrial(env,h,'two','12345678'),/TRIAL_ACCOUNT_ALREADY_USED/);
+ await assert.rejects(claimScalperTrial(env,h,'two','123'),/INVALID_MT5_ACCOUNT/);
+ assert.equal(sqlite.prepare('SELECT count(*) AS n FROM scalper_keys').get().n,1);
+ sqlite.close();
+});
