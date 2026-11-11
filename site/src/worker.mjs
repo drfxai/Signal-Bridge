@@ -701,7 +701,7 @@ async function signalBridgeWidgetQuery(q,env,req){
     const plan=q.data.slice(7);
     const account=plan.startsWith('scalper_')?(await licenseRecord(env,user)).account_login:null;
     if(plan.startsWith('scalper_')&&!account){
-     await botSend(env,telegramId,language==='fa'?'برای خرید اسکلپر پرو، ابتدا حساب MT5 را در وب‌اپ متصل کن و دوباره این پلن را انتخاب کن.':'Connect your MT5 account in the web app, then select this plan again.',true);
+     await botSend(env,telegramId,language==='fa'?'برای خرید اسکلپر پرو شماره حساب MT5 را در بخش اسکلپر پرو وب‌اپ وارد کن.':'Enter your MT5 account in the Scalper Pro section of the web app.',{inline_keyboard:[[{text:language==='fa'?'باز کردن اسکلپر پرو':'Open Scalper Pro',web_app:{url:API_ORIGIN+'/telegram?tab=scalper'}}]]});
     }else await purchaseQuote(env,{...h,language},user,plan,account);
    }
   }catch{await telegramWidgetApi(env,'sendMessage',{chat_id:telegramId,text:'Request temporarily unavailable. Use /buy, /code or /scalper to retry.'}).catch(()=>{});}
