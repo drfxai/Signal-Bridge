@@ -4,7 +4,7 @@ import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand,BOT_MENU_COMMANDS} from './bot-commands.mjs';
 import {LICENSE_SHOP_WIDGET_HTML} from './telegram-license-shop.mjs';
-import {BOT_WORKSPACE_WIDGET_HTML,workspaceView,workspaceQueryPage,sendWorkspacePage,sendBotNotice,signalRecords} from './telegram-workspace.mjs';
+import {BOT_NAVIGATION,navigationKeyboard,BOT_WORKSPACE_WIDGET_HTML,workspaceView,workspaceQueryPage,sendWorkspacePage,sendBotNotice,signalRecords} from './telegram-workspace.mjs';
 import {STAR_PLANS,starPrice,LICENSE_TERMS,sendPrivateLicenses,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,starOrders} from './telegram-commerce.mjs';
 import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
 import {SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
@@ -110,7 +110,7 @@ async function audit(env,actor,action,subject,detail=''){
 // Shared helpers handed to the Scalper Pro module.
 const channelHelpers=(env,req)=>({json,fail,sha,rand,b64u,uid,limited,req,origin:API_ORIGIN,
  encryptCode:code=>encryptCode(env,code),decryptCode:(c,n)=>decryptCode(env,c,n),audit:(actor,action,subject)=>audit(env,actor,action,subject),
- botSend:(chatId,text,keyboard)=>botSend(env,chatId,text,keyboard),answer:id=>botAnswerCallback(env,id),getOrCreateTelegram:(id,name)=>getOrCreateTelegram(env,id,name)});
+ botSend:(chatId,text,keyboard,section)=>botSend(env,chatId,text,keyboard,section),answer:id=>botAnswerCallback(env,id),getOrCreateTelegram:(id,name)=>getOrCreateTelegram(env,id,name)});
 const scalperHelpers=env=>({json,fail,readBody,limited,encryptCode,decryptCode,uid,audit,origin:API_ORIGIN,
  notify:async(userId,key,login,days)=>{
   const u=await env.DB.prepare('SELECT telegram_id FROM site_users WHERE id=?').bind(userId).first();
@@ -527,12 +527,12 @@ async function ipnHandler(req,env){
  ]);
  return results[3]?.meta?.changes===1?json({ok:true,granted:true}):json({ok:true,duplicate:true});
 }
-async function botSend(env,chatId,text,keyboard){
+async function botSend(env,chatId,text,keyboard,section){
  if(!env.TELEGRAM_BOT_TOKEN)return;
  const body={chat_id:chatId,text,parse_mode:'HTML',disable_web_page_preview:true};
  if(keyboard===true)body.reply_markup={inline_keyboard:[[ {text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}} ],[ {text:'Open website',url:API_ORIGIN} ]]};
  else if(keyboard&&typeof keyboard==='object')body.reply_markup=keyboard;
- return sendBotNotice(env,{raw:telegramWidgetApi},chatId,text,body.reply_markup);
+ return sendBotNotice(env,{raw:telegramWidgetApi},chatId,text,body.reply_markup,section);
 }
 
 async function telegramWidgetApi(env,method,body){
@@ -578,7 +578,7 @@ async function sendLatestSignalWidget(env,chatId,user){
  const data=await latestSignalWidgetData(env,user);
  await telegramWidgetApi(env,'sendWidget',{
   chat_id:chatId,html:SIGNAL_HISTORY_WIDGET_HTML,chat_data:data,
-  caption:'DrFXAi · Latest recorded signal · Broker execution unverified',
+  caption:'DrFXAi · Latest recorded signal · Broker execution unverified',reply_markup:navigationKeyboard(),
   allow_queries:true,protect_content:true
  });
 }
@@ -729,6 +729,19 @@ async function botLanguageCallback(update,env){
  await botWelcome(env,chatId,user,lang);
  return json({ok:true});
 }
+async function workspaceNavigationCallback(callback,env,req){
+ const destination=callback.data;
+ if(!Object.values(BOT_NAVIGATION).includes(destination))return null;
+ const sender=String(callback.from?.id||'');
+ const chat=callback.message?.chat;
+ if(!sender||chat?.type!=='private'||String(chat.id)!==sender)return json({ok:true,ignored:'CALLBACK_NOT_PRIVATE'});
+ await botAnswerCallback(env,callback.id);
+ const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(sender).first();
+ if(!user||user.status!=='active')return json({ok:true,ignored:'NO_ACTIVE_MEMBER'});
+ if(destination===BOT_NAVIGATION.channels)await channelsCommand(env,user,sender,channelHelpers(env,req));
+ else await sendWorkspacePage(env,workspaceHelpers(),user,'home');
+ return json({ok:true});
+}
 async function telegramWebhook(req,env,ctx){
  if(!env.TELEGRAM_BOT_TOKEN||!env.TELEGRAM_WEBHOOK_SECRET)return fail('BOT_NOT_CONFIGURED',503);
  const secret=req.headers.get('x-telegram-bot-api-secret-token')||'';
@@ -738,7 +751,7 @@ async function telegramWebhook(req,env,ctx){
  if(data.message?.successful_payment)return json(await starSuccessfulPayment(data.message,env,commerceHelpers()));
  if(data.widget_query)return signalBridgeWidgetQuery(data.widget_query,env,req);
  if(data.my_chat_member)return onBotMembership(data,env,channelHelpers(env,req));
- if(data.callback_query){if(await acceptStarQuote(data.callback_query,env,commerceHelpers()))return json({ok:true});const handled=await channelCallback(data,env,channelHelpers(env,req));if(handled)return handled;return botLanguageCallback(data,env);}
+ if(data.callback_query){const navigation=await workspaceNavigationCallback(data.callback_query,env,req);if(navigation)return navigation;if(await acceptStarQuote(data.callback_query,env,commerceHelpers()))return json({ok:true});const handled=await channelCallback(data,env,channelHelpers(env,req));if(handled)return handled;return botLanguageCallback(data,env);}
  const routed=await routeTelegramSignal(data,env);if(routed)return routed;
  const msg=data.message;
  if(!msg||msg.chat?.type!=='private'||!msg.from?.id)return json({ok:true,ignored:'NO_PRIVATE_MESSAGE'});
