@@ -196,7 +196,7 @@ ${SXM_PANEL_HTML}${CHM_PANEL_HTML}<section class="tab-panel" data-panel="help" i
  </div>
 </section>
 ${ADMIN_PANEL_HTML}
-<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
+<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br><a href="https://t.me/DrFXGOD" target="_blank" rel="noopener noreferrer" style="color:inherit">Support · پشتیبانی @DrFXGOD</a><br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
  <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Home</span></button>
@@ -514,3 +514,4 @@ ${ADMIN_JS}
  show('home');
  start();
 })();`+EXECUTION_JS+SXM_JS+CHM_JS;
+
