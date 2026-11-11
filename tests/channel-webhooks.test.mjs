@@ -129,7 +129,7 @@ test('/channels lists chats as buttons and the cwh: button sends the webhook in 
   assert.ok(empty.chat_data.includes('startchannel=true'));
   await f.bot(added());
   await f.bot({update_id:3,message:{message_id:6,chat:{id:777,type:'private'},from:{id:777,first_name:'Ana'},text:'/channels'}});
-  const listMsg=tg.calls.filter(c=>['sendMessage','sendWidget'].includes(c.method)).at(-1).body;
+  const listMsg=tg.calls.findLast(c=>c.method==='sendWidget'&&unpackWorkspaceView(JSON.parse(c.body.chat_data)).buttons.some(b=>b.action==='cwh:'+CHAT)).body;
   assert.equal(unpackWorkspaceView(JSON.parse(listMsg.chat_data)).buttons[0].action,'cwh:'+CHAT);
   await f.bot({update_id:4,callback_query:{id:'cb1',from:{id:777,first_name:'Ana'},data:'cwh:'+CHAT,message:{message_id:7,chat:{id:777,type:'private'}}}});
   assert.ok(tg.calls.some(c=>c.method==='answerCallbackQuery'));
