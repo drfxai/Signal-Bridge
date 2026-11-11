@@ -165,7 +165,7 @@ function pickerKeyboard(rows,name,origin){
  const kb=rows.slice(0,20).map(r=>[{text:typeIcon(r.chat_type)+' '+clean(r.title||'Untitled',40)+(r.hook_id?'  ✅':'')+(r.can_post===1?'':'  ⚠️'),callback_data:'cwh:'+r.chat_id}]);
  const links=addLinks(name);
  if(links)kb.push([{text:'➕ Add to channel',url:links.channel},{text:'➕ Add to group',url:links.group}]);
- kb.push([{text:'📱 Open in Mini App',web_app:{url:origin+'/telegram?tab=channels'}}]);
+ kb.push([{text:'Manage in Mini App',web_app:{url:origin+'/telegram?tab=channels'}}]);
  return {inline_keyboard:kb};
 }
 
@@ -195,10 +195,10 @@ export async function onBotMembership(update,env,h){
 export async function channelsCommand(env,user,chatId,h){
  const rows=await listChats(env,user),name=await botUsername(env);
  if(!rows.length){
-  await h.botSend(chatId,'📡 <b>TradingView → Telegram channel</b>\n\n1️⃣ Add this bot as an <b>admin</b> to your channel or group (buttons below).\n2️⃣ Come back and send /channels.\n3️⃣ Pick the chat and copy its webhook into your TradingView alert.\n\nSignals go straight to the chat. MT5 is not involved.',pickerKeyboard([],name,h.origin));
+  await h.botSend(chatId,'Add this bot as an <b>admin</b> to your channel or group using the buttons below. Give it permission to post. Return here and choose <b>Channels & Groups</b> from the main menu.',pickerKeyboard([],name,h.origin),'channels');
   return;
  }
- await h.botSend(chatId,'📡 <b>Your channels and groups</b>\n\nPick one to get its TradingView webhook.\n✅ webhook ready   ⚠️ bot cannot post yet',pickerKeyboard(rows,name,h.origin));
+ await h.botSend(chatId,'Choose a channel or group below to get its TradingView webhook.\n✅ Webhook ready   ⚠️ Posting permission needed',pickerKeyboard(rows,name,h.origin),'channels');
 }
 
 const ERRORS={LINK_TELEGRAM_FIRST:'Link Telegram to your account first.',BOT_NOT_IN_CHAT:'The bot is no longer in that chat. Add it again as an admin.',BOT_CANNOT_POST:'Give the bot the “Post messages” admin permission, then try again.',ADMIN_RIGHTS_REQUIRED:'Only admins of that chat can create its webhook.',BOT_NOT_CONFIGURED:'The bot is not configured yet.',INVALID_CHAT:'Unknown chat.'};
@@ -212,12 +212,14 @@ export async function channelCallback(update,env,h){
  const match=/^cwh:(-?\d{1,20})$/.exec(String(cb?.data||''));
  if(!match||!cb.from?.id||cb.message?.chat?.type!=='private')return null;
  const telegramId=String(cb.from.id),dm=String(cb.message.chat.id);
+ if(telegramId!==dm)return h.json({ok:true,ignored:'CALLBACK_NOT_PRIVATE'});
  await h.answer(cb.id);
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(!user)user=await h.getOrCreateTelegram(telegramId,cb.from.username||cb.from.first_name||'Trader');
  if(user.status!=='active')return h.json({ok:true});
  const r=await ensureChannelWebhook(env,user,match[1],h);
- if(r.error){await h.botSend(dm,'⚠️ '+(ERRORS[r.error]||'Could not create the webhook.'));return h.json({ok:true,error:r.error});}
- await h.botSend(dm,webhookMessage(r.chat.title,r.url),{inline_keyboard:[[{text:'📱 Manage in Mini App',web_app:{url:h.origin+'/telegram?tab=channels'}}]]});
+ if(r.error){await h.botSend(dm,'⚠️ '+(ERRORS[r.error]||'Could not create the webhook.'),undefined,'channel-detail');return h.json({ok:true,error:r.error});}
+ await h.botSend(dm,webhookMessage(r.chat.title,r.url),{inline_keyboard:[[{text:'📱 Manage in Mini App',web_app:{url:h.origin+'/telegram?tab=channels'}}]]},'channel-detail');
  return h.json({ok:true});
 }
+
