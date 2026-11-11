@@ -161,11 +161,11 @@ export async function channelApi(path,method,body,env,user,h){
 
 // Bot side --------------------------------------------------------------------------------
 const typeIcon=t=>t==='channel'?'📢':'👥';
-function pickerKeyboard(rows,name,origin){
+function pickerKeyboard(rows,name,origin,fa=false){
  const kb=rows.slice(0,20).map(r=>[{text:typeIcon(r.chat_type)+' '+clean(r.title||'Untitled',40)+(r.hook_id?'  ✅':'')+(r.can_post===1?'':'  ⚠️'),callback_data:'cwh:'+r.chat_id}]);
  const links=addLinks(name);
- if(links)kb.push([{text:'➕ Add to channel',url:links.channel},{text:'➕ Add to group',url:links.group}]);
- kb.push([{text:'Manage in Mini App',web_app:{url:origin+'/telegram?tab=channels'}}]);
+ if(links)kb.push([{text:fa?'افزودن به کانال':'➕ Add to channel',url:links.channel},{text:fa?'افزودن به گروه':'➕ Add to group',url:links.group}]);
+ kb.push([{text:fa?'مدیریت در وب‌اپ':'Manage in Mini App',web_app:{url:origin+'/telegram?tab=channels'}}]);
  return {inline_keyboard:kb};
 }
 
@@ -194,15 +194,18 @@ export async function onBotMembership(update,env,h){
 // /channels: list the member's chats as buttons.
 export async function channelsCommand(env,user,chatId,h){
  const rows=await listChats(env,user),name=await botUsername(env);
+ const fa=await h.locale?.(chatId)==='fa';
  if(!rows.length){
-  await h.botSend(chatId,'Add this bot as an <b>admin</b> to your channel or group using the buttons below. Give it permission to post. Return here and choose <b>Channels & Groups</b> from the main menu.',pickerKeyboard([],name,h.origin),'channels');
+  await h.botSend(chatId,fa?'ربات را با دکمه‌های زیر به کانال یا گروه اضافه کن و مجوز ارسال پیام بده. سپس به همین بخش برگرد.':'Add this bot as an <b>admin</b> to your channel or group using the buttons below. Give it permission to post. Return here and choose <b>Channels & Groups</b> from the main menu.',pickerKeyboard([],name,h.origin,fa),'channels');
   return;
  }
- await h.botSend(chatId,'Choose a channel or group below to get its TradingView webhook.\n✅ Webhook ready   ⚠️ Posting permission needed',pickerKeyboard(rows,name,h.origin),'channels');
+ await h.botSend(chatId,fa?'برای دریافت وبهوک تریدینگ‌ویو، کانال یا گروه را انتخاب کن.\n✅ وبهوک آماده · ⚠️ مجوز ارسال لازم است':'Choose a channel or group below to get its TradingView webhook.\n✅ Webhook ready   ⚠️ Posting permission needed',pickerKeyboard(rows,name,h.origin,fa),'channels');
 }
 
 const ERRORS={LINK_TELEGRAM_FIRST:'Link Telegram to your account first.',BOT_NOT_IN_CHAT:'The bot is no longer in that chat. Add it again as an admin.',BOT_CANNOT_POST:'Give the bot the “Post messages” admin permission, then try again.',ADMIN_RIGHTS_REQUIRED:'Only admins of that chat can create its webhook.',BOT_NOT_CONFIGURED:'The bot is not configured yet.',INVALID_CHAT:'Unknown chat.'};
-export function webhookMessage(title,url){
+export function webhookMessage(title,url,fa=false){
+ if(fa)return 'وبهوک تریدینگ‌ویو برای «'+esc(clean(title,80))+'»\n\n۱. در تنظیمات هشدار TradingView، این نشانی را در Webhook URL وارد کن:\n<code>'+esc(url)+'</code>\n\n۲. این قالب را در Message قرار بده:\n<code>'+esc(ALERT_TEMPLATE)+'</code>\n\nنشانی وبهوک را خصوصی نگه دار.';
+
  return '⚡ <b>TradingView webhook for “'+esc(clean(title,80))+'”</b>\n\n<b>1.</b> In TradingView open <i>Create alert → Notifications</i>, tick <b>Webhook URL</b> and paste:\n<code>'+esc(url)+'</code>\n\n<b>2.</b> Paste this into the alert <b>Message</b>:\n<code>'+esc(ALERT_TEMPLATE)+'</code>\n\n🔒 Keep the URL private. Rotate it any time in the Mini App.';
 }
 
@@ -217,9 +220,10 @@ export async function channelCallback(update,env,h){
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(!user)user=await h.getOrCreateTelegram(telegramId,cb.from.username||cb.from.first_name||'Trader');
  if(user.status!=='active')return h.json({ok:true});
+ const fa=await h.locale?.(dm)==='fa';
  const r=await ensureChannelWebhook(env,user,match[1],h);
- if(r.error){await h.botSend(dm,'⚠️ '+(ERRORS[r.error]||'Could not create the webhook.'),undefined,'channel-detail');return h.json({ok:true,error:r.error});}
- await h.botSend(dm,webhookMessage(r.chat.title,r.url),{inline_keyboard:[[{text:'📱 Manage in Mini App',web_app:{url:h.origin+'/telegram?tab=channels'}}]]},'channel-detail');
+ if(r.error){await h.botSend(dm,'⚠️ '+(fa?'ساخت وبهوک انجام نشد. عضویت ربات و مجوز ارسال پیام را بررسی کن.':(ERRORS[r.error]||'Could not create the webhook.')),undefined,'channel-detail');return h.json({ok:true,error:r.error});}
+ await h.botSend(dm,webhookMessage(r.chat.title,r.url,fa),{inline_keyboard:[[{text:fa?'مدیریت در وب‌اپ':'Manage in Mini App',web_app:{url:h.origin+'/telegram?tab=channels'}}]]},'channel-detail');
  return h.json({ok:true});
 }
 

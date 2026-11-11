@@ -1,3 +1,4 @@
+import {onboardingView,onboardingPages,localizeWorkspace} from '../site/src/telegram-onboarding.mjs';
 import {createRequire} from 'node:module';
 import {mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
@@ -15,8 +16,8 @@ try{
  await mkdir('artifacts/telegram-workspace',{recursive:true});
  for(const width of [320,390,600]){
   const page=await browser.newPage({viewport:{width,height:700},deviceScaleFactor:1});page.on('pageerror',e=>errors.push(String(e)));
-  for(const name of ['home','account','licenses','shop','setup','language','terms','support','history:0','signal:0','orders:0','admin']){
-   const data=widgetViewData(await workspaceView(env,h,user,name));
+  for(const name of [...new Set(['home','account','licenses','shop','setup','language','terms','support','history:0','signal:0','orders:0','admin',...onboardingPages])]){
+   const data=widgetViewData(onboardingView(name,'fa','not_member')||localizeWorkspace(await workspaceView(env,h,user,name),'fa'));
    const stub='<script>window.TelegramWidget={chatData:'+JSON.stringify(data).replace(/</g,'\\u003c')+',onEvent(){},ready(){},request(){return Promise.resolve({result:"{}"})},copyText(){},openLink(){}};<\/script>';
    await page.setContent(stub+BOT_WORKSPACE_WIDGET_HTML);
    const bounds=await page.locator('.shell').boundingBox();

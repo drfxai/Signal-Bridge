@@ -31,7 +31,7 @@ function telegramMock(state={admin:true}){
  globalThis.fetch=async(url,init)=>{
   const u=String(url);
   if(!u.includes('api.telegram.org'))return real(url,init);
-  const method=u.split('/').pop(),body=JSON.parse(init.body||'{}');if(method==='sendWidget'){const v=unpackWorkspaceView(JSON.parse(body.chat_data));body.text=body.caption==='DrFXAi · Account response'?(v.pages||[]).join('\n'):body.caption;}calls.push({method,body});
+  const method=u.split('/').pop(),body=JSON.parse(init.body||'{}');if(method==='sendWidget'){const v=unpackWorkspaceView(JSON.parse(body.chat_data));body.text=v.pages?.length?v.pages.join('\n'):body.caption;}calls.push({method,body});
   if(method==='getChatMember')return Response.json({ok:true,result:{status:state.admin?'administrator':'member'}});
   if(method==='sendMessage'&&state.blocked)return Response.json({ok:false,error_code:403,description:'Forbidden: bot is not a member of the channel chat'});
   return Response.json({ok:true,result:{message_id:1}});
@@ -58,7 +58,7 @@ test('bot added as admin -> chat listed -> unique webhook posts TradingView aler
   assert.equal((await f.bot(added())).status,200);
   const dm=tg.calls.find(c=>['sendMessage','sendWidget'].includes(c.method));
   assert.equal(dm.body.chat_id,'777');assert.match(dm.body.text,/Gold <Signals>/);
-  assert.equal(dm.body.reply_markup.inline_keyboard[0][0].callback_data,'cwh:'+CHAT);
+  assert.equal(unpackWorkspaceView(JSON.parse(dm.body.chat_data)).buttons[0].action,'cwh:'+CHAT);
   let list=await (await f.request('/api/channels')).json();
   assert.equal(list.bot_username,'DrFXSignalBot');assert.match(list.add_links.channel,/startchannel=true&admin=post_messages/);
   assert.equal(list.chats.length,1);assert.equal(list.chats[0].title,'Gold <Signals>');assert.equal(list.chats[0].can_post,true);assert.equal(list.chats[0].webhook,null);
@@ -126,17 +126,17 @@ test('/channels lists chats as buttons and the cwh: button sends the webhook in 
   await f.bot({update_id:2,message:{message_id:5,chat:{id:777,type:'private'},from:{id:777,first_name:'Ana'},text:'/channels'}});
   const empty=tg.calls.filter(c=>['sendMessage','sendWidget'].includes(c.method)).at(-1).body;
   assert.match(empty.text,/Add this bot as an admin/);
-  assert.ok(JSON.stringify(empty.reply_markup).includes('startchannel=true'));
+  assert.ok(empty.chat_data.includes('startchannel=true'));
   await f.bot(added());
   await f.bot({update_id:3,message:{message_id:6,chat:{id:777,type:'private'},from:{id:777,first_name:'Ana'},text:'/channels'}});
-  const listMsg=tg.calls.filter(c=>['sendMessage','sendWidget'].includes(c.method)).at(-1).body;
-  assert.equal(listMsg.reply_markup.inline_keyboard[0][0].callback_data,'cwh:'+CHAT);
+  const listMsg=tg.calls.findLast(c=>c.method==='sendWidget'&&unpackWorkspaceView(JSON.parse(c.body.chat_data)).buttons.some(b=>b.action==='cwh:'+CHAT)).body;
+  assert.equal(unpackWorkspaceView(JSON.parse(listMsg.chat_data)).buttons[0].action,'cwh:'+CHAT);
   await f.bot({update_id:4,callback_query:{id:'cb1',from:{id:777,first_name:'Ana'},data:'cwh:'+CHAT,message:{message_id:7,chat:{id:777,type:'private'}}}});
   assert.ok(tg.calls.some(c=>c.method==='answerCallbackQuery'));
   const hook=tg.calls.filter(c=>['sendMessage','sendWidget'].includes(c.method)).at(-1).body;
   assert.match(hook.text,/TradingView webhook for “Gold &lt;Signals&gt;”/);
   assert.match(hook.text,/<code>https:\/\/drfx\.company\/tv\/ch\/[A-Za-z0-9_-]{43}<\/code>/);
-  assert.equal(hook.reply_markup.inline_keyboard[0][0].web_app.url,'https://drfx.company/telegram?tab=channels');
+  assert.equal(unpackWorkspaceView(JSON.parse(hook.chat_data)).buttons[0].url,'https://drfx.company/telegram?tab=channels');
  }finally{tg.restore()}
 });
 
@@ -146,7 +146,7 @@ test('Mini App ships the Channels flow, nav entry and home card',()=>{
  assert.ok(MINI_JS.includes("'/api/channels'"));assert.ok(MINI_JS.includes('window.chMiniLoad'));
  assert.ok(MINI_JS.includes("['home','license','plans','scalper','channels','help','admin']"));
  const ops=readFileSync(new URL('../scripts/configure-company-telegram-bot.mjs',import.meta.url),'utf8');
- assert.ok(ops.includes('commands:BOT_MENU_COMMANDS'));assert.ok(BOT_MENU_COMMANDS.some(c=>c.command==='channels'));
+ assert.ok(ops.includes('commands:BOT_COMMANDS_VISIBLE'));assert.ok(BOT_MENU_COMMANDS.some(c=>c.command==='channels'));
 });
 
 test('EA labels positions and the panel with the signal source',()=>{

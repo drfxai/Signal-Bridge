@@ -8,6 +8,7 @@ export const STAR_PLANS=Object.freeze({
 });
 export const TERMS_VERSION='2026-11-11';
 export const LICENSE_TERMS='DrFX digital license terms · '+TERMS_VERSION+'\nSignal Bridge: duration starts on first activation; renewals extend the current expiry. Scalper Pro: the key is bound to the MT5 account shown on your invoice. Check that account before paying. Purchases do not guarantee trading returns. For billing, delivery or refund requests use /paysupport and include your order ID. Payment uses Telegram Stars; website USD prices are separate. Your license and receipt stay in your private account.';
+export const LICENSE_TERMS_FA='شرایط لایسنس دیجیتال DrFXAi\nاعتبار سیگنال بریج با نخستین فعال‌سازی شروع می‌شود. تمدید به اعتبار فعلی اضافه می‌شود. لایسنس اسکلپر پرو برای شماره حساب MT5 درج‌شده در فاکتور صادر می‌شود. پیش از پرداخت شماره را بررسی کن. خرید لایسنس تضمین سود نیست. برای پشتیبانی، شماره سفارش را همراه پیام بفرست. پرداخت تلگرام با استار انجام می‌شود.';
 export function starPrice(env,plan){
  if(!Object.hasOwn(STAR_PLANS,plan))return null;
  let prices={};try{prices=JSON.parse(env.TELEGRAM_STAR_PRICES||'{}')}catch{return null}
@@ -22,17 +23,18 @@ export function matchesPayment(order,from,payment){
 }
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 export async function sendPrivateLicenses(env,h,user,product='bridge'){
+ const fa=h.language==='fa';
  if(product==='scalper'){
   const rows=(await env.DB.prepare('SELECT account_login,days,encrypted_key,nonce FROM scalper_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 5').bind(user.id).all()).results||[];
-  if(!rows.length){await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:'No Scalper Pro key issued yet. Send /buy to choose a plan. The EA includes its own 7-day trial.'});return;}
-  let text='<b>Your Scalper Pro licenses</b>';
-  for(const r of rows)text+='\nMT5 #'+esc(r.account_login)+' · '+r.days+' days\n<code>'+esc(await h.decryptCode(env,r.encrypted_key,r.nonce))+'</code>';
+  if(!rows.length){await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:fa?'هنوز لایسنس اسکلپر پرو صادر نشده است. دورهٔ آزمایشی ۷ روزه را از داخل EA فعال کن.':'No Scalper Pro key issued yet. The EA includes a 7-day trial.'});return;}
+  let text=fa?'<b>لایسنس‌های اسکلپر پرو</b>':'<b>Your Scalper Pro licenses</b>';
+  for(const r of rows)text+='\nMT5 #'+esc(r.account_login)+' · '+r.days+(fa?' روز':' days')+'\n<code>'+esc(await h.decryptCode(env,r.encrypted_key,r.nonce))+'</code>';
   await h.api(env,'sendMessage',{chat_id:user.telegram_id,text,parse_mode:'HTML',protect_content:true});
  }else{
   const r=await h.licenseRecord(env,user);
-  if(r.status!=='active') {await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:'Your license is not active. Use /buy to renew or /paysupport for help.'});return;}
+  if(r.status!=='active') {await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:fa?'لایسنس فعال نیست. از منوی خرید یا پشتیبانی استفاده کن.':'Your license is not active. Use the menu to renew or get help.'});return;}
   const key=await h.decryptCode(env,r.encrypted_code,r.nonce);
-  await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:'<b>Your Signal Bridge activation code</b>\n<code>'+esc(key)+'</code>\nPlan: '+esc(r.plan)+'\nExpires: '+esc(r.expires_at||'Starts on first activation')+'\nPaste this code into the MT5 EA license setting.',parse_mode:'HTML',protect_content:true,reply_markup:{inline_keyboard:[[{text:'Copy activation code',copy_text:{text:key}}]]}});
+  await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:fa?'<b>کد فعال‌سازی سیگنال بریج</b>\n<code>'+esc(key)+'</code>\nکد را در تنظیمات EA وارد کن.':'<b>Your Signal Bridge activation code</b>\n<code>'+esc(key)+'</code>\nPlan: '+esc(r.plan)+'\nExpires: '+esc(r.expires_at||'Starts on first activation')+'\nPaste this code into the MT5 EA license setting.',parse_mode:'HTML',protect_content:true,reply_markup:{inline_keyboard:[[{text:'Copy activation code',copy_text:{text:key}}]]}});
  }
 }
 export async function purchaseQuote(env,h,user,plan,accountLogin){
@@ -48,7 +50,9 @@ export async function purchaseQuote(env,h,user,plan,accountLogin){
  if(!p.days)await h.licenseRecord(env,user);
  const id='tso_'+crypto.randomUUID().replace(/-/g,'');
  await env.DB.prepare('INSERT INTO telegram_star_orders (id,user_id,telegram_id,plan,stars,account_login,terms_version) VALUES (?,?,?,?,?,?,?)').bind(id,user.id,String(user.telegram_id),plan,stars,login,TERMS_VERSION).run();
- await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:p.label+'\nPrice: '+stars+' Telegram Stars'+(login?'\nMT5 account: '+login:'')+'\nOrder: '+id+'\n\n'+LICENSE_TERMS+'\n\nTap Accept & pay to accept these terms and open your invoice.',protect_content:true,reply_markup:{inline_keyboard:[[{text:'Accept & pay '+stars+' Stars',callback_data:'tgpay:'+id}]]}});
+ const fa=h.language==='fa';
+ const summary=fa?p.label+'\nقیمت: '+stars+' استار'+(login?'\nحساب MT5: '+login:'')+'\nسفارش: '+id+'\n\n'+LICENSE_TERMS_FA:p.label+'\nPrice: '+stars+' Telegram Stars'+(login?'\nMT5 account: '+login:'')+'\nOrder: '+id+'\n\n'+LICENSE_TERMS+'\n\nTap Accept & pay to accept these terms and open your invoice.';
+ await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:summary,protect_content:true,reply_markup:{inline_keyboard:[[{text:fa?'پذیرش شرایط و پرداخت':'Accept & pay '+stars+' Stars',callback_data:'tgpay:'+id}]]}});
  return {message:'Review the order and terms in the new message, then tap Accept & pay.'};
 }
 export async function acceptStarQuote(q,env,h){
@@ -117,3 +121,4 @@ export async function starOrders(env,h,user){
  const rows=(await env.DB.prepare('SELECT id,plan,stars,status,created_at FROM telegram_star_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 10').bind(user.id).all()).results||[];
  await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:rows.length?rows.map(o=>o.id+'\n'+STAR_PLANS[o.plan].label+' · '+o.stars+' Stars · '+o.status+'\n'+o.created_at+' UTC').join('\n\n'):'No Telegram Stars orders yet. Send /buy to view plans.',protect_content:true});
 }
+

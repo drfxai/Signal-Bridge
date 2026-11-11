@@ -20,7 +20,7 @@ const good={
 test('Telegram diagnostics confirms real webhook and menu without leaking private fields',async()=>{
  const status=await telegramHealth(env,mocked(good),Date.now());
  assert.deepEqual(status,{
-  ok:true,configured:true,bot_token_valid:true,bot_username:'SignalBridgeDemoBot',webhook_secret_format_valid:true,
+  membership_channel_admin:false,native_commands_hidden:false,ok:true,configured:true,bot_token_valid:true,bot_username:'SignalBridgeDemoBot',webhook_secret_format_valid:true,
   admin_id_format_valid:true,webhook_registered:true,webhook_matches:true,
   widget_queries_registered:true,widget_commands_registered:true,
   mini_app_menu_configured:true,webhook_pending_updates:0
@@ -66,3 +66,4 @@ test('Telegram health endpoint retains per-IP rate-limit guard',()=>{
  assert.match(source,/limited\(req,env,'public:telegram-health',5\)/);
  assert.match(source,/return json\(await telegramHealth\(env\)\)/);
 });
+

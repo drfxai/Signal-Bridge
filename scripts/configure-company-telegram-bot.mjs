@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // One-time Telegram BotFather integration setup, performed from a trusted local shell.
 // Reads credentials exclusively from environment variables. Never print either secret.
-import { BOT_MENU_COMMANDS } from '../site/src/bot-commands.mjs';
+import { BOT_COMMANDS_VISIBLE } from '../site/src/telegram-onboarding.mjs';
 const token=process.env.TELEGRAM_BOT_TOKEN;
 const secret=process.env.TELEGRAM_WEBHOOK_SECRET;
 if(!token||!secret||!/^[A-Za-z0-9_-]{16,256}$/.test(secret)){
@@ -26,12 +26,11 @@ try{
   drop_pending_updates:false,
   max_connections:10
  });
- await call('setChatMenuButton',{
-  menu_button:{type:'web_app',text:'DrFX App',web_app:{url:'https://drfx.company/telegram'}}
- });
+ await call('setChatMenuButton',{menu_button:{type:'default'}});
  await call('setMyCommands',{
-  commands:BOT_MENU_COMMANDS
+  commands:BOT_COMMANDS_VISIBLE
  });
- console.log('Telegram webhook, Mini App menu button and bot commands registered.');
- console.log('Check /api/config for telegram:true and test /app or /start in a PRIVATE chat.');
+ console.log('Telegram webhook registered. Navigation is inside widgets.');
+ console.log('Check /api/config for telegram:true and test /start in a PRIVATE chat.');
 }catch(err){console.error(err.message);process.exit(1);}
+
