@@ -8,7 +8,7 @@ import {LICENSE_SHOP_WIDGET_HTML} from './telegram-license-shop.mjs';
 import {BOT_NAVIGATION,BOT_WORKSPACE_WIDGET_HTML,workspaceView,workspaceQueryPage,sendWorkspacePage,sendBotNotice,signalRecords} from './telegram-workspace.mjs';
 import {STAR_PLANS,starPrice,LICENSE_TERMS,LICENSE_TERMS_FA,sendPrivateLicenses,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,starOrders} from './telegram-commerce.mjs';
 import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
-import {SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
+import {signalWidgetHtml,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
 import {SCALPER_WIDGET_HTML,scalperWidgetData} from './telegram-scalper-widget.mjs';
 import {adminOverview,adminDirectory,adminConnections,adminOrders} from './admin-operations.mjs';
 import {UI_RELEASE} from './ui-release.mjs';
@@ -581,7 +581,7 @@ async function latestSignalWidgetData(env,member){
 async function sendLatestSignalWidget(env,chatId,user){
  const data=await latestSignalWidgetData(env,user);
  await telegramWidgetApi(env,'sendWidget',{
-  chat_id:chatId,html:SIGNAL_HISTORY_WIDGET_HTML,chat_data:data,
+  chat_id:chatId,html:signalWidgetHtml(await userBotLocale(env,chatId)),chat_data:data,
   caption:'DrFXAi · Latest recorded signal · Broker execution unverified',
   allow_queries:true,protect_content:true
  });
