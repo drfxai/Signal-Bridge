@@ -31,7 +31,7 @@ import { scalperOverview, scalperCheckout, scalperPaid, scalperGrant, claimScalp
 const HEAD={'x-drfx-ui-release':UI_RELEASE,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
 const DURATION={trial:'+1 month',quarterly:'+3 months',annual:'+1 year'};
-const ADMIN_ACTIONS=new Set(['suspend','resume','grant_trial','grant_quarterly','grant_annual','revoke_license','grant_scalper_1m','grant_scalper_3m']);
+const ADMIN_ACTIONS=new Set(['gift_bridge_3m','suspend','resume','grant_trial','grant_quarterly','grant_annual','revoke_license','grant_scalper_1m','grant_scalper_3m']);
 const API_ORIGIN='https://drfx.company';
 const encoder=new TextEncoder();
 const json=(data,status=200,extra={})=>new Response(JSON.stringify(data),{status,headers:{...HEAD,'content-type':'application/json; charset=utf-8',...extra}});
@@ -454,11 +454,48 @@ async function testStatus(req,env,user){
  if(!test)return fail('TEST_NOT_FOUND',404);
  return json({ok:true,test});
 }
+async function giftBridgeQuarter(env,admin,user,requestId){
+ if(!/^[0-9a-f]{32}$/.test(requestId||''))return fail('INVALID_REQUEST_ID');
+ const id='gift_'+requestId,action='gift_bridge_3m';
+ const prior=()=>env.DB.prepare('SELECT actor_id,subject_id,action FROM site_audit WHERE id=?').bind(id).first();
+ const duplicate=row=>row.actor_id===admin.id&&row.subject_id===user.id&&row.action===action
+  ?json({ok:true,duplicate:true}):fail('REQUEST_ID_CONFLICT',409);
+ const existing=await prior();if(existing)return duplicate(existing);
+ if(user.status!=='active')return fail('ACCOUNT_NOT_ACTIVE',409);
+ const license=await licenseRecord(env,user);
+ const recorded="EXISTS (SELECT 1 FROM site_audit WHERE id=? AND actor_id=? AND subject_id=? AND action='gift_bridge_3m')";
+ const eligible=" AND EXISTS (SELECT 1 FROM site_users WHERE id=? AND status='active')";
+ try{
+  const [gift]=await env.DB.batch([
+   env.DB.prepare("INSERT INTO site_audit (id,actor_id,action,subject_id,detail) SELECT ?,?,?,?,'+3 months' "+
+    "WHERE EXISTS (SELECT 1 FROM ea_licenses WHERE agent_id=? AND status='active')"+eligible)
+    .bind(id,admin.id,action,user.id,license.agent_id,user.id),
+   env.DB.prepare("UPDATE ea_licenses SET plan=CASE WHEN plan='annual' THEN plan ELSE 'quarterly' END,"+
+    "duration_modifier=CASE WHEN activated_at IS NOT NULL THEN duration_modifier WHEN plan='trial' AND duration_modifier='+1 month' THEN '+3 months' "+
+    "WHEN duration_modifier='+1 year' THEN '+15 months' ELSE printf('+%d months',CAST(duration_modifier AS INTEGER)+3) END,"+
+    "expires_at=CASE WHEN activated_at IS NULL THEN NULL ELSE datetime(CASE WHEN expires_at>CURRENT_TIMESTAMP THEN expires_at ELSE CURRENT_TIMESTAMP END,'+3 months') END,"+
+    "updated_at=CURRENT_TIMESTAMP WHERE agent_id=? AND status='active' AND "+recorded+eligible).bind(license.agent_id,id,admin.id,user.id,user.id),
+   env.DB.prepare("UPDATE site_users SET plan=(SELECT plan FROM ea_licenses WHERE agent_id=?),updated_at=CURRENT_TIMESTAMP "+
+    "WHERE id=? AND status='active' AND "+recorded).bind(license.agent_id,user.id,id,admin.id,user.id)
+  ]);
+  if(gift.meta?.changes!==1)return fail('LICENSE_NOT_ACTIVE',409);
+ }catch(error){const row=await prior();if(row)return duplicate(row);throw error;}
+ let notification='unavailable';
+ if(user.telegram_id&&env.TELEGRAM_BOT_TOKEN){
+  try{
+   const fa=await userBotLocale(env,user.telegram_id)==='fa';
+   await botSend(env,user.telegram_id,fa?'ادمین سه ماه لایسنس رایگان سیگنال بریج به حساب شما اضافه کرد.':'An administrator added a complimentary three-month Signal Bridge license to your account.');
+   notification='sent';
+  }catch{notification='failed';}
+ }
+ return json({ok:true,notification});
+}
 async function adminUpdate(req,env,admin){
  const b=await readBody(req);if(!ADMIN_ACTIONS.has(b.action)||!/^usr_[0-9a-f]{32}$/.test(b.user_id||''))return fail('INVALID_ACTION');
  const user=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(b.user_id).first();
  if(!user)return fail('NOT_FOUND',404);
  if(user.id===admin.id && (b.action==='suspend'||b.action==='revoke_license'))return fail('SELF_LOCKOUT_REFUSED',409);
+ if(b.action==='gift_bridge_3m')return giftBridgeQuarter(env,admin,user,b.request_id);
  if(b.action.startsWith('grant_scalper_')){
   try{const k=await scalperGrant(env,scalperHelpers(env),{adminId:admin.id,userId:user.id,login:b.account_login,plan:b.action.slice(6)});return json({ok:true,scalper:k});}
   catch(e){return fail(e.message==='INVALID_MT5_ACCOUNT'||e.message==='INVALID_PLAN'?e.message:'SCALPER_LICENSING_NOT_CONFIGURED',e.message==='SCALPER_LICENSING_NOT_CONFIGURED'?503:400);}

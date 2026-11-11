@@ -131,3 +131,24 @@ test('bot command synchronization requires admin and uses server-bound credentia
  }finally{globalThis.fetch=real;f.db.close()}
 });
 
+
+test('only admins can send a complimentary quarter and the same request never extends twice',async()=>{
+ const f=fixture();try{
+  const body={action:'gift_bridge_3m',user_id:f.member,request_id:'1'.repeat(32)};
+  assert.equal((await f.request('/api/admin/user',{user:f.member,body})).status,403);
+  assert.equal((await f.request('/api/admin/user',{body})).status,200);
+  const current=()=>f.db.prepare('SELECT * FROM ea_licenses WHERE id=(SELECT license_id FROM site_licenses WHERE user_id=?)').get(f.member);
+  assert.equal(current().duration_modifier,'+3 months');
+  assert.equal(current().expires_at,null);
+  assert.equal((await (await f.request('/api/admin/user',{body})).json()).duplicate,true);
+  assert.equal(current().duration_modifier,'+3 months');
+  f.run("UPDATE ea_licenses SET plan='annual',activated_at=CURRENT_TIMESTAMP,expires_at='2099-01-15 00:00:00' WHERE id=?",current().id);
+  const result=await f.request('/api/admin/user',{body:{...body,request_id:'2'.repeat(32)}});
+  assert.equal(result.status,200);
+  assert.equal(current().plan,'annual');
+  assert.equal(current().expires_at,'2099-04-15 00:00:00');
+  f.run("UPDATE site_users SET status='suspended' WHERE id=?",f.member);
+  assert.equal((await f.request('/api/admin/user',{body:{...body,request_id:'3'.repeat(32)}})).status,409);
+  assert.equal(current().expires_at,'2099-04-15 00:00:00');
+ }finally{f.db.close()}
+});
