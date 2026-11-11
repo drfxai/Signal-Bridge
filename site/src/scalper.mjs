@@ -67,6 +67,24 @@ export async function issueScalperKey(env,h,{userId,login,plan,orderId=null,issu
  return {key,serial,days:d,id:h.uid('skey'),sealed};
 }
 
+// One trial per member and MT5 login. The conditional write also covers concurrent claims.
+export async function claimScalperTrial(env,h,userId,accountLogin){
+ const login=validLogin(accountLogin);
+ if(!login)throw Error('INVALID_MT5_ACCOUNT');
+ if(!env.SCALPER_LICENSE_SECRET||!env.LICENSE_VAULT_KEY)throw Error('SCALPER_LICENSING_NOT_CONFIGURED');
+ const existing=()=>env.DB.prepare("SELECT id,account_login FROM scalper_keys WHERE user_id=? AND plan='scalper_trial'").bind(userId).first();
+ const own=await existing();
+ if(own)return own;
+ const key=await issueScalperKey(env,h,{userId,login,plan:'scalper_trial',days:SCALPER_TRIAL_DAYS});
+ const write=await env.DB.prepare("INSERT INTO scalper_keys (id,user_id,account_login,plan,days,serial,encrypted_key,nonce,issued_by) "+
+  "SELECT ?,?,?,'scalper_trial',?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM scalper_keys WHERE plan='scalper_trial' AND (user_id=? OR account_login=?))")
+  .bind(key.id,userId,login,key.days,key.serial,key.sealed.cipher,key.sealed.iv,userId,userId,login).run();
+ if(write.meta?.changes===1)return {id:key.id,account_login:login};
+ const retried=await existing();
+ if(retried)return retried;
+ throw Error('TRIAL_ACCOUNT_ALREADY_USED');
+}
+
 export async function scalperOverview(env,h,user){
  const rows=(await env.DB.prepare('SELECT id,account_login,plan,days,encrypted_key,nonce,created_at FROM scalper_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 50').bind(user.id).all()).results||[];
  const keys=[];
@@ -132,3 +150,4 @@ export async function scalperGrant(env,h,{adminId,userId,login,plan}){
  await h.audit(env,adminId,'scalper_grant',userId,plan+' '+valid);
  return {key:k.key,days:k.days,account_login:valid};
 }
+
