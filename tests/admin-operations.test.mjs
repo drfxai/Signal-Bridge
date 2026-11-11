@@ -126,7 +126,7 @@ test('bot command synchronization requires admin and uses server-bound credentia
   assert.equal((await f.request('/api/admin/bot/commands',{user:null,body:{}})).status,401);
   assert.equal((await f.request('/api/admin/bot/commands',{user:f.member,body:{}})).status,403);
   assert.equal((await f.request('/api/admin/bot/commands',{body:{}})).status,503);
-  f.env.TELEGRAM_BOT_TOKEN='bot-test';globalThis.fetch=async(url,init)=>{assert.equal(String(url),'https://api.telegram.org/botbot-test/setMyCommands');const body=JSON.parse(init.body);assert.ok(body.commands.some(c=>c.command==='signalbridge'));assert.ok(body.commands.some(c=>c.command==='scalper'));assert.ok(body.commands.every(c=>/^[a-z_]+$/.test(c.command)));return Response.json({ok:true})};
+  f.env.TELEGRAM_BOT_TOKEN='bot-test';globalThis.fetch=async(url,init)=>{assert.equal(String(url),'https://api.telegram.org/botbot-test/setMyCommands');const body=JSON.parse(init.body);assert.deepEqual(body.commands,[]);return Response.json({ok:true})};
   const r=await f.request('/api/admin/bot/commands',{body:{}});assert.equal(r.status,200);assert.ok(!(await r.text()).includes('bot-test'));
  }finally{globalThis.fetch=real;f.db.close()}
 });
