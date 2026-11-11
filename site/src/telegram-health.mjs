@@ -4,9 +4,9 @@ const EXPECTED_WEBHOOK='https://drfx.company/api/telegram/webhook';
 const EXPECTED_MINI_APP='https://drfx.company/telegram';
 let cached=null,expires=0;
 const bool=x=>x===true;
-async function probe(botToken,method,fetcher){
+async function probe(botToken,method,fetcher,payload={}){
  try{
-  const result=await fetcher('https://api.telegram.org/bot'+botToken+'/'+method,{method:'POST',headers:{'content-type':'application/json'},body:'{}',signal:AbortSignal.timeout(5000)});
+  const result=await fetcher('https://api.telegram.org/bot'+botToken+'/'+method,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(5000)});
   if(!result.ok)return null;
   const body=await result.json();
   return body?.ok===true?body.result:null;
@@ -27,7 +27,10 @@ export async function telegramHealth(env,fetcher=fetch,now=Date.now()){
    probe(env.TELEGRAM_BOT_TOKEN,'getMyCommands',fetcher)
   ]);
  }
+ const member=bot?.id?await probe(env.TELEGRAM_BOT_TOKEN,'getChatMember',fetcher,{chat_id:'@DrFXAi',user_id:bot.id}):null;
  const out={
+  membership_channel_admin:['administrator','creator'].includes(member?.status),
+  native_commands_hidden:Array.isArray(commands)&&commands.length===0,
   ok:true,
   configured,
   bot_token_valid:!!(bot&&bot.is_bot===true),
@@ -45,3 +48,4 @@ export async function telegramHealth(env,fetcher=fetch,now=Date.now()){
  cached=out;expires=now+60_000;
  return out;
 }
+
