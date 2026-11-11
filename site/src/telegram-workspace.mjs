@@ -46,7 +46,7 @@ export async function sendBotNotice(env,h,chatId,text,keyboard,section){
   return [];
  });
  const groups=[];
- for(let i=0;i<actions.length;i+=3)groups.push(actions.slice(i,i+3));
+ for(let i=0;i<actions.length;i+=4)groups.push(actions.slice(i,i+4));
  // Activation codes, sign-in codes and webhook tokens stay in protected native captions.
  const sensitive=/<code[\s>]|DRFX-[A-Z2-9-]{20,}|\/v1\/ingress\//i.test(text);
  const view=sensitive
