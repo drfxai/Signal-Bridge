@@ -21,14 +21,31 @@ export function noticeView(text){
  while(remaining){let n=remaining.length<=450?remaining.length:remaining.lastIndexOf('\n',450);if(n<100)n=Math.min(450,remaining.length);pages.push(remaining.slice(0,n));remaining=remaining.slice(n).trimStart();}
  return {page:'notice',title:'Account update',subtitle:'DrFXAi · Private response',badge:'PRIVATE',pages,buttons:[back(),pageButton('My Licenses','licenses')],footer:'Keep account details private.'};
 }
-export async function sendBotNotice(env,h,chatId,text,keyboard){
+export const BOT_NAVIGATION = Object.freeze({ home: 'workspace:home', channels: 'workspace:channels' });
+
+export function navigationKeyboard(keyboard, section) {
+ const rows = [...(keyboard?.inline_keyboard || [])];
+ if (section === 'channel-detail') {
+  rows.push([{text:'‹ Back to Channels & Groups',callback_data:BOT_NAVIGATION.channels}]);
+ }
+ rows.push([{text:'⌂ Main Menu',callback_data:BOT_NAVIGATION.home}]);
+ return {...keyboard,inline_keyboard:rows};
+}
+
+export async function sendBotNotice(env,h,chatId,text,keyboard,section){
+ keyboard=navigationKeyboard(keyboard,section);
  // Activation codes, sign-in codes and webhook tokens stay in protected native captions.
  const sensitive=/<code[\s>]|DRFX-[A-Z2-9-]{20,}|\/v1\/ingress\//i.test(text);
  if(sensitive&&String(text).length>1000)return h.raw(env,'sendMessage',{chat_id:chatId,text,parse_mode:'HTML',protect_content:true,...(keyboard?{reply_markup:keyboard}:{})});
  const view=sensitive?{page:'notice',title:'Your private account details',subtitle:'Your code is in the protected caption below.',badge:'SECURE',buttons:[back(),pageButton('My Licenses','licenses')],footer:'Copy the code from the message below. Never share it.'}:noticeView(text);
+ if(section==='channels'||section==='channel-detail'){
+  view.title='Channels & Groups';
+  view.subtitle=sensitive?'Your private TradingView setup is below.':'Manage TradingView alerts in Telegram.';
+  view.buttons=section==='channel-detail'?[pageButton('‹ Back to Channels & Groups','channels'),back()]:[back()];
+ }
  try{
   const pages=view.pages?.length?view.pages:[null];let result;
-  for(let i=0;i<pages.length;i++)result=await h.raw(env,'sendWidget',{chat_id:chatId,html:BOT_WORKSPACE_WIDGET_HTML,chat_data:widgetViewData({...view,pages:pages[i]?[pages[i]]:undefined,subtitle:pages.length>1?'Details · '+(i+1)+' / '+pages.length:view.subtitle}),caption:sensitive?String(text):'DrFXAi · Account response',...(sensitive?{parse_mode:'HTML'}:{}),allow_queries:true,protect_content:true,...(keyboard&&i===pages.length-1?{reply_markup:keyboard}:{})});
+  for(let i=0;i<pages.length;i++)result=await h.raw(env,'sendWidget',{chat_id:chatId,html:BOT_WORKSPACE_WIDGET_HTML,chat_data:widgetViewData({...view,pages:pages[i]?[pages[i]]:undefined,subtitle:pages.length>1?'Details · '+(i+1)+' / '+pages.length:view.subtitle}),caption:sensitive?String(text):'DrFXAi · Account response',...(sensitive?{parse_mode:'HTML'}:{}),allow_queries:true,protect_content:true,...(i===pages.length-1?{reply_markup:keyboard}:{reply_markup:navigationKeyboard(undefined,section)})});
   return result;
  }
  catch{return h.raw(env,'sendMessage',{chat_id:chatId,text,parse_mode:'HTML',protect_content:true,...(keyboard?{reply_markup:keyboard}:{})});}
@@ -37,7 +54,16 @@ export async function sendWorkspacePage(env,h,user,page='home',messageId=null){
  const view=await workspaceView(env,h,user,page);if(h.subtitle)view.subtitle=h.subtitle;
  const chat_data=widgetViewData(view);
  if(messageId)await h.raw(env,'editMessageWidgetData',{chat_id:user.telegram_id,message_id:messageId,chat_data});
- else await h.raw(env,'sendWidget',{chat_id:user.telegram_id,html:BOT_WORKSPACE_WIDGET_HTML,chat_data,caption:'DrFXAi · '+view.title,allow_queries:true,protect_content:true,reply_markup:{inline_keyboard:[[{text:'Open DrFX Mini App',web_app:{url:'https://drfx.company/telegram'}}]]}});
+ else {
+  const miniApp={text:'Open DrFX Mini App',web_app:{url:'https://drfx.company/telegram'}};
+  const reply_markup=page==='home'?{inline_keyboard:[[miniApp]]}:navigationKeyboard({inline_keyboard:[[miniApp]]});
+  try{
+   await h.raw(env,'sendWidget',{chat_id:user.telegram_id,html:BOT_WORKSPACE_WIDGET_HTML,chat_data,caption:'DrFXAi · '+view.title,allow_queries:true,protect_content:true,reply_markup});
+  }catch{
+   if(page!=='home')throw Error('WORKSPACE_WIDGET_UNAVAILABLE');
+   await h.raw(env,'sendMessage',{chat_id:user.telegram_id,text:'Main Menu · DrFX Signal Bridge\n\nUse /signal for your latest signal or /licenses for your licenses.',protect_content:true,reply_markup:{inline_keyboard:[[{text:'Channels & Groups',callback_data:BOT_NAVIGATION.channels}],[miniApp]]}});
+  }
+ }
  return view;
 }
 export async function signalRecords(env,user){
@@ -53,14 +79,14 @@ export function workspaceQueryPage(action){
 export async function workspaceView(env,h,user,page){
  const root={page,badge:String(user.plan||'account').toUpperCase(),footer:'DrFXAi · Private trading workspace',rows:[],buttons:[]};
  const view=(title,subtitle,rows,buttons)=>({...root,title,subtitle,rows,buttons});
- if(page==='home')return view('Your trading workspace','Signals, access and automation in one place.',[],[pageButton('◈ Signals','history:0','accent'),pageButton('⚿ My Licenses','licenses','primary'),pageButton('★ Buy & Renew','shop'),pageButton('▣ Connect MT5','setup'),pageButton('➤ Channels','channels'),pageButton('? Help','help'),pageButton('◯ Account','account'),pageButton('◎ Language','language'),...(user.role==='admin'?[pageButton('Admin Console','admin','accent')]:[])]);
+ if(page==='home')return view('Your trading workspace','Signals, access and automation in one place.',[],[pageButton('◈ Signals','history:0','accent'),pageButton('⚿ My Licenses','licenses','primary'),pageButton('★ Buy & Renew','shop'),pageButton('▣ Connect MT5','setup'),pageButton('Channels & Groups','channels'),pageButton('? Help','help'),pageButton('◯ Account','account'),pageButton('◎ Language','language'),...(user.role==='admin'?[pageButton('Admin Console','admin','accent')]:[])]);
  if(page==='account'){
   const r=await h.licenseRecord(env,user);
   return view('Account & Access','Manage your plan and secure account access.',[{label:'Account',value:user.status,tone:'good'},{label:'Plan',value:user.plan,tone:'gold'},{label:'License',value:r.status},{label:'Expiry · UTC',value:r.expires_at||'Starts on activation'}],[pageButton('Get EA Code','bridgecode','primary'),pageButton('Website Login','login'),pageButton('Linked Accounts','link'),pageButton('Reset Login Code','resetconfirm'),pageButton('Open Mini App','app'),back()]);
  }
  if(page==='licenses')return view('My Licenses','Your DrFXAi products and private activation codes.',[{label:'Signal Bridge',value:'License & activation',tone:'gold'},{label:'Scalper Pro',value:'MT5 account-bound'}],[pageButton('Get Bridge Code','bridgecode','primary'),pageButton('Get Scalper Keys','scalperkeys','primary'),pageButton('Buy & Renew','shop'),pageButton('My Orders','orders:0'),pageButton('Setup Guide','setup'),back()]);
  if(page==='shop')return {...view('Buy & Renew','Choose a plan. Review terms before paying.',Object.keys(h.plans).map(p=>({label:h.plans[p].label,value:(h.price(env,p)||'Unavailable')+' Stars',tone:'gold'})),Object.keys(h.plans).filter(p=>h.price(env,p)).map(p=>({label:'Review '+(p==='quarterly'?'Bridge 3m':p==='annual'?'Bridge 12m':p==='scalper_1m'?'Scalper 30d':'Scalper 90d'),action:'sb:buy:'+p,tone:'accent'})).concat([pageButton('Terms & Support','terms'),back()])),footer:'Scalper Pro needs an MT5 account number. Website USD prices are separate.'};
- if(page==='setup'||page==='help')return view(page==='setup'?'Setup & Help':'How can we help?','Get connected in four clear steps.',[{label:'01 · Get your license',value:'Private activation code'},{label:'02 · Download the EA',value:'From your member account'},{label:'03 · Activate in MT5',value:'Paste your code into the EA'},{label:'04 · Connect alerts',value:'TradingView or Telegram'}],[pageButton('Get License','licenses','primary'),pageButton('Channels','channels'),pageButton('Open Mini App','app'),pageButton('Payment Support','support'),pageButton('Language','language'),back()]);
+ if(page==='setup'||page==='help')return view(page==='setup'?'Setup & Help':'How can we help?','Get connected in four clear steps.',[{label:'01 · Get your license',value:'Private activation code'},{label:'02 · Download the EA',value:'From your member account'},{label:'03 · Activate in MT5',value:'Paste your code into the EA'},{label:'04 · Connect alerts',value:'TradingView or Telegram'}],[pageButton('Get License','licenses','primary'),pageButton('Channels & Groups','channels'),pageButton('Open Mini App','app'),pageButton('Payment Support','support'),pageButton('Language','language'),back()]);
  if(page==='app')return view('Your DrFX Mini App','Tap Open DrFX Mini App beneath this widget.',[{label:'Secure sign-in',value:'Telegram account'},{label:'Workspace',value:'Setup · analytics · channels'}],[pageButton('Setup Guide','setup'),back()]);
  if(page==='link')return {...view('Linked Accounts','Link an existing verified website account securely.',[{label:'Email',value:user.email||'Not linked'},{label:'Telegram',value:user.telegram_name||'Connected'}],[{label:'Copy linking command',action:'copy'},pageButton('Open Mini App','app'),back()]),copy:'/link YOUR_LINKING_CODE',footer:'Get a fresh linking code from your verified website account. Paste it into the command in this chat.'};
  if(page==='language')return view('Language','Choose your preferred bot language.',[],['en','fa','ar','tr','ru','hi'].map((p,i)=>pageButton(['English','فارسی','العربية','Türkçe','Русский','हिन्दी'][i],'lang:'+p)).concat([back()]));
@@ -70,7 +96,7 @@ export async function workspaceView(env,h,user,page){
  if(page.startsWith('history')||page.startsWith('signal:')){
   const rows=await signalRecords(env,user),n=Math.min(39,Math.max(0,Number(page.split(':')[1])||0));
   if(page.startsWith('signal:')){
-   const r=rows[n];if(!r)return view('No recorded signal','Connect your alerts to see signals here.',[],[pageButton('Channels','channels'),back()]);
+   const r=rows[n];if(!r)return view('No recorded signal','Connect your alerts to see signals here.',[],[pageButton('Channels & Groups','channels'),back()]);
    const s=r.signal,o=s.order,copy=[s.symbol+' '+s.side,'Entry: '+(o.reference_price||'Market'),'SL: '+o.stop_loss,...(o.take_profits||[]).slice(0,3).map((v,i)=>'TP'+(i+1)+': '+v)].join('\n');
    return {...view(s.symbol+' · '+s.side,r.source+' · '+String(r.received_at).slice(0,19)+' UTC',[{label:'Entry reference',value:o.reference_price||'Market / not supplied',tone:'gold'},{label:'Stop Loss',value:o.stop_loss||'Not supplied',tone:'bad'},...(o.take_profits||[]).slice(0,3).map((v,i)=>({label:'Target '+(i+1),value:v,tone:'good'}))],[{label:'Copy Signal',action:'copy',tone:'primary'},pageButton('Refresh','signal:'+n),pageButton('Signal History','history:0'),back()]),copy,badge:'RECORDED',footer:'Recorded alert only. Broker execution and target hits require an EA receipt.'};
   }
