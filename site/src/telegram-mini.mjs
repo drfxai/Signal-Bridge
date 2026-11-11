@@ -192,11 +192,11 @@ ${SXM_PANEL_HTML}${CHM_PANEL_HTML}<section class="tab-panel" data-panel="help" i
  <p class="tab-kicker" data-tr="helpKicker">SUPPORT &amp; ACCOUNT SAFETY</p><h2 class="section-title" data-tr="support">Help &amp; security</h2>
  <div class="card"><h2 data-tr="securityTitle">Keep your account protected</h2>
   <ol class="list"><li data-tr="help1">Open the Mini App from the official Telegram bot to verify your identity.</li><li data-tr="help2">Email and Telegram accounts can only be linked after explicit verification.</li><li data-tr="help3">EA activation keys never belong in screenshots or chat messages.</li><li data-tr="help4">Use your main website dashboard for account management.</li></ol>
-  <div class="buttons"><button id="openWebsite" class="btn primary" type="button" data-tr="website">Open DrFX website ↗</button><button id="refreshAccount" class="btn subtle" type="button" data-tr="refresh">Refresh ↻</button></div>
+  <div class="buttons"><a class="btn primary" data-telegram-support href="https://t.me/DrFXGOD" target="_blank" rel="noopener noreferrer">Telegram · @DrFXGOD</a><button id="openWebsite" class="btn primary" type="button" data-tr="website">Open DrFX website ↗</button><button id="refreshAccount" class="btn subtle" type="button" data-tr="refresh">Refresh ↻</button></div>
  </div>
 </section>
 ${ADMIN_PANEL_HTML}
-<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br><a href="https://t.me/DrFXGOD" target="_blank" rel="noopener noreferrer" style="color:inherit">Support · پشتیبانی @DrFXGOD</a><br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
+<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br><a href="https://t.me/DrFXGOD" target="_blank" rel="noopener noreferrer" data-telegram-support style="color:inherit">Support · پشتیبانی @DrFXGOD</a><br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
  <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Home</span></button>
@@ -336,7 +336,8 @@ export const MINI_JS=String.raw`(() => {
  document.querySelectorAll('[data-jump]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.jump)));
  tg?.BackButton?.onClick?.(()=>show('home'));
 
- function navigate(url){try{if(tg?.openLink)tg.openLink(url);else window.location.assign(url);}catch{window.location.assign(url);}}
+ document.querySelectorAll('[data-telegram-support]').forEach(link=>link.addEventListener('click',e=>{if(tg?.openTelegramLink){e.preventDefault();navigate(link.href)}}));
+ function navigate(url){try{if(url.startsWith('https://t.me/')&&tg?.openTelegramLink)tg.openTelegramLink(url);else if(tg?.openLink)tg.openLink(url);else window.location.assign(url);}catch{window.location.assign(url);}}
  $('miniAuthAction').addEventListener('click',event=>{
   event.preventDefault();
   navigate('https://drfx.company/?auth=1');
