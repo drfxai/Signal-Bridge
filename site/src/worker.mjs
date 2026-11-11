@@ -26,7 +26,7 @@ import { botLanguage, botText, botLanguageKeyboard } from './telegram-i18n.mjs';
 import { I18N_JS } from './i18n.mjs';
 import { PROMO_ASSETS } from './promo.mjs';
 import { ALERT_TEMPLATE, ensureChannelWebhook, channelApi, channelIngest, onBotMembership, channelsCommand, channelCallback, CHANNEL_HOOK_PATH } from './channel-webhooks.mjs';
-import { scalperOverview, scalperCheckout, scalperPaid, scalperGrant, SCALPER_PLANS } from './scalper.mjs';
+import { scalperOverview, scalperCheckout, scalperPaid, scalperGrant, claimScalperTrial, SCALPER_PLANS } from './scalper.mjs';
 
 const HEAD={'x-drfx-ui-release':UI_RELEASE,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
 const PRICES={quarterly:47,annual:165};
@@ -653,6 +653,31 @@ async function signalBridgeWidgetQuery(q,env,req){
   try{await telegramWidgetApi(env,'answerWidgetQuery',{widget_query_id:q.id,data:JSON.stringify(payload)});}
   catch(e){console.warn('Member widget reply failed: '+String(e?.message||e).slice(0,80));}
  };
+ const trial=/^trial:([0-9]{4,19})$/.exec(q.data||'');
+ if(trial){
+  if(!allowed||q.type?.type!=='data'){await answer({});return json({ok:true});}
+  const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(String(q.from.id)).first();
+  if(user?.status!=='active'||!await limited(req,env,'widget:scalper-trial:'+q.from.id,5)){await answer({message:'درخواست در دسترس نیست · Request unavailable'});return json({ok:true});}
+  const language=await userBotLocale(env,user.telegram_id),fa=language==='fa';
+  const t=(f,e)=>fa?f:e;
+  try{
+   const member=await channelMembership(telegramWidgetApi,env,user.telegram_id);
+   if(member!=='member'){await answer({message:t('ابتدا عضویت کانال را در منوی اصلی بررسی کن.','Verify your channel membership from the main menu first.')});return json({ok:true});}
+   const key=await claimScalperTrial(env,scalperHelpers(env),user.id,trial[1]);
+   await sendPrivateCard(env,workspaceHelpers(language),user,{
+    title:t('لایسنس ۷ روزه اسکلپر پرو','7-day Scalper Pro license'),
+    subtitle:t('کلید را در بخش ENTER LICENCE KEY وارد کن و ACTIVATE را بزن.','Paste the key into ENTER LICENCE KEY and press ACTIVATE.')+' · MT5 #'+key.account_login,
+    action:'sec:scalper:'+key.id
+   });
+   await answer({message:t('کلید در کارت بعدی آماده است.','Your key is ready in the next card.')});
+  }catch(error){
+   const message=error.message==='TRIAL_ACCOUNT_ALREADY_USED'?t('این شماره حساب قبلاً برای لایسنس رایگان استفاده شده است.','This MT5 account has already claimed a free license.'):
+    error.message==='INVALID_MT5_ACCOUNT'?t('شمارهٔ حساب MT5 معتبر وارد کن.','Enter a valid MT5 login.'):
+    t('دریافت کلید انجام نشد. کمی بعد دوباره تلاش کن.','Could not retrieve your key. Try again shortly.');
+   await answer({message});
+  }
+  return json({ok:true});
+ }
  if(/^sec:(?:login|bridge|tv|scalper:skey_[a-f0-9]{32}|channel:-?\d{1,20})$/.test(q.data||'')){
   if(!allowed||q.type?.type!=='data'){await answer({});return json({ok:true});}
   const user=await env.DB.prepare("SELECT * FROM site_users WHERE telegram_id=? AND status='active'").bind(String(q.from.id)).first();
