@@ -1145,7 +1145,7 @@ void DrawSettings(int W,double t)
       g_sf.FillRR(cx,y+180,cw,62,10,SbA(SbMix(P_CARD,c,0.08+0.1*hv)));g_sf.StrokeRR(cx,y+180,cw,62,10,1,SbA(c,0.45+0.3*hv));HitAdd("pol"+IntegerToString(i),cx,y+180,cw,62);
       g_sf.Text("TP"+IntegerToString(i+1),cx+cw/2.0,y+198,SB_FONT_B,FS_SMALL,FW_SEMIBOLD,SbA(P_MUTED),TA_CENTER|TA_VCENTER);g_sf.Text(p[i],cx+cw/2.0,y+222,SB_FONT_B,16,FW_BOLD,SbA(c),TA_CENTER|TA_VCENTER);}
    g_sf.Text("Partial "+DoubleToString(g_policyPartial,0)+"%  ·  Break-even buffer "+IntegerToString(g_policyBuffer)+" pts",x+16,y+258,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
-   g_sf.Text("F7: 1 License / 2 Symbol (e.g. XAUUSD.p)",x+w/2.0,y+286,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
+   g_sf.Text("Telegram support: @DrFXGOD",x+w/2.0,y+286,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_CENTER|TA_VCENTER);
    DrawFooter(x,y+304,w);
   }
 

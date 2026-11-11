@@ -159,3 +159,26 @@ test('onboarding unlocks only the sign-in action after confirmed channel members
   assert.equal(view.page,'onboarding');
  }finally{globalThis.fetch=original;}
 });
+
+
+test('a private credential stays outside widget state and copies after a deliberate reveal',async()=>{
+ const elements=new Map(),events=new Map(),copies=[];
+ const element=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id)};
+ const chatData=widgetViewData({language:'fa',title:'کد ورود',buttons:[{label:'نمایش برای کپی',action:'sec:login'}]});
+ const secret='test-credential-value';
+ const widget={chatData,ready(){},onEvent(name,handler){events.set(name,handler)},
+  request(action){assert.equal(action,'sec:login');return Promise.resolve({result:JSON.stringify({reveal:secret})})},
+  copyText(value){copies.push(value)}};
+ vm.runInNewContext(BOT_WORKSPACE_WIDGET_HTML.match(/<script>([\s\S]*?)<\/script>/)[1],
+  {window:{TelegramWidget:widget},document:{getElementById:element}},{timeout:1000});
+ assert.ok(!chatData.includes(secret));
+ element('action0').onclick();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(copies,[]);
+ assert.equal(element('secret-value').textContent,secret);
+ assert.equal(element('action0').textContent,'کپی');
+ element('action0').onclick();
+ assert.deepEqual(copies,[secret]);
+ events.get('chatDataChanged')();
+ assert.equal(element('secret-value').textContent,'');
+});

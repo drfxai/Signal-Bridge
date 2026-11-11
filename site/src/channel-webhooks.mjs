@@ -223,6 +223,7 @@ export async function channelCallback(update,env,h){
  const fa=await h.locale?.(dm)==='fa';
  const r=await ensureChannelWebhook(env,user,match[1],h);
  if(r.error){await h.botSend(dm,'⚠️ '+(fa?'ساخت وبهوک انجام نشد. عضویت ربات و مجوز ارسال پیام را بررسی کن.':(ERRORS[r.error]||'Could not create the webhook.')),undefined,'channel-detail');return h.json({ok:true,error:r.error});}
+ if(h.showWebhook){await h.showWebhook(user,r.chat,fa);return h.json({ok:true});}
  await h.botSend(dm,webhookMessage(r.chat.title,r.url,fa),{inline_keyboard:[[{text:fa?'مدیریت در وب‌اپ':'Manage in Mini App',web_app:{url:h.origin+'/telegram?tab=channels'}}]]},'channel-detail');
  return h.json({ok:true});
 }

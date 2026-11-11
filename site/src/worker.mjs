@@ -5,7 +5,7 @@ import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand} from './bot-commands.mjs';
 import {LICENSE_SHOP_WIDGET_HTML} from './telegram-license-shop.mjs';
-import {BOT_NAVIGATION,BOT_WORKSPACE_WIDGET_HTML,workspaceView,workspaceQueryPage,sendWorkspacePage,sendBotNotice,signalRecords} from './telegram-workspace.mjs';
+import {BOT_NAVIGATION,BOT_WORKSPACE_WIDGET_HTML,workspaceView,workspaceQueryPage,sendWorkspacePage,sendPrivateCard,sendBotNotice,signalRecords} from './telegram-workspace.mjs';
 import {STAR_PLANS,starPrice,LICENSE_TERMS,LICENSE_TERMS_FA,sendPrivateLicenses,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,starOrders} from './telegram-commerce.mjs';
 import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
 import {signalWidgetHtml,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
@@ -25,7 +25,7 @@ import { telegramHealth } from './telegram-health.mjs';
 import { botLanguage, botText, botLanguageKeyboard } from './telegram-i18n.mjs';
 import { I18N_JS } from './i18n.mjs';
 import { PROMO_ASSETS } from './promo.mjs';
-import { channelApi, channelIngest, onBotMembership, channelsCommand, channelCallback, CHANNEL_HOOK_PATH } from './channel-webhooks.mjs';
+import { ALERT_TEMPLATE, ensureChannelWebhook, channelApi, channelIngest, onBotMembership, channelsCommand, channelCallback, CHANNEL_HOOK_PATH } from './channel-webhooks.mjs';
 import { scalperOverview, scalperCheckout, scalperPaid, scalperGrant, SCALPER_PLANS } from './scalper.mjs';
 
 const HEAD={'x-drfx-ui-release':UI_RELEASE,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(),microphone=(),geolocation=()'};
@@ -623,6 +623,28 @@ async function handleWorkspaceCommand(command,text,env,user,language){
  catch{await botSend(env,user.telegram_id,'Workspace temporarily unavailable. Please retry /menu, or open the Mini App.',true);}
  return true;
 }
+async function revealWidgetValue(env,req,user,action){
+ if(action==='sec:login')return telegramWebsiteCredential(env,user);
+ if(action==='sec:bridge'){
+  const license=await licenseRecord(env,user);
+  if(license.status!=='active')throw Error('LICENSE_INACTIVE');
+  return decryptCode(env,license.encrypted_code,license.nonce);
+ }
+ if(action.startsWith('sec:scalper:')){
+  const key=await env.DB.prepare('SELECT encrypted_key,nonce FROM scalper_keys WHERE id=? AND user_id=?').bind(action.slice(12),user.id).first();
+  if(!key)throw Error('KEY_NOT_FOUND');
+  return decryptCode(env,key.encrypted_key,key.nonce);
+ }
+ if(action==='sec:tv'){
+  const response=await provisionUserWebhook(req,env,user);
+  const result=await response.json();
+  if(!response.ok||!result.webhook?.webhook_url)throw Error('WEBHOOK_UNAVAILABLE');
+  return result.webhook.webhook_url;
+ }
+ const webhook=await ensureChannelWebhook(env,user,action.slice(12),channelHelpers(env,req));
+ if(!webhook.url)throw Error('CHANNEL_WEBHOOK_UNAVAILABLE');
+ return webhook.url;
+}
 async function signalBridgeWidgetQuery(q,env,req){
  if(!q?.id)return json({ok:true,ignored:'MISSING_QUERY'});
  const allowed=q.chat?.type==='private'&&q.from?.id&&
@@ -631,11 +653,34 @@ async function signalBridgeWidgetQuery(q,env,req){
   try{await telegramWidgetApi(env,'answerWidgetQuery',{widget_query_id:q.id,data:JSON.stringify(payload)});}
   catch(e){console.warn('Member widget reply failed: '+String(e?.message||e).slice(0,80));}
  };
+ if(/^sec:(?:login|bridge|tv|scalper:skey_[a-f0-9]{32}|channel:-?\d{1,20})$/.test(q.data||'')){
+  if(!allowed||q.type?.type!=='data'){await answer({});return json({ok:true});}
+  const user=await env.DB.prepare("SELECT * FROM site_users WHERE telegram_id=? AND status='active'").bind(String(q.from.id)).first();
+  if(!user||!await limited(req,env,'widget:reveal:'+q.from.id,10)){await answer({});return json({ok:true});}
+  const fa=await userBotLocale(env,user.telegram_id)==='fa';
+  try{
+   const value=await revealWidgetValue(env,req,user,q.data);
+   await answer({reveal:value});
+  }catch(error){
+   const membership=error.message==='CHANNEL_MEMBERSHIP_REQUIRED';
+   await answer({message:membership?(fa?'ابتدا عضویت کانال را بررسی کن.':'Verify your channel membership first.'):(fa?'دریافت اطلاعات انجام نشد. دوباره تلاش کن.':'Could not retrieve this value. Try again.')});
+  }
+  return json({ok:true});
+ }
  if(allowed&&q.type?.type==='data'&&/^(cwh:-?\d{1,20}|tgpay:tso_[a-f0-9]{32})$/.test(q.data||'')){
   if(!await limited(req,env,'widget:action:'+q.from.id,8)){await answer({message:'دوباره تلاش کن · Try again shortly'});return json({ok:true});}
   const callback={id:q.id,data:q.data,from:q.from,message:{chat:q.chat,message_id:q.message_id}};
   if(q.data.startsWith('cwh:')){
-   return channelCallback({callback_query:callback},env,{...channelHelpers(env,req),answer:()=>answer({})});
+   return channelCallback({callback_query:callback},env,{
+    ...channelHelpers(env,req),answer:()=>answer({}),
+    showWebhook:(user,chat,fa)=>sendPrivateCard(env,workspaceHelpers(fa?'fa':'en'),user,{
+     title:fa?'وب‌هوک کانال یا گروه':'Channel or group webhook',
+     subtitle:(fa?'در هشدار TradingView، نشانی را در Webhook URL و قالب را در Message قرار بده. مقصد: ':'Paste the URL in Webhook URL and the template in Message. Destination: ')+String(chat.title||'').slice(0,40),
+     action:'sec:channel:'+chat.chat_id,
+     copy:ALERT_TEMPLATE,
+     buttons:[{label:fa?'کپی قالب پیام':'Copy alert template',action:'copy'},{label:fa?'بازگشت به کانال‌ها':'Back to channels',action:'ui:page:channels'}]
+    })
+   });
   }
   const h=commerceHelpers();
   await acceptStarQuote(callback,env,{...h,api:(e,m,b)=>m==='answerCallbackQuery'?answer({message:b.text}):h.api(e,m,b)});
@@ -651,16 +696,29 @@ async function signalBridgeWidgetQuery(q,env,req){
   let page=navigation.page;
   let language=await userBotLocale(env,user.telegram_id);
   const tr=(fa,en)=>language==='fa'?fa:en;
-  if(['bridgecode','scalperkeys','channels','login','reset'].includes(page)){
+  if(['bridgecode','scalperkeys','channels','login','reset','tvhook'].includes(page)){
    if(!await limited(req,env,'widget:private-action:'+user.telegram_id,8)){await answer({message:'Please wait a minute before trying again.'});return json({ok:true});}
    await answer({message:tr('پاسخ در پیام بعدی نمایش داده می‌شود.','Your private response will appear below.')});
    try{
-    if(page==='bridgecode'||page==='scalperkeys')await sendPrivateLicenses(env,{...commerceHelpers(),language},user,page==='scalperkeys'?'scalper':'bridge');
-    else if(page==='channels')await channelsCommand(env,user,user.telegram_id,channelHelpers(env,req));
-    else{
-     const code=await telegramWebsiteCredential(env,user,page==='reset');
-     await botSend(env,user.telegram_id,tr('<b>کد ورود به سایت و وب‌اپ</b>','<b>Website and web app sign-in code</b>')+'\n<code>'+code+'</code>');
-     await sendWorkspacePage(env,workspaceHelpers(language),user,'access');
+    const card=(data)=>sendPrivateCard(env,workspaceHelpers(language),user,data);
+    if(page==='channels')await channelsCommand(env,user,user.telegram_id,channelHelpers(env,req));
+    else if(page==='bridgecode')await card({title:tr('لایسنس سیگنال بریج','Signal Bridge license'),subtitle:tr('کد را در تنظیمات EA وارد کن.','Paste the code into the EA settings.'),action:'sec:bridge'});
+    else if(page==='tvhook')await card({title:tr('وب‌هوک شخصی تریدینگ‌ویو','Personal TradingView webhook'),
+     subtitle:tr('دکمهٔ نمایش، وب‌هوک را می‌سازد یا نشانی فعلی را نشان می‌دهد. وب‌هوک تازه در حالت آزمایشی ساخته می‌شود.','Reveal creates a webhook or shows the existing URL. New webhooks start in dry-run mode.'),
+     action:'sec:tv'});
+    else if(page==='scalperkeys'){
+     const keys=(await env.DB.prepare('SELECT id,account_login,days FROM scalper_keys WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 3').bind(user.id).all()).results||[];
+     await card({title:tr('لایسنس‌های اسکلپر پرو','Scalper Pro licenses'),subtitle:keys.length?tr('حساب MT5 مورد نظر را انتخاب کن.','Choose your MT5 account.'):tr('هنوز لایسنسی صادر نشده است. دورهٔ آزمایشی را داخل EA شروع کن.','No license issued. Start the trial inside the EA.'),
+      buttons:keys.map(k=>({label:'MT5 #'+k.account_login+' · '+k.days+tr(' روز',' days'),action:'sec:scalper:'+k.id,tone:'accent'}))});
+    }else{
+     if(await channelMembership(telegramWidgetApi,env,user.telegram_id)!=='member')throw Error('CHANNEL_MEMBERSHIP_REQUIRED');
+     if(page==='reset')await telegramWebsiteCredential(env,user,true);
+     await card({title:tr('کد ورود سایت و وب‌اپ','Website and web app sign-in code'),
+      subtitle:tr('کد را نمایش بده، سپس کپی کن و در صفحهٔ ورود وارد کن.','Reveal the code, copy it and paste it on the sign-in page.'),
+      action:'sec:login',buttons:[
+       {label:tr('باز کردن وب‌اپ','Open Web App'),action:'link',url:API_ORIGIN+'/telegram'},
+       {label:tr('باز کردن سایت','Open Website'),action:'link',url:API_ORIGIN+'/?auth=1'}
+      ]});
     }
    }catch(error){
     if(error.message==='CHANNEL_MEMBERSHIP_REQUIRED'){

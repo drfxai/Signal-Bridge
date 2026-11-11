@@ -24,8 +24,8 @@ const faLabels = {
 const courses = {
  'bridge-install':[
   'فعال‌سازی سیگنال بریج در MT5','Activate Signal Bridge in MT5',
-  '۱. فایل EA را دانلود کن و در MT5 از File → Open Data Folder پوشه MQL5/Experts را باز کن.\n۲. فایل EX5 را کپی کن. در Navigator گزینه Refresh را بزن و EA را روی چارت بگذار.\n۳. Algo Trading را روشن کن و لایسنس را در تنظیمات EA وارد کن. در پنل وضعیت اتصال را بررسی کن.',
-  '1. Download the EA. In MT5, open File → Open Data Folder → MQL5/Experts.\n2. Copy the EX5, refresh Navigator and attach the EA to a chart.\n3. Enable Algo Trading, enter your license and verify the connection in the portal.'
+  '۱. فایل EA را دانلود کن و در MT5 پوشهٔ MQL5/Experts را از File ← Open Data Folder باز کن.\n۲. فایل EX5 را کپی کن. در Navigator گزینه Refresh را بزن و EA را روی چارت بگذار.\n۳. در Inputs، کد و نماد دقیق بروکر را وارد کن. Algo Trading را روشن کن و اتصال را روی حساب دمو بررسی کن.',
+  '1. Download the EA. In MT5, open File → Open Data Folder → MQL5/Experts.\n2. Copy the EX5, refresh Navigator and attach the EA to a chart.\n3. In Inputs, enter the activation code and exact broker symbol. Enable Algo Trading and verify the connection on demo.'
  ],
  'scalper-install':[
   'فعال‌سازی اسکلپر پرو در MT5','Activate Scalper Pro in MT5',
@@ -34,8 +34,8 @@ const courses = {
  ],
  'channel-install':[
   'دریافت سیگنال تریدینگ‌ویو در کانال یا گروه','TradingView alerts in a channel or group',
-  '۱. از «کانال‌ها و گروه‌ها» ربات را اضافه کن و اجازه ارسال پیام بده.\n۲. کانال یا گروه را انتخاب کن و وبهوک و قالب پیام را بگیر.\n۳. در ساخت هشدار TradingView، نشانی Webhook URL و قالب Message را وارد و هشدار را ذخیره کن.',
-  '1. Add the bot from Channels & Groups and grant posting permission.\n2. Select the chat and get its webhook and alert template.\n3. Enter the Webhook URL and Message template in your TradingView alert and save it.'
+  '۱. از «کانال‌ها و گروه‌ها» ربات را اضافه کن و اجازه ارسال پیام بده.\n۲. کانال یا گروه را انتخاب کن و وبهوک و قالب پیام را بگیر.\n۳. در هشدار TradingView، نشانی را در Webhook URL و قالب را در Message بچسبان. جهت را تنظیم و ارسال آزمایشی را بررسی کن.',
+  '1. Add the bot from Channels & Groups and grant posting permission.\n2. Select the chat and get its webhook and alert template.\n3. Paste the URL and template into Webhook URL and Message. Set the signal side, save and verify a test alert.'
  ],
  'forward-install':[
   'فوروارد سیگنال تلگرام به MT5','Forward Telegram signals to MT5',
@@ -61,7 +61,7 @@ export function onboardingView(page, language, membership) {
  }
  if(page==='access'||page==='app')return view(t('ورود به سیگنال بریج','Open Signal Bridge'),t('با کد ورود وارد حساب شو.','Use your sign-in code to access your account.'),[link(t('باز کردن وب‌اپ','Open Web App'),'https://drfx.company/telegram','primary'),link(t('باز کردن سایت','Open Website'),'https://drfx.company/?auth=1'),home]);
  if(page==='more')return view(t('تنظیمات و پشتیبانی','Settings & Support'),'',[
-  button(t('انتخاب زبان','Language'),'language'),button(t('پشتیبانی پرداخت','Payment Support'),'support'),
+  button(t('انتخاب زبان','Language'),'language'),link(t('پشتیبانی در تلگرام','Telegram Support'),'https://t.me/DrFXGOD','accent'),button(t('پشتیبانی پرداخت','Payment Support'),'support'),
   button(t('سفارش‌های من','My Orders'),'orders:0'),button(t('اتصال حساب‌ها','Linked Accounts'),'link'),home]);
  if(page==='home')return view(t('سیگنال بریج','Signal Bridge'),t('برای شروع، راهنمای نصب و فعال‌سازی را باز کن.','Start with the installation and activation guide.'),[
   button(t('آموزش نصب و فعال‌سازی','Install & Activate'),'setup','primary'),
@@ -70,15 +70,19 @@ export function onboardingView(page, language, membership) {
   link(t('دانلود EA اسکلپر پرو','Download Scalper Pro EA'),downloads.scalper.url),
   button(t('دریافت لایسنس رایگان','Free Licenses'),'free','accent'),
   button(t('خرید لایسنس','Buy Licenses'),'shop'),
-  button(t('کانال‌ها و گروه‌ها','Channels & Groups'),'channels'),
+  button(t('وب‌هوک‌ها و کانال‌ها','Webhooks & Channels'),'webhooks'),
   button(t('تاریخچه سیگنال‌ها','Signal History'),'history:0'),
   button(t('دریافت کد ورود','Get Sign-in Code'),'onboarding'),
   button(t('تنظیمات و پشتیبانی','Settings & Support'),'more')
  ]);
+ if(page==='webhooks')return view(t('وب‌هوک‌های تریدینگ‌ویو','TradingView Webhooks'),t('مقصد هشدار را انتخاب کن.','Choose where your TradingView alerts should go.'),[
+  button(t('وب‌هوک شخصی سیگنال بریج','Personal Signal Bridge Webhook'),'tvhook','primary'),
+  button(t('وب‌هوک کانال یا گروه تلگرام','Telegram Channel or Group Webhook'),'channels','accent'),
+  button(t('راهنمای اتصال تریدینگ‌ویو','TradingView Setup Guide'),'channel-install'),home]);
  if(page==='setup')return view(t('آموزش نصب و فعال‌سازی','Install & Activate'),t('آموزش مورد نیازت را انتخاب کن.','Choose a guide.'),Object.entries(courses).map(([key,course])=>button(course[fa?0:1],key,'accent')).concat(home));
  if(courses[page]){
   const course=courses[page];
-  return view(course[fa?0:1],'',[...(page==='channel-install'?[button(t('کانال‌ها و گروه‌ها','Channels & Groups'),'channels','primary')]:[]),button(t('بازگشت به آموزش‌ها','Back to Guides'),'setup'),home],{pages:[course[fa?2:3]]});
+  return view(course[fa?0:1],'',[...(page==='channel-install'?[button(t('وب‌هوک‌ها و کانال‌ها','Webhooks & Channels'),'webhooks','primary')]:[]),button(t('بازگشت به آموزش‌ها','Back to Guides'),'setup'),home],{pages:[course[fa?2:3]]});
  }
  if(page==='free')return view(t('لایسنس رایگان','Free Licenses'),t('اسکلپر پرو دورهٔ آزمایشی ۷ روزه را از داخل EA فعال می‌کند.','Activate the 7-day Scalper Pro trial inside its EA.'),[button(t('دریافت لایسنس سیگنال بریج','Get Signal Bridge License'),'bridgecode','primary'),button(t('فعال‌سازی آزمایشی اسکلپر پرو','Activate Scalper Pro Trial'),'scalper-install','accent'),home]);
  return null;
@@ -86,11 +90,11 @@ export function onboardingView(page, language, membership) {
 
 export function localizeWorkspace(view,language) {
  if(language!=='fa')return view;
- const labels={'Account':'حساب','Email':'ایمیل','Not linked':'متصل نشده','Telegram':'تلگرام','Connected':'متصل','annual':'سالانه','quarterly':'سه‌ماهه','Copy support command':'کپی متن درخواست پشتیبانی','Copy linking command':'کپی متن اتصال حساب','Copy command guide':'کپی راهنمای مدیریت','Registered members':'کاربران ثبت‌شده','Active accounts':'حساب‌های فعال','Suspended accounts':'حساب‌های تعلیق‌شده','Management Actions':'گزینه‌های مدیریت','Plan':'پلن','License':'لایسنس','Expiry · UTC':'انقضا (UTC)','Entry reference':'قیمت ورود','Stop Loss':'حد ضرر','Copy Signal':'کپی سیگنال','Refresh':'به‌روزرسانی','active':'فعال','trial':'آزمایشی','Starts on activation':'از زمان فعال‌سازی','No recorded signals yet.':'هنوز سیگنالی ثبت نشده است.','Remaining':'زمان باقی‌مانده','Expired':'منقضی','Revoked':'لغوشده','revoked':'لغوشده','Not started':'هنوز شروع نشده','suspended':'تعلیق‌شده','Market / not supplied':'بازار / تعیین نشده','Confirm Reset':'تأیید تغییر','Cancel':'انصراف','Signal History':'تاریخچه سیگنال‌ها','Signal Bridge':'سیگنال بریج','Scalper Pro':'اسکلپر پرو','License & activation':'لایسنس و فعال‌سازی','MT5 account-bound':'وابسته به حساب MT5'};
+ const labels={'Scalper expiry':'انقضای اسکلپر پرو','Scalper key duration':'مدت کلید اسکلپر پرو','Check in the EA':'در پنل خود EA بررسی کن','No key issued':'هنوز کلیدی صادر نشده','Account':'حساب','Email':'ایمیل','Not linked':'متصل نشده','Telegram':'تلگرام','Connected':'متصل','annual':'سالانه','quarterly':'سه‌ماهه','Copy support command':'کپی متن درخواست پشتیبانی','Copy linking command':'کپی متن اتصال حساب','Copy command guide':'کپی راهنمای مدیریت','Registered members':'کاربران ثبت‌شده','Active accounts':'حساب‌های فعال','Suspended accounts':'حساب‌های تعلیق‌شده','Management Actions':'گزینه‌های مدیریت','Plan':'پلن','License':'لایسنس','Expiry · UTC':'انقضا (UTC)','Entry reference':'قیمت ورود','Stop Loss':'حد ضرر','Copy Signal':'کپی سیگنال','Refresh':'به‌روزرسانی','active':'فعال','trial':'آزمایشی','Starts on activation':'از زمان فعال‌سازی','No recorded signals yet.':'هنوز سیگنالی ثبت نشده است.','Remaining':'زمان باقی‌مانده','Expired':'منقضی','Revoked':'لغوشده','revoked':'لغوشده','Not started':'هنوز شروع نشده','suspended':'تعلیق‌شده','Market / not supplied':'بازار / تعیین نشده','Confirm Reset':'تأیید تغییر','Cancel':'انصراف','Signal History':'تاریخچه سیگنال‌ها','Signal Bridge':'سیگنال بریج','Scalper Pro':'اسکلپر پرو','License & activation':'لایسنس و فعال‌سازی','MT5 account-bound':'وابسته به حساب MT5'};
  const title=faLabels[view.page]||(view.page?.startsWith('history')?'تاریخچه سیگنال‌ها':view.page?.startsWith('orders')?'سفارش‌های من':view.title);
  return {...view,language,title,subtitle:labels[view.subtitle]||'',footer:'',badge:'DrFXAi',
   rows:(view.rows||[]).map(r=>({...r,label:labels[r.label]||String(r.label).replace(/^Target (\d)$/,'هدف $1').replace('Signal Bridge · 3 months','سیگنال بریج · ۳ ماه').replace('Signal Bridge · 12 months','سیگنال بریج · ۱۲ ماه').replace('Scalper Pro · 30 days','اسکلپر پرو · ۳۰ روز').replace('Scalper Pro · 90 days','اسکلپر پرو · ۹۰ روز'),
-   value:labels[r.value]||String(r.value).replace(/ Stars/g,' استار').replace(/Unavailable/g,'ناموجود').replace(/(\d+) days/g,'$1 روز')})),
+   value:labels[r.value]||String(r.value).replace(/ Stars/g,' استار').replace(/Unavailable/g,'ناموجود').replace(/(\d+) days/g,'$1 روز').replace(/\b(active|annual|quarterly|trial|revoked|suspended)\b/g,status=>labels[status])})),
   buttons:(view.buttons||[]).map(b=>{
    const buy={quarterly:'سیگنال بریج · ۳ ماه',annual:'سیگنال بریج · ۱۲ ماه',scalper_1m:'اسکلپر پرو · ۳۰ روز',scalper_3m:'اسکلپر پرو · ۹۰ روز'};
    if(b.action?.startsWith('sb:buy:'))return {...b,label:buy[b.action.slice(7)]||b.label};
