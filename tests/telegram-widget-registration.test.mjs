@@ -11,7 +11,7 @@ test('widget registration preserves existing Telegram webhook updates and secret
  assert.match(code,/concat\('pre_checkout_query'\)/);
  assert.match(code,/secret_token:env\.TELEGRAM_WEBHOOK_SECRET/);
  assert.match(code,/drop_pending_updates:false/);
- assert.match(code,/setMyCommands'.+commands:BOT_MENU_COMMANDS/);
+ assert.match(code,/setMyCommands'.+commands:BOT_COMMANDS_VISIBLE/);
  assert.doesNotMatch(code,/console\.log\(env\.TELEGRAM_BOT_TOKEN/);
 });
 
@@ -24,3 +24,4 @@ test('private bot command triggers nonblocking reconciliation; cron is low frequ
  assert.match(code,/return telegramWebhook\(req,env,ctx\)/);
  assert.match(config,/"crons":\s*\["0 \*\/6 \* \* \*"\]/);
 });
+
