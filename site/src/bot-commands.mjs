@@ -7,10 +7,10 @@ export function normalizeBotCommand(value){
  return command==='/signal_bridge'?'/signalbridge':command;
 }
 export const BOT_MENU_COMMANDS=Object.freeze([
- {command:'menu',description:'Open the interactive command center'},
+ {command:'menu',description:'Open the main menu'},
  {command:'help',description:'Setup guide and support widgets'},
  {command:'setup',description:'Connect your license, EA and signal sources'},
- {command:'start',description:'Choose language and open your DrFX account'},
+ {command:'start',description:'Open the main menu'},
  {command:'language',description:'Change bot language · 6 options'},
  {command:'app',description:'Open Telegram Mini App'},
  {command:'buy',description:'Buy or renew licenses with Telegram Stars'},
@@ -18,8 +18,8 @@ export const BOT_MENU_COMMANDS=Object.freeze([
  {command:'orders',description:'View Telegram purchase history'},
  {command:'terms',description:'License purchase terms'},
  {command:'paysupport',description:'Payment, delivery and refund support'},
- {command:'widget',description:'View your private Signal Bridge status widget'},
- {command:'signal',description:'View your last recorded TradingView signal'},
+ {command:'widget',description:'Open the main menu'},
+ {command:'signal',description:'View your latest recorded signal'},
  {command:'scalperwidget',description:'View your private Scalper Pro license summary'},
  {command:'signalbridge',description:'Signal Bridge · Retrieve your private EA license'},
  {command:'scalper',description:'Scalper Pro · Retrieve your own license keys'},
@@ -28,6 +28,6 @@ export const BOT_MENU_COMMANDS=Object.freeze([
  {command:'me',description:'View membership status'},
  {command:'code',description:'Retrieve your private EA activation code'},
  {command:'link',description:'Link an already-verified email account'},
- {command:'channels',description:'TradingView webhook for your channel or group'}
+ {command:'channels',description:'Channels & Groups · Add a chat or get its webhook'}
 ]);
 
