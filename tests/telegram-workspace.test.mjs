@@ -111,3 +111,27 @@ test('client buttons request pages, copy command templates and redraw on server 
  widget.chatData=widgetViewData(await workspaceView(fixture().env,helpers,user,'support'));events.get('chatDataChanged')();
  get('action0').onclick();assert.ok(calls.includes('/paysupport ORDER_ID YOUR_MESSAGE'));
 });
+
+test('native Main Menu opens the same workspace as /menu',async()=>{
+ const f=fixture();
+ await stub(async calls=>{
+  const callback={id:'back',data:'workspace:home',from:{id:123},message:{chat:{id:123,type:'private'}}};
+  const r=await worker.fetch(request({callback_query:callback}),f.env);
+  assert.equal(r.status,200);
+  const widget=calls.find(c=>c.method==='sendWidget');
+  assert.equal(unpackWorkspaceView(JSON.parse(widget.body.chat_data)).page,'home');
+  assert.ok(calls.some(c=>c.method==='answerCallbackQuery'));
+ });
+});
+
+test('channel detail keeps its controls and provides matching native and widget navigation',async()=>{
+ const calls=[];
+ const raw=async(e,method,body)=>calls.push({method,body});
+ await sendBotNotice({}, {raw},'123','Your webhook <code>example</code>',{inline_keyboard:[[{text:'Manage in Mini App',web_app:{url:'https://drfx.company/telegram?tab=channels'}}]]},'channel-detail');
+ const body=calls[0].body;
+ const buttons=body.reply_markup.inline_keyboard.flat();
+ assert.deepEqual(buttons.slice(1).map(b=>b.callback_data),['workspace:channels','workspace:home']);
+ const view=unpackWorkspaceView(JSON.parse(body.chat_data));
+ assert.equal(view.title,'Channels & Groups');
+ assert.deepEqual(view.buttons.map(b=>b.action),['ui:page:channels','ui:page:home']);
+});
