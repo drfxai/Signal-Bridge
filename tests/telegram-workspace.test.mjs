@@ -46,13 +46,13 @@ test('navigation accepts only known pages and bounded paging arguments',()=>{
  for(const action of ['ui:page:home','ui:open:history:0','ui:page:lang:fa','ui:page:signal:10'])assert.ok(workspaceQueryPage(action));
  for(const action of ['ui:page:eval','ui:page:users:-1','ui:page:history:9999','ui:page:lang:xx','ui:page:home;DROP TABLE','ui:page:admin:other'])assert.equal(workspaceQueryPage(action),null);
 });
-test('secrets stay out of widget state and use protected captions and native copy buttons',async()=>{
+test('secrets stay out of widget state and use protected captions',async()=>{
  const calls=[],raw=async(e,method,body)=>{calls.push({method,body});return {message_id:1}};
  const secret='private-example-activation-code';
  await sendBotNotice({}, {raw},'123','Your code\n<code>'+secret+'</code>',{inline_keyboard:[[{text:'Copy',copy_text:{text:secret}}]]});
  assert.equal(calls[0].method,'sendWidget');assert.equal(calls[0].body.protect_content,true);
  assert.ok(calls[0].body.caption.includes(secret));assert.ok(!calls[0].body.chat_data.includes(secret));
- assert.equal(calls[0].body.reply_markup.inline_keyboard[0][0].copy_text.text,secret);
+ assert.equal(calls[0].body.reply_markup,undefined);
 });
 test('long notices are split without losing text or exceeding state limits',async()=>{
  const calls=[],raw=async(e,method,body)=>{calls.push({method,body});return {message_id:1}};
@@ -62,22 +62,22 @@ test('long notices are split without losing text or exceeding state limits',asyn
  assert.equal(calls.map(c=>unpackWorkspaceView(JSON.parse(c.body.chat_data)).pages.join('')).join(''),text);
  for(const c of calls)assert.ok(Buffer.byteLength(c.body.chat_data)<=1024);
 });
-test('unsupported widget delivery falls back to a protected native response',async()=>{
+test('widget notices do not duplicate options in native messages',async()=>{
  const methods=[],raw=async(e,m,b)=>{methods.push(m);if(m==='sendWidget')throw Error('Unsupported');return {message_id:1}};
- await sendBotNotice({}, {raw},'123','Please retry later.');
- assert.deepEqual(methods,['sendWidget','sendMessage']);
+ await assert.rejects(sendBotNotice({}, {raw},'123','Please retry later.'),/Unsupported/);
+ assert.deepEqual(methods,['sendWidget']);
 });
 function request(payload){return new Request('https://drfx.company/api/telegram/webhook',{method:'POST',headers:{'content-type':'application/json','x-telegram-bot-api-secret-token':'workspace-test-secret'},body:JSON.stringify(payload)})}
 function query(action,from=123){return {widget_query:{id:'q',from:{id:from},chat:{id:123,type:'private'},message_id:10,type:{type:'data'},data:action}}}
-async function stub(fn){const original=globalThis.fetch,calls=[];globalThis.fetch=async(url,options)=>{calls.push({method:String(url).split('/').pop(),body:JSON.parse(options.body)});return Response.json({ok:true,result:{message_id:1}})};try{return await fn(calls)}finally{globalThis.fetch=original}}
-test('command aliases open functioning widgets, with protected native Mini App launch',async()=>{
+async function stub(fn){const original=globalThis.fetch,calls=[];globalThis.fetch=async(url,options)=>{calls.push({method:String(url).split('/').pop(),body:JSON.parse(options.body)});return Response.json({ok:true,result:String(url).endsWith('/getChatMember')?{status:'member'}:{message_id:1}})};try{return await fn(calls)}finally{globalThis.fetch=original}}
+test('command aliases open protected widgets without native keyboards',async()=>{
  const {env}=fixture();
  await stub(async calls=>{
   for(const [cmd,page] of [['/menu','home'],['/setup','setup'],['/help','help'],['/licenses','licenses'],['/buy','shop'],['/me','account'],['/orders','orders:0']]){
    const r=await worker.fetch(request({message:{text:cmd,from:{id:123},chat:{id:123,type:'private'}}}),env);
    assert.equal(r.status,200);const c=calls.at(-1);assert.equal(c.method,'sendWidget');
    assert.equal(unpackWorkspaceView(JSON.parse(c.body.chat_data)).page,page);
-   assert.ok(c.body.reply_markup.inline_keyboard[0][0].web_app.url.endsWith('/telegram'));
+   assert.equal(c.body.reply_markup,undefined);
   }
  });
 });
@@ -124,14 +124,38 @@ test('native Main Menu opens the same workspace as /menu',async()=>{
  });
 });
 
-test('channel detail keeps its controls and provides matching native and widget navigation',async()=>{
+test('channel detail keeps its controls and provides widget-only navigation',async()=>{
  const calls=[];
  const raw=async(e,method,body)=>calls.push({method,body});
  await sendBotNotice({}, {raw},'123','Your webhook <code>example</code>',{inline_keyboard:[[{text:'Manage in Mini App',web_app:{url:'https://drfx.company/telegram?tab=channels'}}]]},'channel-detail');
  const body=calls[0].body;
- const buttons=body.reply_markup.inline_keyboard.flat();
- assert.deepEqual(buttons.slice(1).map(b=>b.callback_data),['workspace:channels','workspace:home']);
  const view=unpackWorkspaceView(JSON.parse(body.chat_data));
- assert.equal(view.title,'Channels & Groups');
- assert.deepEqual(view.buttons.map(b=>b.action),['ui:page:channels','ui:page:home']);
+ assert.equal(body.reply_markup,undefined);
+ assert.ok(view.buttons[0].url.endsWith('/telegram?tab=channels'));
+ assert.deepEqual(view.buttons.slice(1).map(b=>b.action),['ui:page:channels','ui:page:home']);
+});
+
+test('onboarding unlocks only the sign-in action after confirmed channel membership',async()=>{
+ const {channelMembership,onboardingView}=await import('../site/src/telegram-onboarding.mjs');
+ const api=async(env,method,payload)=>{
+  assert.equal(method,'getChatMember');
+  assert.deepEqual(payload,{chat_id:'@DrFXAi',user_id:123});
+  return {status:'member'};
+ };
+ assert.equal(await channelMembership(api,{},'123'),'member');
+ assert.deepEqual(onboardingView('onboarding','fa','member').buttons.map(b=>b.action),['ui:page:login']);
+ assert.ok(onboardingView('onboarding','fa','not_member').buttons.some(b=>b.url==='https://t.me/DrFXAi'));
+ assert.ok(!onboardingView('onboarding','fa','unavailable').buttons.some(b=>b.action==='ui:page:login'));
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,options)=>{
+  const method=String(url).split('/').pop();calls.push({method,body:JSON.parse(options.body)});
+  return Response.json({ok:true,result:method==='getChatMember'?{status:'left'}:{message_id:1}});
+ };
+ try{
+  await worker.fetch(request(query('ui:page:login')),f.env);
+  assert.ok(calls.some(c=>c.method==='getChatMember'));
+  assert.equal(f.sql.filter(c=>c.query.includes('site_permanent_logins')).length,0);
+  const view=unpackWorkspaceView(JSON.parse(calls.find(c=>c.method==='sendWidget').body.chat_data));
+  assert.equal(view.page,'onboarding');
+ }finally{globalThis.fetch=original;}
 });
