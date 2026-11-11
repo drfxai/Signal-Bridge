@@ -11,3 +11,21 @@ export function signalHistoryWidgetData(row){
  return JSON.stringify({empty:false,symbol:s.symbol,side:s.side,entry:safeNumber(s.order.reference_price),sl:s.order.stop_loss,tps,received});
 }
 
+
+export function signalWidgetHtml(language) {
+ if(language!=='fa')return SIGNAL_HISTORY_WIDGET_HTML;
+ const labels={
+  'DrFXAi | Signal':'DrFXAi | سیگنال','RECORDED ALERT':'هشدار ثبت‌شده',
+  'SIGNAL BRIDGE':'سیگنال بریج','NO RECORDED SIGNAL':'سیگنالی ثبت نشده','NO SIGNAL':'بدون سیگنال',
+  'No recorded timestamp':'زمان ثبت نشده','Entry reference':'قیمت ورود','Stop loss':'حد ضرر',
+  'Target 1':'هدف اول','Target 2':'هدف دوم','Target 3':'هدف سوم','↻ Refresh':'به‌روزرسانی',
+  'Copy Signal':'کپی سیگنال','Signal History':'تاریخچه سیگنال‌ها','Main Menu':'منوی اصلی',
+  'Recorded alert, not a live price. Broker fills and target hits require an EA receipt.':'هشدار ثبت‌شده. برای تأیید اجرا یا رسیدن به هدف، گزارش MT5 را ببین.',
+  'Not supplied':'تعیین نشده','Checking last recorded alert…':'در حال بررسی…','Record refreshed':'به‌روز شد',
+  'Refresh unavailable. Try /signal again.':'به‌روزرسانی انجام نشد. دوباره تلاش کن.',
+  'Your workspace appears below.':'ویجت در پیام بعدی باز می‌شود.','Send /menu to open your workspace.':'ویجت باز نشد. دوباره تلاش کن.'
+ };
+ let html=SIGNAL_HISTORY_WIDGET_HTML.replace('<div class="shell">','<div class="shell" dir="rtl">');
+ for(const [english,persian] of Object.entries(labels))html=html.replaceAll(english,persian);
+ return html;
+}
