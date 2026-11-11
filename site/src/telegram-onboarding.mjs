@@ -43,7 +43,7 @@ const courses = {
   '1. Connect Signal Bridge in MT5 and enable Telegram → MT5 in the portal.\n2. Send or forward a signal with its symbol, direction, stop loss and targets to this private bot chat.\n3. Check the processing result and trade status in the portal or MT5. Use a demo account for your first test.'
  ]
 };
-export const onboardingPages = Object.freeze(['onboarding','free','access','more',...Object.keys(courses)]);
+export const onboardingPages = Object.freeze(['onboarding','free','scalper-trial','access','more',...Object.keys(courses)]);
 
 export function onboardingView(page, language, membership) {
  const fa=language==='fa';
@@ -84,7 +84,13 @@ export function onboardingView(page, language, membership) {
   const course=courses[page];
   return view(course[fa?0:1],'',[...(page==='channel-install'?[button(t('وب‌هوک‌ها و کانال‌ها','Webhooks & Channels'),'webhooks','primary')]:[]),button(t('بازگشت به آموزش‌ها','Back to Guides'),'setup'),home],{pages:[course[fa?2:3]]});
  }
- if(page==='free')return view(t('لایسنس رایگان','Free Licenses'),t('اسکلپر پرو دورهٔ آزمایشی ۷ روزه را از داخل EA فعال می‌کند.','Activate the 7-day Scalper Pro trial inside its EA.'),[button(t('دریافت لایسنس سیگنال بریج','Get Signal Bridge License'),'bridgecode','primary'),button(t('فعال‌سازی آزمایشی اسکلپر پرو','Activate Scalper Pro Trial'),'scalper-install','accent'),home]);
+ if(page==='scalper-trial')return view(t('لایسنس رایگان اسکلپر پرو','Scalper Pro free license'),
+  t('شمارهٔ حساب MT5 را وارد کن. برای هر کاربر و شمارهٔ حساب یک کلید ۷ روزه صادر می‌شود.','Enter your MT5 login. One 7-day key per member and account.'),
+  [button(t('بازگشت','Back'),'free')]);
+ if(page==='free')return view(t('لایسنس رایگان','Free Licenses'),'',[
+  button(t('دریافت لایسنس سیگنال بریج','Get Signal Bridge License'),'bridgecode','primary'),
+  button(t('دریافت لایسنس ۷ روزه اسکلپر پرو','Get 7-day Scalper Pro License'),'scalper-trial','accent'),
+  button(t('راهنمای نصب اسکلپر پرو','Scalper Pro Setup Guide'),'scalper-install'),home]);
  return null;
 }
 

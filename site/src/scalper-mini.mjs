@@ -22,7 +22,7 @@ export const SXM_PANEL_HTML = String.raw`<section class="tab-panel" data-panel="
  </div>
  <div class="card">
   <h2>Plans</h2>
-  <div class="plan"><div><b>Free trial</b><small>7 days, every feature, inside the EA</small></div><div class="plan-price">$0</div></div>
+  <div class="plan"><div><b>Free trial</b><small>7 days · claim from the bot’s Free Licenses widget</small></div><div class="plan-price">$0</div></div>
   <div class="plan"><div><b>Monthly</b><small>30 days · key locked to your MT5 account</small></div><div class="plan-price">$19</div></div>
   <div class="plan featured"><div><b>3 Months · save 14%</b><small>90 days · best value</small></div><div class="plan-price">$49</div></div>
   <button id="sxmBuy" type="button" class="btn primary" style="width:100%;margin-top:15px">Buy a licence on drfx.company ↗</button>
@@ -78,12 +78,12 @@ nav.bottom button[data-tab=scalper],.sb-mobile-tabs .sxm-sb-scalper{color:#e8c77
 export const SXM_JS = String.raw`
 (()=>{'use strict';
 const $=id=>document.getElementById(id),tg=window.Telegram?.WebApp||null;
-const LABEL={scalper_1m:'Monthly',scalper_3m:'3 Months'};let data=null,busy=false;const shown=new Set();
+const LABEL={scalper_trial:'7-day trial',scalper_1m:'Monthly',scalper_3m:'3 Months'};let data=null,busy=false;const shown=new Set();
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])}
 function open(url){try{if(tg?.openLink)tg.openLink(url);else location.assign(url)}catch{location.assign(url)}}
 function render(){const box=$('sxmKeys'),st=$('sxmStatus');if(!box||!st)return;const keys=data?.keys||[],pending=(data?.orders||[]).some(o=>o.status==='pending');
  st.textContent=keys.length?keys.length+' key'+(keys.length>1?'s':'')+' issued':pending?'Payment being verified':'No licence yet';
- box.innerHTML=keys.length?keys.map(k=>{const v=shown.has(k.id),key=String(k.key||'');return '<div class="sxm-key"><header><span>MT5 <b>#'+esc(k.account_login)+'</b></span><span>'+esc(LABEL[k.plan]||k.plan)+' · '+esc(k.days)+' days</span></header><code>'+esc(v?key:key.slice(0,10)+'-•••••-•••••-•••••-'+key.slice(-5))+'</code><div class="buttons"><button type="button" class="btn subtle" data-sxm-show="'+esc(k.id)+'">'+(v?'Hide':'Reveal')+'</button><button type="button" class="btn primary" data-sxm-copy="'+esc(k.id)+'">Copy key</button></div></div>'}).join(''):'<p class="sxm-empty">Start with the free 7-day trial inside the EA. When you buy a licence on the website, your key shows up here.</p>';}
+ box.innerHTML=keys.length?keys.map(k=>{const v=shown.has(k.id),key=String(k.key||'');return '<div class="sxm-key"><header><span>MT5 <b>#'+esc(k.account_login)+'</b></span><span>'+esc(LABEL[k.plan]||k.plan)+' · '+esc(k.days)+' days</span></header><code>'+esc(v?key:key.slice(0,10)+'-•••••-•••••-•••••-'+key.slice(-5))+'</code><div class="buttons"><button type="button" class="btn subtle" data-sxm-show="'+esc(k.id)+'">'+(v?'Hide':'Reveal')+'</button><button type="button" class="btn primary" data-sxm-copy="'+esc(k.id)+'">Copy key</button></div></div>'}).join(''):'<p class="sxm-empty">Get a free 7-day key from the bot’s Free Licenses widget. Your issued keys appear here.</p>';}
 async function load(){if(busy)return;busy=true;try{const r=await fetch('/api/scalper',{credentials:'same-origin',headers:{accept:'application/json'}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'SERVICE_UNAVAILABLE');data=d;render()}catch(e){const st=$('sxmStatus');if(st)st.textContent=e.message==='UNAUTHENTICATED'?'Sign in from the bot':'Unavailable right now';const box=$('sxmKeys');if(box&&!data)box.innerHTML='<p class="sxm-empty">Open this Mini App from the official DrFX bot to see your keys.</p>'}finally{busy=false}}
 window.sxMiniLoad=()=>{load();const v=$('sxmVideo');if(v&&!matchMedia('(prefers-reduced-motion: reduce)').matches)v.play().catch(()=>{})};
 window.sxMiniLeave=()=>{const v=$('sxmVideo');if(v)v.pause()};
@@ -93,3 +93,4 @@ $('sxmKeys')?.addEventListener('click',async e=>{const s=e.target.closest('[data
 $('sxmBuy')?.addEventListener('click',()=>open('https://drfx.company/#scalper'));
 })();
 `;
+

@@ -182,3 +182,42 @@ test('a private credential stays outside widget state and copies after a deliber
  events.get('chatDataChanged')();
  assert.equal(element('secret-value').textContent,'');
 });
+
+test('widget routes Telegram links internally and external HTTPS links through openLink',async()=>{
+ const elements=new Map(),events=new Map(),calls=[];
+ const element=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id)};
+ const widget={chatData:widgetViewData({language:'fa',title:'پشتیبانی',buttons:[
+  {label:'پشتیبانی',action:'link',url:'https://t.me/DrFXGOD'},
+  {label:'وب‌اپ',action:'link',url:'https://drfx.company/telegram'}
+ ]}),ready(){},onEvent(name,handler){events.set(name,handler)},
+ openTelegramLink(url){calls.push(['telegram',url])},openLink(url){calls.push(['web',url])},
+ request(action){calls.push(['request',action]);return Promise.resolve({result:'{}'})}};
+ vm.runInNewContext(BOT_WORKSPACE_WIDGET_HTML.match(/<script>([\s\S]*?)<\/script>/)[1],
+  {window:{TelegramWidget:widget},document:{getElementById:element}},{timeout:1000});
+ element('action0').onclick();element('action1').onclick();
+ assert.deepEqual(calls,[['telegram','https://t.me/DrFXGOD'],['web','https://drfx.company/telegram']]);
+ widget.chatData=widgetViewData({page:'scalper-trial',language:'fa',title:'لایسنس رایگان'});events.get('chatDataChanged')();
+ for(const n of [0,1,2,3])element('digit'+n).onclick();
+ assert.equal(element('login').textContent,'1234');
+ element('claim').onclick();await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(calls.at(-1),['request','trial:1234']);
+});
+
+test('trial widget issues only in its owner’s private chat and sends a private reveal card',async()=>{
+ const f=fixture();
+ f.env.LICENSE_VAULT_KEY=Buffer.alloc(32,9).toString('base64');
+ f.env.SCALPER_LICENSE_SECRET='test-secret';
+ await stub(async calls=>{
+  await worker.fetch(request(query('trial:12345678',456)),f.env);
+  assert.equal(f.sql.length,0);
+  assert.ok(!calls.some(c=>c.method==='sendWidget'));
+  await worker.fetch(request(query('trial:12345678')),f.env);
+  const card=calls.find(c=>c.method==='sendWidget');
+  assert.equal(card.body.protect_content,true);
+  const view=unpackWorkspaceView(JSON.parse(card.body.chat_data));
+  assert.match(view.subtitle,/MT5 #12345678/);
+  assert.match(view.buttons[0].action,/^sec:scalper:skey_[a-f0-9]{32}$/);
+  assert.doesNotMatch(card.body.chat_data,/DRFX-[A-Z2-9]{5}-/);
+  assert.equal(f.sql.filter(s=>s.query.startsWith('INSERT INTO scalper_keys')).length,1);
+ });
+});
