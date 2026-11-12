@@ -44,9 +44,23 @@ export function markCommonText(html,attribute){
 }
 const errorMessages={"SERVICE_UNAVAILABLE": "Service temporarily unavailable. Try again.", "UNAUTHENTICATED": "Sign in to continue.", "FORBIDDEN": "You do not have permission for this action.", "RATE_LIMITED": "Too many requests. Please try again later.", "INVALID_MT5_ACCOUNT": "Enter a valid MT5 account number.", "EA_NOT_READY": "Connect your EA in MetaTrader 5 and try again.", "DAILY_DRAWDOWN_HIT": "The daily drawdown limit was reached. Check the account before restarting.", "RISK_STATE_CHANGED": "The risk state changed. Check the connection and try again.", "TEST_CAPABILITY_REQUIRED": "This EA version does not support the requested test. Install the latest version.", "TEST_SETTINGS_CHANGED": "EA settings changed. Check the symbol and lot size and confirm again.", "INVALID_EA_TEST_SETTINGS": "Check the symbol and lot inputs in EA settings.", "TEST_SYMBOL_NOT_FOUND": "The test symbol is unavailable on this broker account.", "ACCOUNT_MISMATCH": "The connected MT5 account does not match the selected account.", "BROKER_REJECTED": "The broker rejected the request. Check your MT5 journal.", "PAYMENTS_NOT_CONFIGURED": "Payments are temporarily unavailable.", "EMAIL_NOT_CONFIGURED": "Email sign-in is temporarily unavailable.", "INVALID_CODE": "The code is invalid or expired. Request a new code.", "NOT_FOUND": "The requested item was not found.", "NETWORK_ERROR": "The connection failed. Check your internet connection and try again.", "TELEGRAM_ROUTE_LINK_REQUIRED": "Link your Telegram account to turn this route on. You can still turn routes off.", "LINK_TELEGRAM_FIRST": "Link your Telegram account in account settings first."};
 export const I18N_JS="window.DrFXI18N="+JSON.stringify({languages:LOCALES,text:TRANSLATIONS,errors:errorMessages,keys:Object.fromEntries(Object.entries(TRANSLATIONS.en).map(([key,label])=>[label,key]))})+";"+String.raw`
+// Convert only unambiguous localized UI phrases back to their canonical English source.
+// This allows FA → RU/TR/HI changes when another component has already rendered the old locale.
+const localizedOriginal=Object.create(null),ambiguousOriginal=new Set();
+for(const entries of Object.values(window.DrFXI18N.text)){
+ for(const [key,value] of Object.entries(entries)){
+  const english=window.DrFXI18N.text.en[key];
+  if(typeof value!=='string'||typeof english!=='string'||!value)continue;
+  if(Object.hasOwn(localizedOriginal,value)&&localizedOriginal[value]!==english)ambiguousOriginal.add(value);
+  else localizedOriginal[value]=english;
+ }
+}
+for(const value of ambiguousOriginal)delete localizedOriginal[value];
+window.DrFXI18N.canonical=localizedOriginal;
 window.DrFXI18N.translate=function(source,language=document.documentElement.lang){
- const {text,keys}=window.DrFXI18N;
- return Object.hasOwn(keys,source)?text[language]?.[keys[source]]??source:source;
+ const {text,keys,canonical}=window.DrFXI18N;
+ const english=Object.hasOwn(keys,source)?source:(canonical[source]||source);
+ return Object.hasOwn(keys,english)?text[language]?.[keys[english]]??source:source;
 };
 window.DrFXI18N.error=function(value,language=document.documentElement.lang){
  const {errors,translate}=window.DrFXI18N;
@@ -67,13 +81,13 @@ window.DrFXI18N.error=function(value,language=document.documentElement.lang){
   if(!parent||parent.closest(excluded)||parent.closest('[data-i18n],[data-i],[data-tr],[data-su],[data-pp-text],[data-tj-text]'))return;
   const now=node.nodeValue, before=original.get(node);
   const english=before&&now===before.last?before.en:now;
-  const value=english.trim();
-  if(!Object.hasOwn(i18n.keys,value))return;
-  const next=i18n.translate(value,lang);
+  const value=english.trim(),canonical=i18n.canonical[value]||value;
+  if(!Object.hasOwn(i18n.keys,canonical))return;
+  const next=i18n.translate(canonical,lang);
   if(next===value&&now===english)return;
   const prefix=english.match(/^\s*/)?.[0]||'',suffix=english.match(/\s*$/)?.[0]||'';
   const target=prefix+next+suffix;
-  original.set(node,{en:english,last:target});
+  original.set(node,{en:prefix+canonical+suffix,last:target});
   if(now!==target)node.nodeValue=target;
  }
  function localizeAttrs(el,lang){
@@ -82,10 +96,11 @@ window.DrFXI18N.error=function(value,language=document.documentElement.lang){
   for(const name of ['placeholder','title','aria-label']){
    if(!el.hasAttribute(name)||el.hasAttribute('data-i18n-attr-'+name))continue;
    const value=el.getAttribute(name),prev=remembered?.[name],english=prev&&prev.last===value?prev.en:value;
-   if(!Object.hasOwn(i18n.keys,english))continue;
-   const next=i18n.translate(english,lang);
+   const canonical=i18n.canonical[english]||english;
+   if(!Object.hasOwn(i18n.keys,canonical))continue;
+   const next=i18n.translate(canonical,lang);
    if(!remembered){remembered={};attrOriginal.set(el,remembered)}
-   remembered[name]={en:english,last:next};
+   remembered[name]={en:canonical,last:next};
    if(next!==value)el.setAttribute(name,next);
   }
  }
