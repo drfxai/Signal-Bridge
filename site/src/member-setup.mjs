@@ -90,9 +90,9 @@ function mountSetup(){
  }
  window.addEventListener('signalbridge-connection',e=>{online=!!e.detail?.terminal_online;updateReadiness();});
  const english=new Map([...root.querySelectorAll('[data-su]')].map(e=>[e,e.textContent]));
- function locale(){const persian=document.documentElement.lang==='fa';for(const [e,t] of english)e.textContent=persian?(fa[e.dataset.su]||t):t;$('setupReveal').textContent=$('setupLicense').type==='password'?(persian?'نمایش':'Show'):(persian?'مخفی':'Hide');updateReadiness();}
+ function locale(){const lang=document.documentElement.lang||'en',persian=lang==='fa',translate=text=>window.DrFXI18N?.translate?.(text,lang)||text;for(const [e,t] of english)e.textContent=persian?(fa[e.dataset.su]||translate(t)):translate(t);$('setupReveal').textContent=$('setupLicense').type==='password'?(persian?'نمایش':translate('Show')):(persian?'مخفی':translate('Hide'));updateReadiness();}
  locale();new MutationObserver(locale).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
- const say=(en,persian)=>document.documentElement.lang==='fa'?persian:en;
+ const say=(en,persian)=>document.documentElement.lang==='fa'?persian:(window.DrFXI18N?.translate?.(en)||en);
  async function api(path,body){const r=await fetch(path,{credentials:'same-origin',method:body===undefined?'GET':'POST',headers:{'content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});const d=await r.json();if(!r.ok)throw Error(d.error||'SERVICE_UNAVAILABLE');return d;}
  const errors={UNAUTHENTICATED:['Sign in to load your setup.','برای نمایش ستاپ وارد حساب شوید.'],LINK_TELEGRAM_FIRST:['Link Telegram in account settings first.','ابتدا تلگرام را در تنظیمات حساب متصل کنید.'],BOT_CANNOT_POST:['Give the bot Post messages permission, then refresh.','مجوز ارسال پیام ربات را فعال و به‌روزرسانی کنید.'],ADMIN_RIGHTS_REQUIRED:['You must be an administrator of this channel.','باید ادمین این کانال باشید.']};
  function fail(e){const a=errors[e.message];status(a?say(...a):say('Could not update setup. Retry refresh.','ستاپ به‌روز نشد؛ دوباره به‌روزرسانی کنید.')+' · '+e.message);}
