@@ -30,7 +30,7 @@ for(const [index,row] of attributePhrases.entries()){
 export function markCommonText(html,attribute){
  const marked=html.replace(/<([a-z][a-z0-9]*)([^<>]*)>([^<>]+)<\/\1>/gi,(match,tag,attrs,text)=>{
   const key=phraseKeys.get(text.trim());
-  if(!key||!['a','b','button','div','h2','h3','label','li','option','p','small','span','summary'].includes(tag)||/data-(?:i18n|i|tr|ops-fa)=/.test(attrs))return match;
+  if(!key||!['a','b','button','div','h1','h2','h3','h4','h5','h6','label','li','option','p','small','span','summary','strong','em'].includes(tag)||/data-(?:i18n|i|tr|ops-fa)=/.test(attrs))return match;
   const value=tag==='option'&&!/\bvalue\s*=/.test(attrs)?' value="'+text.trim().replaceAll('"','&quot;')+'"':'';
   return '<'+tag+attrs+value+' '+attribute+'="'+key+'">'+text+'</'+tag+'>';
  });
