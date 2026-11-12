@@ -35,12 +35,13 @@ test('portal and setup modules use five-language shared keys instead of Persian-
 test('runtime updates dynamic text and restores original English on language changes without changing secrets',()=>{
  const visible={nodeType:3,nodeValue:'Get a licence key',parentElement:{closest:()=>null}};
  const secret={nodeType:3,nodeValue:'Get a licence key',parentElement:{closest:()=>({id:'private-secret'})}};
+ const legacy={nodeType:3,nodeValue:'تقویم عملکرد',parentElement:{closest:()=>null}};
  const body={nodeType:1,closest:()=>null,hasAttribute:()=>false};
  const events={};let listener;
  const doc={
   documentElement:{lang:'tr'},body,readyState:'complete',
   createTreeWalker(root){
-   const items=root===body?[visible,secret]:[];
+   const items=root===body?[visible,secret,legacy]:[];
    let i=0;return {nextNode:()=>items[i++]||null};
   }
  };
@@ -49,13 +50,16 @@ test('runtime updates dynamic text and restores original English on language cha
  vm.runInNewContext(I18N_JS,{window:win,document:doc,MutationObserver:Observer,WeakMap,Set,Object});
  assert.equal(visible.nodeValue,'Lisans anahtarı al');
  assert.equal(secret.nodeValue,'Get a licence key');
+ assert.equal(legacy.nodeValue,'Performans takvimi');
  const newNode={nodeType:3,nodeValue:'No broker data yet.',parentElement:{closest:()=>null}};
  listener([{type:'childList',addedNodes:[newNode]}]);
  assert.equal(newNode.nodeValue,'Henüz broker verisi yok.');
  doc.documentElement.lang='ru';events['drfx-language-change']();
  assert.equal(visible.nodeValue,'Получить ключ лицензии');
+ assert.equal(legacy.nodeValue,'Календарь результатов');
  doc.documentElement.lang='en';events['drfx-language-change']();
  assert.equal(visible.nodeValue,'Get a licence key');
+ assert.equal(legacy.nodeValue,'Performance calendar');
 });
 
 test('website hero, setup statuses and MT5 tour use all five languages',()=>{
@@ -86,5 +90,7 @@ test('website hero, setup statuses and MT5 tour use all five languages',()=>{
  assert.ok(selector.includes('dfx-locale-check\\\">✓'));
  const setup=readFileSync(new URL('../site/src/member-setup.mjs',import.meta.url),'utf8');
  assert.ok(setup.includes('const localized=(en,faText)=>'));
+ assert.ok(setup.includes('SETUP_SOURCE_EN=Object.fromEntries'));
+ assert.ok(setup.includes('mountSetup(sourceEnglish)'));
  assert.ok(setup.includes("localized('Webhook ready'"));
 });
