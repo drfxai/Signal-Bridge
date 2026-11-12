@@ -262,6 +262,7 @@ export const MINI_JS=String.raw`(() => {
   }
   $('revealSerial').textContent=state.serialVisible?ui('Hide serial','مخفی‌کردن کد'):ui('Reveal code','نمایش کد');
   try{localStorage.setItem('drfx-language',locale)}catch{}
+  window.dispatchEvent(new CustomEvent('drfx-language-change',{detail:{lang:locale}}));
  }
  function planLabel(plan){
   const name={trial:'oneMonth',quarterly:'threeMonth',annual:'annualElite'}[plan];

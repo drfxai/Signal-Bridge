@@ -1,4 +1,4 @@
-import {BOT_COMMANDS_VISIBLE,channelMembership} from './telegram-onboarding.mjs';
+import {BOT_COMMANDS_VISIBLE,channelMembership,widgetText} from './telegram-onboarding.mjs';
 import {productArt} from './product-art.mjs';
 import {resolveOwnerSession} from './owner-account.mjs';
 import {accountProfile} from './account-profile.mjs';
@@ -686,7 +686,9 @@ async function signalBridgeWidgetQuery(q,env,req){
  if(!q?.id)return json({ok:true,ignored:'MISSING_QUERY'});
  const allowed=q.chat?.type==='private'&&q.from?.id&&
   String(q.chat.id)===String(q.from.id)&&Number.isSafeInteger(Number(q.message_id))&&!q.inline_message_id;
+ let replyLocale='en';
  const answer=async(payload)=>{
+  if(payload.message)payload={...payload,message:widgetText(replyLocale,payload.message)};
   try{await telegramWidgetApi(env,'answerWidgetQuery',{widget_query_id:q.id,data:JSON.stringify(payload)});}
   catch(e){console.warn('Member widget reply failed: '+String(e?.message||e).slice(0,80));}
  };
@@ -694,9 +696,9 @@ async function signalBridgeWidgetQuery(q,env,req){
  if(trial){
   if(!allowed||q.type?.type!=='data'){await answer({});return json({ok:true});}
   const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(String(q.from.id)).first();
-  if(user?.status!=='active'||!await limited(req,env,'widget:scalper-trial:'+q.from.id,5)){await answer({message:'درخواست در دسترس نیست · Request unavailable'});return json({ok:true});}
-  const language=await userBotLocale(env,user.telegram_id),fa=language==='fa';
-  const t=(f,e)=>fa?f:e;
+  if(user?.status!=='active'||!await limited(req,env,'widget:scalper-trial:'+q.from.id,5)){await answer({message:'Request unavailable'});return json({ok:true});}
+  const language=replyLocale=await userBotLocale(env,user.telegram_id),fa=language==='fa';
+  const t=(f,e)=>fa?f:widgetText(language,e);
   try{
    const member=await channelMembership(telegramWidgetApi,env,user.telegram_id);
    if(member!=='member'){await answer({message:t('ابتدا عضویت کانال را در منوی اصلی بررسی کن.','Verify your channel membership from the main menu first.')});return json({ok:true});}
@@ -719,7 +721,7 @@ async function signalBridgeWidgetQuery(q,env,req){
   if(!allowed||q.type?.type!=='data'){await answer({});return json({ok:true});}
   const user=await env.DB.prepare("SELECT * FROM site_users WHERE telegram_id=? AND status='active'").bind(String(q.from.id)).first();
   if(!user||!await limited(req,env,'widget:reveal:'+q.from.id,10)){await answer({});return json({ok:true});}
-  const fa=await userBotLocale(env,user.telegram_id)==='fa';
+  const fa=(replyLocale=await userBotLocale(env,user.telegram_id))==='fa';
   try{
    const value=await revealWidgetValue(env,req,user,q.data);
    await answer({reveal:value});
@@ -730,7 +732,7 @@ async function signalBridgeWidgetQuery(q,env,req){
   return json({ok:true});
  }
  if(allowed&&q.type?.type==='data'&&/^(cwh:-?\d{1,20}|tgpay:tso_[a-f0-9]{32})$/.test(q.data||'')){
-  if(!await limited(req,env,'widget:action:'+q.from.id,8)){await answer({message:'دوباره تلاش کن · Try again shortly'});return json({ok:true});}
+  if(!await limited(req,env,'widget:action:'+q.from.id,8)){await answer({message:'Please wait a minute before trying again.'});return json({ok:true});}
   const callback={id:q.id,data:q.data,from:q.from,message:{chat:q.chat,message_id:q.message_id}};
   if(q.data.startsWith('cwh:')){
    return channelCallback({callback_query:callback},env,{
@@ -756,7 +758,7 @@ async function signalBridgeWidgetQuery(q,env,req){
   if((navigation.page==='admin'||navigation.page==='adminhelp'||navigation.page.startsWith('users'))&&user.role!=='admin'){await answer({message:'Admin access required'});return json({ok:true,ignored:'FORBIDDEN'});}
   if(!await limited(req,env,'widget:navigation:'+user.telegram_id,30)){await answer({message:'Please wait a minute before trying again.'});return json({ok:true});}
   let page=navigation.page;
-  let language=await userBotLocale(env,user.telegram_id);
+  let language=replyLocale=await userBotLocale(env,user.telegram_id);
   const tr=(fa,en)=>language==='fa'?fa:en;
   if(['bridgecode','scalperkeys','channels','login','reset','tvhook'].includes(page)){
    if(!await limited(req,env,'widget:private-action:'+user.telegram_id,8)){await answer({message:'Please wait a minute before trying again.'});return json({ok:true});}
@@ -809,7 +811,7 @@ async function signalBridgeWidgetQuery(q,env,req){
  if(!user||user.status!=='active'){await answer({message:'Account unavailable. Use /start.'});return json({ok:true,ignored:'NO_ACTIVE_MEMBER'});}
  if(!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)){
   if(!await limited(req,env,'widget:commerce:'+telegramId,8)){await answer({message:'Too many requests. Please wait a minute.'});return json({ok:true});}
-  const language=await userBotLocale(env,telegramId);
+  const language=replyLocale=await userBotLocale(env,telegramId);
   await answer({message:language==='fa'?'پاسخ در پیام بعدی نمایش داده می‌شود.':'See the next message.'});
   try{
    const h=commerceHelpers();
