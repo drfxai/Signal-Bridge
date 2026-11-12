@@ -8,6 +8,7 @@ import {SIGNAL_HISTORY_WIDGET_HTML,signalWidgetHtml} from '../site/src/telegram-
 import {localizeNativeWidget,widgetCaption,WIDGET_LANGUAGE_CODES} from '../site/src/telegram-widget-i18n.mjs';
 import {localizeWorkspace} from '../site/src/telegram-onboarding.mjs';
 import {TRANSLATIONS,LOCALES,markCommonText} from '../site/src/i18n.mjs';
+import {DESIGN_HTML} from '../site/src/design.mjs';
 
 const expected={
  en:['YOUR EXECUTION LICENSE','YOUR SCALPER ACCESS','NO RECORDED SIGNAL'],
@@ -82,6 +83,9 @@ test('website and mini app explicitly bind all localization keys',()=>{
   if(path.endsWith('/ui.mjs')||path.endsWith('/telegram-mini.mjs'))assert.match(source,/data-i18n-attr-aria-label/);
   const keys=[...source.matchAll(/data-(?:i18n|tr|i)="([^"]+)"/g)].map(m=>m[1].replaceAll('-','_'));
   for(const key of keys)assert.ok(Object.hasOwn(TRANSLATIONS.en,key),path+' missing '+key);
+ }
+ for(const match of DESIGN_HTML.matchAll(/data-(?:i18n|i)="([^"]+)"/g)){
+  assert.ok(Object.hasOwn(TRANSLATIONS.en,match[1].replaceAll('-','_')),'website markup missing '+match[1]);
  }
  const worker=readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
  assert.match(worker,/html:localizeNativeWidget\(SIGNAL_BRIDGE_WIDGET_HTML,lang,'bridge'\)/);
