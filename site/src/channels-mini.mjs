@@ -11,7 +11,7 @@ export const CHM_NAV_HTML = String.raw`<button data-tab="channels" type="button"
 `;
 
 export const CHM_PANEL_HTML = String.raw`<section class="tab-panel" data-panel="channels" id="panel-channels" hidden>
- <p class="tab-kicker">NEW · TRADINGVIEW → TELEGRAM</p><h2 class="section-title">Send alerts to your <span>channel</span></h2>
+ <p class="tab-kicker">NEW · TRADINGVIEW → TELEGRAM</p><h2 class="section-title">Send alerts to your channel</h2>
  <div class="chm-hero" aria-hidden="true">
   <div class="chm-node">${TV_ICON}<small>TradingView</small></div>
   <div class="chm-wire"><i></i><i></i><i></i></div>
@@ -19,11 +19,11 @@ export const CHM_PANEL_HTML = String.raw`<section class="tab-panel" data-panel="
   <div class="chm-wire"><i></i><i></i><i></i></div>
   <div class="chm-node">${TG_ICON}<small>Your channel</small></div>
  </div>
- <p class="chm-lead">Alerts are posted straight to your Telegram channel or group. <b>MT5 is not involved.</b></p>
+ <p class="chm-lead">Alerts are posted straight to your Telegram channel or group.</p>
  <ol class="chm-steps">
   <li class="chm-step" id="chmStep1"><span class="chm-num"><b>1</b></span><div class="chm-body">
-   <h3>Add the bot as an admin</h3><p>Allow <b>Post messages</b>. You get a message from the bot when it is in.</p>
-   <div class="chm-add"><button type="button" class="btn primary" id="chmAddChannel"><span aria-hidden="true">📢</span> Add to channel</button><button type="button" class="btn" id="chmAddGroup"><span aria-hidden="true">👥</span> Add to group</button></div>
+   <h3>Add the bot as an admin</h3><p>Allow Post messages. You get a message from the bot when it is in.</p>
+   <div class="chm-add"><button type="button" class="btn primary" id="chmAddChannel"><span aria-hidden="true">📢</span> <span>Add to channel</span></button><button type="button" class="btn" id="chmAddGroup"><span aria-hidden="true">👥</span> <span>Add to group</span></button></div>
   </div></li>
   <li class="chm-step" id="chmStep2"><span class="chm-num"><b>2</b></span><div class="chm-body">
    <div class="chm-row"><h3>Pick your chat</h3><button type="button" class="chm-refresh" id="chmRefresh" aria-label="Refresh list"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg></button></div>
@@ -35,7 +35,7 @@ export const CHM_PANEL_HTML = String.raw`<section class="tab-panel" data-panel="
   </div></li>
  </ol>
  <details class="card chm-howto"><summary>Where do I paste it in TradingView?</summary>
-  <ol class="list"><li>Open your chart and press <b>Alert</b> (the clock icon).</li><li>Go to <b>Notifications</b> and tick <b>Webhook URL</b>. Paste your link.</li><li>In <b>Message</b>, paste the template and adjust it. Plain text works too.</li><li>Press <b>Create</b>. Each alert appears in your chat in about a second.</li></ol>
+  <ol class="list"><li>Open your chart and press Alert (the clock icon).</li><li>Go to Notifications and tick Webhook URL. Paste your link.</li><li>In Message, paste the template and adjust it. Plain text works too.</li><li>Press Create to save the alert.</li></ol>
   <p class="meta">For strategy alerts, use this message instead:</p><code class="chm-code" id="chmStrategyTpl"></code>
   <button type="button" class="btn subtle" data-chm-copy="chmStrategyTpl">Copy strategy template</button>
  </details>
@@ -112,13 +112,14 @@ nav.bottom button[data-tab=channels]{color:#7cc8f0}
 export const CHM_JS = String.raw`
 (()=>{'use strict';
 const $=id=>document.getElementById(id),tg=window.Telegram?.WebApp||null;
-let data=null,sel=null,busy=false,fresh='',tries=0;
+let data=null,sel=null,busy=false,fresh='',tries=0,status='';
+const tr=text=>window.DrFXI18N?.translate?.(text)??text;
 const ERR={LINK_TELEGRAM_FIRST:'Open this Mini App from the DrFX bot so your Telegram account is linked.',BOT_NOT_IN_CHAT:'The bot is no longer in this chat. Add it again as an admin.',BOT_CANNOT_POST:'Give the bot the "Post messages" admin permission, then tap refresh.',ADMIN_RIGHTS_REQUIRED:'Only admins of this chat can create its webhook.',BOT_NOT_CONFIGURED:'The bot is not configured yet.',RATE_LIMITED:'Too many tries. Wait a minute.',CREATE_WEBHOOK_FIRST:'Create the webhook first.',TELEGRAM_DELIVERY_FAILED:'Telegram refused the message. Check the bot is still an admin.',UNAUTHENTICATED:'Open this Mini App from the official DrFX bot to sign in.'};
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])}
-function say(t){const s=$('chmStatus');if(s)s.textContent=t||''}
+function say(text){status=text||'';const node=$('chmStatus');if(node)node.textContent=tr(status)}
 function haptic(kind){try{kind==='ok'?tg?.HapticFeedback?.notificationOccurred?.('success'):kind==='err'?tg?.HapticFeedback?.notificationOccurred?.('error'):tg?.HapticFeedback?.selectionChanged?.()}catch{}}
 async function api(path,body){const o={credentials:'same-origin',headers:{accept:'application/json'}};if(body!==undefined){o.method='POST';o.headers['content-type']='application/json';o.body=JSON.stringify(body)}const r=await fetch(path,o);const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'SERVICE_UNAVAILABLE');return d}
-function ask(msg){return new Promise(res=>{try{if(tg?.showConfirm){tg.showConfirm(msg,ok=>res(!!ok));return}}catch{}res(window.confirm(msg))})}
+function ask(text){const msg=tr(text);return new Promise(res=>{try{if(tg?.showConfirm){tg.showConfirm(msg,ok=>res(!!ok));return}}catch{}res(window.confirm(msg))})}
 function openTg(url){try{if(tg?.openTelegramLink)tg.openTelegramLink(url);else window.open(url,'_blank','noopener')}catch{location.assign(url)}}
 function ago(ts){if(!ts)return 'never';const s=(Date.now()-Date.parse(ts.replace(' ','T')+'Z'))/1000;if(!isFinite(s))return ts;if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' h ago';return Math.floor(s/86400)+' d ago'}
 function burst(el){if(matchMedia('(prefers-reduced-motion: reduce)').matches||!el)return;const r=el.getBoundingClientRect(),cols=['#ffe296','#2aabee','#34d698','#2962ff','#f8f8fa'];for(let i=0;i<22;i++){const p=document.createElement('span');p.className='chm-burst';const a=Math.random()*Math.PI*2,d=60+Math.random()*90;p.style.left=(r.left+r.width/2)+'px';p.style.top=(r.top+r.height/2)+'px';p.style.background=cols[i%cols.length];p.style.setProperty('--dx',Math.cos(a)*d+'px');p.style.setProperty('--dy',Math.sin(a)*d-40+'px');document.body.append(p);setTimeout(()=>p.remove(),1000)}}
@@ -127,36 +128,36 @@ function steps(){const chats=data?.chats||[],chat=chats.find(c=>c.chat_id===sel)
  s1.classList.toggle('done',d1);s2.classList.toggle('done',d2);s3.classList.toggle('done',d3);
  s1.classList.toggle('active',!d1);s2.classList.toggle('active',d1&&!d2);s3.classList.toggle('active',d2&&!d3);}
 function renderChats(){const box=$('chmChats');if(!box)return;const chats=data?.chats||[];
- if(!data?.telegram_linked){box.innerHTML='<p class="chm-empty">'+esc(ERR.LINK_TELEGRAM_FIRST)+'</p>';return}
- if(!chats.length){box.innerHTML='<p class="chm-empty">No chats yet. Add the bot as an admin (step 1), then tap refresh ↻.</p>';return}
- box.innerHTML=chats.map((c,i)=>{const grp=c.type!=='channel',pill=!c.can_post?'<span class="chm-pill warn">Needs permission</span>':c.webhook?'<span class="chm-pill ok">● Live</span>':'<span class="chm-pill new">Connect</span>';
-  return '<button type="button" role="option" class="chm-chat'+(grp?' group':'')+'" style="animation-delay:'+(i*0.05)+'s" aria-selected="'+(c.chat_id===sel)+'" data-chat="'+esc(c.chat_id)+'"><span class="chm-avatar" aria-hidden="true">'+(grp?'👥':'📢')+'</span><span style="min-width:0"><b>'+esc(c.title)+'</b><small>'+(c.username?'@'+esc(c.username):grp?'Group':'Channel')+(c.webhook?' · '+esc(c.webhook.sent_count)+' alerts':'')+'</small></span>'+pill+'</button>'}).join('')}
+ if(!data?.telegram_linked){box.innerHTML='<p class="chm-empty">'+esc(tr(ERR.LINK_TELEGRAM_FIRST))+'</p>';return}
+ if(!chats.length){box.innerHTML='<p class="chm-empty">'+esc(tr("No chats yet. Add the bot as an admin (step 1), then tap refresh ↻."))+'</p>';return}
+ box.innerHTML=chats.map((c,i)=>{const grp=c.type!=='channel',pill=!c.can_post?'<span class="chm-pill warn">'+esc(tr("Needs permission"))+'</span>':c.webhook?'<span class="chm-pill ok">'+esc(tr("● Live"))+'</span>':'<span class="chm-pill new">'+esc(tr("Connect"))+'</span>';
+  return '<button type="button" role="option" class="chm-chat'+(grp?' group':'')+'" style="animation-delay:'+(i*0.05)+'s" aria-selected="'+(c.chat_id===sel)+'" data-chat="'+esc(c.chat_id)+'"><span class="chm-avatar" aria-hidden="true">'+(grp?'👥':'📢')+'</span><span style="min-width:0"><b>'+esc(c.title)+'</b><small>'+(c.username?'@'+esc(c.username):esc(tr(grp?'Group':'Channel')))+(c.webhook?' · '+esc(c.webhook.sent_count)+' '+esc(tr('alerts')):'')+'</small></span>'+pill+'</button>'}).join('')}
 function renderHook(){const box=$('chmHook');if(!box)return;const chat=(data?.chats||[]).find(c=>c.chat_id===sel);
- if(!chat){box.innerHTML='<p class="chm-empty">Pick a chat first.</p>';return}
+ if(!chat){box.innerHTML='<p class="chm-empty">'+esc(tr("Pick a chat first."))+'</p>';return}
  if(!chat.can_post){box.innerHTML='<p class="chm-empty">⚠️ The bot cannot post in <b>'+esc(chat.title)+'</b> yet. Open the chat settings → Administrators → DrFX bot and turn on <b>Post messages</b>. Then tap refresh ↻.</p>';return}
- if(!chat.webhook){box.innerHTML='<p class="chm-empty">One tap creates a private link for <b>'+esc(chat.title)+'</b>.</p><button type="button" class="btn primary chm-gen" data-chm-act="create">⚡ Generate my webhook</button>';return}
+ if(!chat.webhook){box.innerHTML='<p class="chm-empty">One tap creates a private link for <b>'+esc(chat.title)+'</b>.</p><button type="button" class="btn primary chm-gen" data-chm-act="create">'+esc(tr("⚡ Generate my webhook"))+'</button>';return}
  const w=chat.webhook;
- box.innerHTML='<div class="chm-hookbox"><code class="chm-url'+(fresh===chat.chat_id?' fresh':'')+'" id="chmUrl">'+esc(w.url||'Rotate to show a new link')+'</code>'+
-  '<div class="chm-btns"><button type="button" class="btn primary wide" data-chm-copy="chmUrl">📋 Copy webhook URL</button><button type="button" class="btn" data-chm-act="test">🧪 Send test</button><button type="button" class="btn subtle" data-chm-act="rotate">🔄 New link</button></div>'+
-  '<div class="chm-meta"><span>Sent <b>'+esc(w.sent_count)+'</b></span><span>Last alert <b>'+esc(ago(w.last_used_at))+'</b></span>'+(w.last_error?'<span class="chm-danger">⚠ '+esc(w.last_error)+'</span>':'')+'</div>'+
-  '<p class="meta" style="margin-top:12px">Alert message template:</p><code class="chm-code" id="chmTpl">'+esc(data.alert_template||'')+'</code>'+
-  '<div class="chm-btns"><button type="button" class="btn subtle" data-chm-copy="chmTpl">Copy template</button><button type="button" class="btn subtle chm-danger" data-chm-act="delete">Delete webhook</button></div></div>';
+ box.innerHTML='<div class="chm-hookbox"><code class="chm-url'+(fresh===chat.chat_id?' fresh':'')+'" id="chmUrl">'+esc(w.url||tr('Rotate to show a new link'))+'</code>'+
+  '<div class="chm-btns"><button type="button" class="btn primary wide" data-chm-copy="chmUrl">'+esc(tr("📋 Copy webhook URL"))+'</button><button type="button" class="btn" data-chm-act="test">'+esc(tr("🧪 Send test"))+'</button><button type="button" class="btn subtle" data-chm-act="rotate">'+esc(tr("🔄 New link"))+'</button></div>'+
+  '<div class="chm-meta"><span>'+esc(tr("Sent"))+' <b>'+esc(w.sent_count)+'</b></span><span>'+esc(tr("Last alert"))+' <b>'+esc(ago(w.last_used_at))+'</b></span>'+(w.last_error?'<span class="chm-danger">⚠ '+esc(w.last_error)+'</span>':'')+'</div>'+
+  '<p class="meta" style="margin-top:12px">'+esc(tr("Alert message template:"))+'</p><code class="chm-code" id="chmTpl">'+esc(data.alert_template||'')+'</code>'+
+  '<div class="chm-btns"><button type="button" class="btn subtle" data-chm-copy="chmTpl">'+esc(tr("Copy template"))+'</button><button type="button" class="btn subtle chm-danger" data-chm-act="delete">'+esc(tr("Delete webhook"))+'</button></div></div>';
  fresh='';}
 function render(){renderChats();renderHook();steps();const st=$('chmStrategyTpl');if(st&&data)st.textContent=data.strategy_template||''}
 async function load(quiet){if(busy)return;busy=true;const rf=$('chmRefresh');rf?.classList.add('spin');
  try{data=await api('/api/channels');tries=0;const ids=(data.chats||[]).map(c=>c.chat_id);if(!ids.includes(sel))sel=ids.length===1?ids[0]:(data.chats||[]).find(c=>c.webhook)?.chat_id||null;render();if(!quiet)say('')}
- catch(e){if(e.message==='UNAUTHENTICATED'&&tries++<6){setTimeout(()=>load(true),1500)}else{say(ERR[e.message]||'Could not load your chats. Try again.');const box=$('chmChats');if(box&&!data)box.innerHTML='<p class="chm-empty">'+esc(ERR[e.message]||'Unavailable right now.')+'</p>'}}
+ catch(e){if(e.message==='UNAUTHENTICATED'&&tries++<6){setTimeout(()=>load(true),1500)}else{say(ERR[e.message]||'Could not load your chats. Try again.');const box=$('chmChats');if(box&&!data)box.innerHTML='<p class="chm-empty">'+esc(tr(ERR[e.message]||'Unavailable right now.'))+'</p>'}}
  finally{busy=false;setTimeout(()=>rf?.classList.remove('spin'),300)}}
 async function act(kind,btn){if(!sel)return;const path={create:'/api/channels/webhook',rotate:'/api/channels/rotate',delete:'/api/channels/delete',test:'/api/channels/test'}[kind];
  if(kind==='rotate'&&!await ask('Create a new link? The old link stops working at once.'))return;
  if(kind==='delete'&&!await ask('Delete this webhook? TradingView alerts to it will stop.'))return;
- const label=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Working…'}
+ const label=btn?.textContent;if(btn){btn.disabled=true;btn.textContent=tr('Working…')}
  try{await api(path,{chat_id:sel});haptic('ok');
-  if(kind==='test'){say('✅ Test sent. Check your chat.');if(btn){btn.textContent='Sent ✓';setTimeout(()=>{btn.textContent=label;btn.disabled=false},1800)}await load(true);return}
+  if(kind==='test'){say('✅ Test sent. Check your chat.');if(btn){btn.textContent=tr('Sent ✓');setTimeout(()=>{btn.textContent=label;btn.disabled=false},1800)}await load(true);return}
   if(kind==='create'||kind==='rotate'){fresh=sel;burst(btn);say(kind==='create'?'🎉 Your webhook is ready. Copy it into TradingView.':'🔄 New link created. Update it in TradingView.')}else say('Webhook deleted.');
   await load(true)}
  catch(e){haptic('err');say(ERR[e.message]||'Something went wrong. Try again.');if(btn){btn.disabled=false;btn.textContent=label}}}
-async function copy(id,btn){const el=$(id);if(!el)return;const label=btn.textContent;try{await navigator.clipboard.writeText(el.textContent);btn.textContent='Copied ✓';haptic('ok')}catch{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent='Selected, copy it'}setTimeout(()=>{btn.textContent=label},1800)}
+async function copy(id,btn){const el=$(id);if(!el)return;const label=btn.textContent;try{await navigator.clipboard.writeText(el.textContent);btn.textContent=tr('Copied ✓');haptic('ok')}catch{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent=tr('Selected, copy it')}setTimeout(()=>{btn.textContent=label},1800)}
 const panel=$('panel-channels');
 panel?.addEventListener('click',e=>{const c=e.target.closest('[data-chat]'),a=e.target.closest('[data-chm-act]'),cp=e.target.closest('[data-chm-copy]');
  if(c){sel=c.dataset.chat;haptic();render();setTimeout(()=>$('chmStep3')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'}),120)}
@@ -166,8 +167,10 @@ function addLink(kind){const l=data?.add_links;if(!l){say('Loading the bot link�
 $('chmAddChannel')?.addEventListener('click',()=>addLink('channel'));$('chmAddGroup')?.addEventListener('click',()=>addLink('group'));
 let poll=null;
 window.chMiniLoad=()=>{load();clearInterval(poll);poll=setInterval(()=>{if(!document.hidden)load(true)},15000)};
+window.addEventListener('drfx-language-change',()=>{if(data)render();say(status)});
 window.chMiniLeave=()=>{clearInterval(poll);poll=null};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&poll)load(true)});
 if(new URLSearchParams(location.search).get('tab')==='channels'||location.hash==='#channels')setTimeout(()=>document.querySelector('[data-jump=channels]')?.click(),400);
 })();
 `;
+
