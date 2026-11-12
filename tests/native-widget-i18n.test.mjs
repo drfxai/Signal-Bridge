@@ -7,7 +7,7 @@ import {SCALPER_WIDGET_HTML} from '../site/src/telegram-scalper-widget.mjs';
 import {SIGNAL_HISTORY_WIDGET_HTML,signalWidgetHtml} from '../site/src/telegram-signal-widget.mjs';
 import {localizeNativeWidget,widgetCaption,WIDGET_LANGUAGE_CODES} from '../site/src/telegram-widget-i18n.mjs';
 import {localizeWorkspace} from '../site/src/telegram-onboarding.mjs';
-import {TRANSLATIONS,LOCALES} from '../site/src/i18n.mjs';
+import {TRANSLATIONS,LOCALES,markCommonText} from '../site/src/i18n.mjs';
 
 const expected={
  en:['YOUR EXECUTION LICENSE','YOUR SCALPER ACCESS','NO RECORDED SIGNAL'],
@@ -64,10 +64,22 @@ test('non-Persian workspace elements follow the selected language',()=>{
  }
  assert.equal(localizeWorkspace(view,'en'),view);
 });
+test('localizable accessibility attributes preserve their original English values',()=>{
+ const html=markCommonText('<button aria-label="Open menu" title="Choose app language">Language</button><input placeholder="Paste code from /login">','data-i18n');
+ assert.match(html,/aria-label="Open menu" data-i18n-attr-aria-label="attr_12"/);
+ assert.match(html,/title="Choose app language" data-i18n-attr-title="attr_1"/);
+ assert.match(html,/placeholder="Paste code from \/login" data-i18n-attr-placeholder="attr_6"/);
+ for(const code of LOCALES){
+  assert.ok(TRANSLATIONS[code].attr_1.length>3);
+  assert.ok(TRANSLATIONS[code].attr_6.length>3);
+  assert.ok(TRANSLATIONS[code].attr_12.length>3);
+ }
+});
 test('website and mini app explicitly bind all localization keys',()=>{
  const files=['../site/src/ui.mjs','../site/src/telegram-mini.mjs','../site/src/admin-mini.mjs'];
  for(const path of files){
   const source=readFileSync(new URL(path,import.meta.url),'utf8');
+  if(path.endsWith('/ui.mjs')||path.endsWith('/telegram-mini.mjs'))assert.match(source,/data-i18n-attr-aria-label/);
   const keys=[...source.matchAll(/data-(?:i18n|tr|i)="([^"]+)"/g)].map(m=>m[1].replaceAll('-','_'));
   for(const key of keys)assert.ok(Object.hasOwn(TRANSLATIONS.en,key),path+' missing '+key);
  }
