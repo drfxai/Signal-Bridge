@@ -6,13 +6,38 @@ const phraseKeys=new Map(phrases.map(([text],i)=>[text,'common_'+i]));
 for(const [index,row] of phrases.entries()){
  for(const [column,locale] of LOCALES.entries())TRANSLATIONS[locale]['common_'+index]=row[column];
 }
+// Accessible names, tooltips and form hints use the same selected language.
+const attributePhrases=[
+ ['Language','زبان','Dil','Язык','भाषा'],
+ ['Choose app language','انتخاب زبان برنامه','Uygulama dilini seçin','Выберите язык приложения','ऐप की भाषा चुनें'],
+ ['Available languages','زبان‌های موجود','Kullanılabilir diller','Доступные языки','उपलब्ध भाषाएँ'],
+ ['Account access','دسترسی حساب','Hesap erişimi','Доступ к аккаунту','खाते का एक्सेस'],
+ ['Illustrative route from alerts through SignalBridge to MetaTrader 5','مسیر نمایشی هشدارها از سیگنال بریج به متاتریدر ۵','Uyarılardan SignalBridge üzerinden MetaTrader 5’e örnek yönlendirme','Пример маршрута сигналов через SignalBridge в MetaTrader 5','SignalBridge से MetaTrader 5 तक अलर्ट का उदाहरण मार्ग'],
+ ['Account sign-in status','وضعیت ورود به حساب','Hesap giriş durumu','Состояние входа','खाता साइन-इन स्थिति'],
+ ['Paste code from /login','کد دستور /login را وارد کنید','/login kodunu yapıştırın','Вставьте код из /login','/login का कोड पेस्ट करें'],
+ ['SignalBridge account tools','ابزارهای حساب سیگنال بریج','SignalBridge hesap araçları','Инструменты аккаунта SignalBridge','SignalBridge खाता टूल'],
+ ['Telegram Mini App navigation','ناوبری مینی‌اپ تلگرام','Telegram Mini App gezinmesi','Навигация Mini App Telegram','Telegram मिनी ऐप नेविगेशन'],
+ ['DrFX account access','دسترسی به حساب DrFX','DrFX hesap erişimi','Доступ к аккаунту DrFX','DrFX खाता एक्सेस'],
+ ['Sign in or sign up','ورود یا ثبت‌نام','Giriş yap veya kaydol','Войти или зарегистрироваться','साइन इन या साइन अप'],
+ ['Open DrFX Client Portal','باز کردن پنل کاربری DrFX','DrFX müşteri panelini aç','Открыть кабинет клиента DrFX','DrFX क्लाइंट पोर्टल खोलें'],
+ ['Open menu','باز کردن منو','Menüyü aç','Открыть меню','मेनू खोलें'],
+ ['Close menu','بستن منو','Menüyü kapat','Закрыть меню','मेनू बंद करें']
+];
+const attributeKeys=new Map(attributePhrases.map(([en],i)=>[en,'attr_'+i]));
+for(const [index,row] of attributePhrases.entries()){
+ for(const [column,locale] of LOCALES.entries())TRANSLATIONS[locale]['attr_'+index]=row[column];
+}
 export function markCommonText(html,attribute){
- return html.replace(/<([a-z][a-z0-9]*)([^<>]*)>([^<>]+)<\/\1>/gi,(match,tag,attrs,text)=>{
+ const marked=html.replace(/<([a-z][a-z0-9]*)([^<>]*)>([^<>]+)<\/\1>/gi,(match,tag,attrs,text)=>{
   const key=phraseKeys.get(text.trim());
   if(!key||!['a','b','button','div','h2','h3','label','li','option','p','small','span','summary'].includes(tag)||/data-(?:i18n|i|tr|ops-fa)=/.test(attrs))return match;
   const value=tag==='option'&&!/\bvalue\s*=/.test(attrs)?' value="'+text.trim().replaceAll('"','&quot;')+'"':'';
   return '<'+tag+attrs+value+' '+attribute+'="'+key+'">'+text+'</'+tag+'>';
  });
+ return marked.replace(/<[a-z][^<>]*>/gi,tag=>tag.replace(/\b(aria-label|placeholder|title)="([^"]+)"/g,(match,name,value)=>{
+  const key=attributeKeys.get(value);
+  return key?name+'="'+value+'" data-i18n-attr-'+name+'="'+key+'"':match;
+ }));
 }
 const errorMessages={"SERVICE_UNAVAILABLE": "Service temporarily unavailable. Try again.", "UNAUTHENTICATED": "Sign in to continue.", "FORBIDDEN": "You do not have permission for this action.", "RATE_LIMITED": "Too many requests. Please try again later.", "INVALID_MT5_ACCOUNT": "Enter a valid MT5 account number.", "EA_NOT_READY": "Connect your EA in MetaTrader 5 and try again.", "DAILY_DRAWDOWN_HIT": "The daily drawdown limit was reached. Check the account before restarting.", "RISK_STATE_CHANGED": "The risk state changed. Check the connection and try again.", "TEST_CAPABILITY_REQUIRED": "This EA version does not support the requested test. Install the latest version.", "TEST_SETTINGS_CHANGED": "EA settings changed. Check the symbol and lot size and confirm again.", "INVALID_EA_TEST_SETTINGS": "Check the symbol and lot inputs in EA settings.", "TEST_SYMBOL_NOT_FOUND": "The test symbol is unavailable on this broker account.", "ACCOUNT_MISMATCH": "The connected MT5 account does not match the selected account.", "BROKER_REJECTED": "The broker rejected the request. Check your MT5 journal.", "PAYMENTS_NOT_CONFIGURED": "Payments are temporarily unavailable.", "EMAIL_NOT_CONFIGURED": "Email sign-in is temporarily unavailable.", "INVALID_CODE": "The code is invalid or expired. Request a new code.", "NOT_FOUND": "The requested item was not found.", "NETWORK_ERROR": "The connection failed. Check your internet connection and try again.", "TELEGRAM_ROUTE_LINK_REQUIRED": "Link your Telegram account to turn this route on. You can still turn routes off.", "LINK_TELEGRAM_FIRST": "Link your Telegram account in account settings first."};
 export const I18N_JS="window.DrFXI18N="+JSON.stringify({languages:LOCALES,text:TRANSLATIONS,errors:errorMessages,keys:Object.fromEntries(Object.entries(TRANSLATIONS.en).map(([key,label])=>[label,key]))})+";"+String.raw`
