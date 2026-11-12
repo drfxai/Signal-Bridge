@@ -19,8 +19,8 @@ test('Public release has license, security policy and no misleading open-source 
  assert.match(readme,/assets\/readme\/signalbridge-everywhere\.jpg/);
  assert.match(readme,/assets\/readme\/signalbridge-direct-ea\.jpg/);
 });
-test('All website and Mini App language keys have complete translations in 6 locales',()=>{
- assert.deepEqual(LOCALES,['en','fa','ar','tr','ru','hi']);
+test('All website and Mini App language keys have complete translations in four locales',()=>{
+ assert.deepEqual(LOCALES,['en','fa','tr','ru']);
  const en=Object.keys(TRANSLATIONS.en).sort();
  assert.ok(en.length>=110);
  for(const lang of LOCALES){
@@ -35,8 +35,8 @@ test('All website and Mini App language keys have complete translations in 6 loc
   for(const key of [...siteKeys,...miniKeys])assert.ok(TRANSLATIONS[lang][key],lang+'/'+key);
  }
  assert.match(I18N_JS,/window\.DrFXI18N/);
- assert.ok(SITE_HTML.includes('id="lang"')&&SITE_HTML.includes('data-site-language="hi"'));
- assert.ok(MINI_HTML.includes('id="langToggle"')&&MINI_HTML.includes('data-mini-lang="hi"'));
+ assert.ok(SITE_HTML.includes('id="lang"')&&SITE_HTML.includes('data-site-language="ru"'));
+ assert.ok(MINI_HTML.includes('id="langToggle"')&&MINI_HTML.includes('data-mini-lang="tr"'));
  assert.match(SITE_HTML,/\/assets\/i18n\.js/);
  assert.match(MINI_HTML,/\/assets\/i18n\.js/);
  assert.match(SITE_JS,/document\.documentElement\.dir=\['fa','ar'\]/);
@@ -47,7 +47,7 @@ test('All website and Mini App language keys have complete translations in 6 loc
 });
 test('Three premium promotional image assets render without fake PnL, fills or execution metrics',async()=>{
  assert.deepEqual([...PROMO_NAMES].sort(),['admin.svg','dashboard.svg','mobile.svg']);
- assert.ok(SITE_HTML.includes('id="lang"')&&SITE_HTML.includes('data-site-language="hi"'));
+ assert.ok(SITE_HTML.includes('id="lang"')&&SITE_HTML.includes('data-site-language="ru"'));
  for(const name of PROMO_NAMES){
   const svg=PROMO_ASSETS[name];
   assert.match(svg,/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
@@ -68,7 +68,7 @@ test('Three premium promotional image assets render without fake PnL, fills or e
  assert.match(await i18n.text(),/DrFXI18N/);
 });
 
-test('six-language dynamic account errors, admin and webhook labels have no untranslated branches',()=>{
+test('four-language dynamic account errors, admin and webhook labels have no untranslated branches',()=>{
  const required=['Not signed in','LOCKED','IDENTITY VERIFIED','Verifying your one-time code…','Clipboard unavailable. Reveal your serial to copy it.','Too many sign-in attempts. Try again after a short break.'];
  const original=Object.entries(TRANSLATIONS.en);
  for(const text of required){
