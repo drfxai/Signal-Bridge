@@ -19,8 +19,8 @@ test('Public release has license, security policy and no misleading open-source 
  assert.match(readme,/assets\/readme\/signalbridge-everywhere\.jpg/);
  assert.match(readme,/assets\/readme\/signalbridge-direct-ea\.jpg/);
 });
-test('All website and Mini App language keys have complete translations in four locales',()=>{
- assert.deepEqual(LOCALES,['en','fa','tr','ru']);
+test('All website and Mini App language keys have complete translations in five locales',()=>{
+ assert.deepEqual(LOCALES,['en','fa','tr','ru','hi']);
  const en=Object.keys(TRANSLATIONS.en).sort();
  assert.ok(en.length>=110);
  for(const lang of LOCALES){
@@ -68,7 +68,7 @@ test('Three premium promotional image assets render without fake PnL, fills or e
  assert.match(await i18n.text(),/DrFXI18N/);
 });
 
-test('four-language dynamic account errors, admin and webhook labels have no untranslated branches',()=>{
+test('five-language dynamic account errors, admin and webhook labels have no untranslated branches',()=>{
  const required=['Not signed in','LOCKED','IDENTITY VERIFIED','Verifying your one-time code…','Clipboard unavailable. Reveal your serial to copy it.','Too many sign-in attempts. Try again after a short break.'];
  const original=Object.entries(TRANSLATIONS.en);
  for(const text of required){
