@@ -78,18 +78,20 @@ nav.bottom button[data-tab=scalper],.sb-mobile-tabs .sxm-sb-scalper{color:#e8c77
 export const SXM_JS = String.raw`
 (()=>{'use strict';
 const $=id=>document.getElementById(id),tg=window.Telegram?.WebApp||null;
+const tr=text=>window.DrFXI18N?.translate?.(text)??text;
 const LABEL={scalper_trial:'7-day trial',scalper_1m:'Monthly',scalper_3m:'3 Months'};let data=null,busy=false;const shown=new Set();
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])}
 function open(url){try{if(tg?.openLink)tg.openLink(url);else location.assign(url)}catch{location.assign(url)}}
 function render(){const box=$('sxmKeys'),st=$('sxmStatus');if(!box||!st)return;const keys=data?.keys||[],pending=(data?.orders||[]).some(o=>o.status==='pending');
- st.textContent=keys.length?keys.length+' key'+(keys.length>1?'s':'')+' issued':pending?'Payment being verified':'No licence yet';
- box.innerHTML=keys.length?keys.map(k=>{const v=shown.has(k.id),key=String(k.key||'');return '<div class="sxm-key"><header><span>MT5 <b>#'+esc(k.account_login)+'</b></span><span>'+esc(LABEL[k.plan]||k.plan)+' · '+esc(k.days)+' days</span></header><code>'+esc(v?key:key.slice(0,10)+'-•••••-•••••-•••••-'+key.slice(-5))+'</code><div class="buttons"><button type="button" class="btn subtle" data-sxm-show="'+esc(k.id)+'">'+(v?'Hide':'Reveal')+'</button><button type="button" class="btn primary" data-sxm-copy="'+esc(k.id)+'">Copy key</button></div></div>'}).join(''):'<p class="sxm-empty">Get a free 7-day key from the bot’s Free Licenses widget. Your issued keys appear here.</p>';}
-async function load(){if(busy)return;busy=true;try{const r=await fetch('/api/scalper',{credentials:'same-origin',headers:{accept:'application/json'}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'SERVICE_UNAVAILABLE');data=d;render()}catch(e){const st=$('sxmStatus');if(st)st.textContent=e.message==='UNAUTHENTICATED'?'Sign in from the bot':'Unavailable right now';const box=$('sxmKeys');if(box&&!data)box.innerHTML='<p class="sxm-empty">Open this Mini App from the official DrFX bot to see your keys.</p>'}finally{busy=false}}
+ st.textContent=keys.length?tr('Keys issued')+' · '+keys.length:tr(pending?'Payment being verified':'No licence yet');
+ box.innerHTML=keys.length?keys.map(k=>{const v=shown.has(k.id),key=String(k.key||'');return '<div class="sxm-key"><header><span>MT5 <b>#'+esc(k.account_login)+'</b></span><span>'+esc(tr(LABEL[k.plan]||k.plan))+' · '+esc(k.days)+' days</span></header><code>'+esc(v?key:key.slice(0,10)+'-•••••-•••••-•••••-'+key.slice(-5))+'</code><div class="buttons"><button type="button" class="btn subtle" data-sxm-show="'+esc(k.id)+'">'+esc(tr(v?'Hide':'Reveal'))+'</button><button type="button" class="btn primary" data-sxm-copy="'+esc(k.id)+'">'+esc(tr('Copy key'))+'</button></div></div>'}).join(''):'<p class="sxm-empty">'+esc(tr("Get a free 7-day key from the bot’s Free Licenses widget. Your issued keys appear here."))+'</p>';}
+async function load(){if(busy)return;busy=true;try{const r=await fetch('/api/scalper',{credentials:'same-origin',headers:{accept:'application/json'}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'SERVICE_UNAVAILABLE');data=d;render()}catch(e){const st=$('sxmStatus');if(st)st.textContent=tr(e.message==='UNAUTHENTICATED'?'Sign in from the bot':'Unavailable right now');const box=$('sxmKeys');if(box&&!data)box.innerHTML='<p class="sxm-empty">'+esc(tr("Open this Mini App from the official DrFX bot to see your keys."))+'</p>'}finally{busy=false}}
+window.addEventListener('drfx-language-change',()=>{if(data)render()});
 window.sxMiniLoad=()=>{load();const v=$('sxmVideo');if(v&&!matchMedia('(prefers-reduced-motion: reduce)').matches)v.play().catch(()=>{})};
 window.sxMiniLeave=()=>{const v=$('sxmVideo');if(v)v.pause()};
 $('sxmKeys')?.addEventListener('click',async e=>{const s=e.target.closest('[data-sxm-show]'),c=e.target.closest('[data-sxm-copy]');
  if(s){const id=s.dataset.sxmShow;shown.has(id)?shown.delete(id):shown.add(id);render()}
- if(c){const k=(data?.keys||[]).find(x=>x.id===c.dataset.sxmCopy);if(!k)return;try{await navigator.clipboard.writeText(k.key);c.textContent='Copied ✓';tg?.HapticFeedback?.notificationOccurred?.('success');setTimeout(()=>{c.textContent='Copy key'},1800)}catch{shown.add(k.id);render()}}});
+ if(c){const k=(data?.keys||[]).find(x=>x.id===c.dataset.sxmCopy);if(!k)return;try{await navigator.clipboard.writeText(k.key);c.textContent=tr('Copied ✓');tg?.HapticFeedback?.notificationOccurred?.('success');setTimeout(()=>{c.textContent=tr('Copy key')},1800)}catch{shown.add(k.id);render()}}});
 $('sxmBuy')?.addEventListener('click',()=>open('https://drfx.company/#scalper'));
 })();
 `;
