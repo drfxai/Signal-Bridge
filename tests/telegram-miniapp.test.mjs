@@ -315,3 +315,17 @@ test('common API and connection errors render in all five languages without raw 
   assert.notEqual(text.error(new TypeError('Fetch failed')),unknown);
  }
 });
+
+test('accessible labels and placeholders follow language changes and restore their original copy',async()=>{
+ const {I18N_JS,LOCALES}=await import('../site/src/i18n.mjs');
+ const attrs=new Map([['aria-label','Search signals'],['placeholder','Search signal ID or symbol'],['title','EURUSD']]);
+ const el={getAttribute:key=>attrs.get(key)??null,setAttribute:(key,val)=>attrs.set(key,val)};
+ const window={},document={documentElement:{lang:'en'},querySelectorAll:()=>[el]};
+ new Function('window','document',I18N_JS)(window,document);
+ for(const lang of [...LOCALES,'en']){
+  window.DrFXI18N.applyAttributes(lang);
+  assert.equal(attrs.get('aria-label'),window.DrFXI18N.translate('Search signals',lang));
+  assert.equal(attrs.get('placeholder'),window.DrFXI18N.translate('Search signal ID or symbol',lang));
+  assert.equal(attrs.get('title'),'EURUSD');
+ }
+});
