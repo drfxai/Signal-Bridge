@@ -249,6 +249,12 @@ export const MINI_JS=String.raw`(() => {
    const key=el.dataset.tr;
    el.textContent=dictionary[locale]?.[key]||english[key];
   });
+  document.querySelectorAll('[data-i18n-attr-aria-label],[data-i18n-attr-title],[data-i18n-attr-placeholder]').forEach(el=>{
+   for(const attr of ['aria-label','title','placeholder']){
+    const key=el.getAttribute('data-i18n-attr-'+attr);
+    if(key)el.setAttribute(attr,dictionary[locale]?.[key]||dictionary.en?.[key]||el.getAttribute(attr));
+   }
+  });
   $('miniLangCurrent').textContent=locale.toUpperCase();
   $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.miniLang===locale)));
   closeMiniLanguage();
