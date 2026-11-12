@@ -281,3 +281,20 @@ test('Mini App has matching accessible globe language picker and factual product
  assert.ok(!MINI_HTML.includes('fictional trading profits'));
 });
 
+
+test('live Mini App labels use the current locale and keep data unchanged',async()=>{
+ const {I18N_JS,LOCALES,markCommonText}=await import('../site/src/i18n.mjs');
+ const window={},document={documentElement:{lang:'en'}};
+ new Function('window','document',I18N_JS)(window,document);
+ const phrase='Delete webhook';
+ for(const lang of LOCALES){
+  document.documentElement.lang=lang;
+  const translated=window.DrFXI18N.translate(phrase);
+  if(lang==='en')assert.equal(translated,phrase);
+  else assert.notEqual(translated,phrase);
+  assert.equal(window.DrFXI18N.translate('MT5 #731612'),'MT5 #731612');
+ }
+ const option=markCommonText('<option>All</option>','data-tr');
+ assert.match(option,/<option value="All" data-tr="common_\d+">All<\/option>/);
+ assert.match(MINI_HTML,/<li data-tr="common_\d+">Open your chart and press Alert/);
+});
