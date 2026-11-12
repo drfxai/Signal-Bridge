@@ -118,3 +118,21 @@ test('native widget refresh response and errors retain the selected five-languag
  assert.ok(worker.includes('replyLocale=await userBotLocale(env,telegramId);'));
  assert.ok(worker.includes('widgetText(replyLocale,payload.message)'));
 });
+
+
+test('premium portal, MT5 setup, broker analytics and Scalper Pro UI copy is in every locale',()=>{
+ const required=[
+  'YOUR CONNECTION STUDIO','Three connections. One place to get started.',
+  'WORKSPACE / OVERVIEW','Performance, connections and execution — together.',
+  'MT5 · BROKER VERIFIED','Real deals and closed positions. No simulated results.',
+  'Start 7-day free trial','Win rate','Closed positions','No broker history yet'
+ ];
+ const english=Object.entries(TRANSLATIONS.en);
+ for(const text of required){
+  const match=english.find(([,value])=>value===text);
+  assert.ok(match,'unregistered premium UI text: '+text);
+  for(const lang of LOCALES)assert.ok(TRANSLATIONS[lang][match[0]],lang+' '+text);
+  const tagged=markCommonText('<h1>'+text+'</h1>','data-i18n');
+  assert.match(tagged,/data-i18n="common_\d+"/);
+ }
+});
