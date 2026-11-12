@@ -5,7 +5,7 @@ import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand} from './bot-commands.mjs';
 import {LICENSE_SHOP_WIDGET_HTML} from './telegram-license-shop.mjs';
-import {BOT_NAVIGATION,BOT_WORKSPACE_WIDGET_HTML,workspaceView,workspaceQueryPage,sendWorkspacePage,sendPrivateCard,sendBotNotice,signalRecords} from './telegram-workspace.mjs';
+import {localizePrivateWidget,BOT_NAVIGATION,BOT_WORKSPACE_WIDGET_HTML,workspaceView,workspaceQueryPage,sendWorkspacePage,sendPrivateCard,sendBotNotice,signalRecords} from './telegram-workspace.mjs';
 import {STAR_PLANS,starPrice,licenseTerms,sendPrivateLicenses,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,starOrders} from './telegram-commerce.mjs';
 import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
 import {signalWidgetHtml,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
@@ -607,7 +607,7 @@ async function sendMemberWidget(env,chatId,user){
  const rec=await licenseRecord(env,user);
  const data=bridgeWidgetData({plan:user.plan,licenseStatus:rec.status,expiresAt:rec.expires_at,accountStatus:user.status});
  await telegramWidgetApi(env,'sendWidget',{
-  chat_id:chatId,html:SIGNAL_BRIDGE_WIDGET_HTML,chat_data:data,
+  chat_id:chatId,html:localizePrivateWidget(SIGNAL_BRIDGE_WIDGET_HTML,await userBotLocale(env,chatId)),chat_data:data,
   caption:'DrFXAi Signal Bridge · Private member status',allow_queries:true,protect_content:true
  });
 }
@@ -630,7 +630,7 @@ async function latestScalperWidgetData(env,member){
 async function sendScalperWidget(env,chatId,user){
  const data=await latestScalperWidgetData(env,user);
  await telegramWidgetApi(env,'sendWidget',{
-  chat_id:chatId,html:SCALPER_WIDGET_HTML,chat_data:data,
+  chat_id:chatId,html:localizePrivateWidget(SCALPER_WIDGET_HTML,await userBotLocale(env,chatId)),chat_data:data,
   caption:'DrFXAi Scalper Pro · Private issuance overview (no keys)',
   allow_queries:true,protect_content:true
  });
@@ -809,9 +809,10 @@ async function signalBridgeWidgetQuery(q,env,req){
  const telegramId=String(q.from.id);
  const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(!user||user.status!=='active'){await answer({message:'Account unavailable. Use /start.'});return json({ok:true,ignored:'NO_ACTIVE_MEMBER'});}
+ replyLocale=await userBotLocale(env,telegramId);
  if(!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)){
   if(!await limited(req,env,'widget:commerce:'+telegramId,8)){await answer({message:'Too many requests. Please wait a minute.'});return json({ok:true});}
-  const language=replyLocale=await userBotLocale(env,telegramId);
+  const language=replyLocale;
   await answer({message:language==='fa'?'پاسخ در پیام بعدی نمایش داده می‌شود.':'See the next message.'});
   try{
    const h=commerceHelpers();
