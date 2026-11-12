@@ -60,14 +60,14 @@ async function withTelegramStub(fn){
  };
  try{return await fn(calls)}finally{globalThis.fetch=orig}
 }
-test('English is the default and four language options are consistently defined',()=>{
- assert.deepEqual(BOT_LANGUAGE_CODES,['en','fa','tr','ru']);
+test('English is the default and five language options are consistently defined',()=>{
+ assert.deepEqual(BOT_LANGUAGE_CODES,['en','fa','tr','ru','hi']);
  assert.equal(botLanguage('unknown'),'en');
  assert.equal(botLanguage(undefined),'en');
  assert.ok(botText('en','choose').includes('Choose your language'));
  const kb=botLanguageKeyboard();
  assert.equal(kb.inline_keyboard.length,2);
- assert.deepEqual(kb.inline_keyboard.flat().map(x=>x.callback_data),['lang:en','lang:fa','lang:tr','lang:ru']);
+ assert.deepEqual(kb.inline_keyboard.flat().map(x=>x.callback_data),['lang:en','lang:fa','lang:tr','lang:ru','lang:hi']);
  for(const lang of BOT_LANGUAGE_CODES){
   for(const key of ['choose','selected','welcome','app','loginTitle','loginText','serialTitle','serialNotice','member','license','tooMany','licenseUnavailable','suspended']){
    assert.ok(botText(lang,key).length>4,lang+':'+key);
@@ -111,7 +111,7 @@ test('inline-language callback saves locale and delivers localized welcome with 
   assert.equal(unpackWorkspaceView(JSON.parse(calls.at(-1).body.chat_data)).page,'language');
  });
 });
-test('all four selections persist and localize subsequent bot /start or /app',async()=>{
+test('all five selections persist and localize subsequent bot /start or /app',async()=>{
  const env={...fakeDB(),TELEGRAM_BOT_TOKEN:TOKEN,TELEGRAM_WEBHOOK_SECRET:SECRET};
  await withTelegramStub(async(calls)=>{
   for(const lang of BOT_LANGUAGE_CODES){
@@ -120,7 +120,7 @@ test('all four selections persist and localize subsequent bot /start or /app',as
    await worker.fetch(botRequest(botMessage('/app')),env);
    const app=unpackWorkspaceView(JSON.parse(calls.at(-1).body.chat_data));
    assert.equal(app.language,lang);
-   assert.equal(app.title,{en:'Open Signal Bridge',fa:'ورود به سیگنال بریج',tr:'Signal Bridge’i aç',ru:'Открыть Signal Bridge'}[lang]);
+   assert.equal(app.title,{en:'Open Signal Bridge',fa:'ورود به سیگنال بریج',tr:'Signal Bridge’i aç',ru:'Открыть Signal Bridge',hi:'Signal Bridge खोलें'}[lang]);
   }
  });
 });
