@@ -85,6 +85,6 @@ test('website hero, setup statuses and MT5 tour use all five languages',()=>{
  assert.ok(selector.includes('dfx-locale-tag\\\">HI'));
  assert.ok(selector.includes('dfx-locale-check\\\">✓'));
  const setup=readFileSync(new URL('../site/src/member-setup.mjs',import.meta.url),'utf8');
- assert.match(setup,/const localized=\\(en,faText\\)=>/);
- assert.match(setup,/localized\\('Webhook ready'/);
+ assert.ok(setup.includes('const localized=(en,faText)=>'));
+ assert.ok(setup.includes("localized('Webhook ready'"));
 });
