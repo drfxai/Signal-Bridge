@@ -813,9 +813,10 @@ async function signalBridgeWidgetQuery(q,env,req){
  const telegramId=String(q.from.id);
  const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
  if(!user||user.status!=='active'){await answer({message:'Account unavailable. Use /start.'});return json({ok:true,ignored:'NO_ACTIVE_MEMBER'});}
+ replyLocale=await userBotLocale(env,telegramId);
  if(!['sb:refresh','sb:signal:refresh','sb:scalper:refresh'].includes(q.data)){
   if(!await limited(req,env,'widget:commerce:'+telegramId,8)){await answer({message:'Too many requests. Please wait a minute.'});return json({ok:true});}
-  const language=replyLocale=await userBotLocale(env,telegramId);
+  const language=replyLocale;
   await answer({message:language==='fa'?'پاسخ در پیام بعدی نمایش داده می‌شود.':'See the next message.'});
   try{
    const h=commerceHelpers();
@@ -830,7 +831,7 @@ async function signalBridgeWidgetQuery(q,env,req){
      await botSend(env,telegramId,language==='fa'?'برای خرید اسکلپر پرو شماره حساب MT5 را در بخش اسکلپر پرو وب‌اپ وارد کن.':'Enter your MT5 account in the Scalper Pro section of the web app.',{inline_keyboard:[[{text:language==='fa'?'باز کردن اسکلپر پرو':'Open Scalper Pro',web_app:{url:API_ORIGIN+'/telegram?tab=scalper'}}]]});
     }else await purchaseQuote(env,{...h,language},user,plan,account);
    }
-  }catch{await telegramWidgetApi(env,'sendMessage',{chat_id:telegramId,text:'Request temporarily unavailable. Use /buy, /code or /scalper to retry.'}).catch(()=>{});}
+  }catch{await telegramWidgetApi(env,'sendMessage',{chat_id:telegramId,text:widgetText(replyLocale,'Request temporarily unavailable. Use /buy, /code or /scalper to retry.')}).catch(()=>{});}
   return json({ok:true});
  }
  try{
