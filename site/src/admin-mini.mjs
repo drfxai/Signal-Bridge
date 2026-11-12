@@ -68,7 +68,7 @@ document.querySelectorAll('[data-ops-reveal]').forEach(button=>button.addEventLi
   for(const entry of entries){const box=opsNode('div',undefined,'ops-key-item'),copy=opsNode('button',opsText('Copy key','کپی کلید'),'btn subtle');copy.type='button';box.append(opsNode('small',(entry.account_login?'MT5 #'+entry.account_login+' · ':'')+(entry.description||(entry.days+' '+opsText('days','روز')))),opsNode('code',entry.key));copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(entry.key);opsNotice(opsText('Private key copied.','کلید خصوصی کپی شد.'))}catch{opsNotice(opsText('Select the visible key to copy it manually.','کلید نمایش‌داده‌شده را انتخاب و کپی کنید.'))}});box.append(copy);root.append(box)}
   opsVisibleKeys.add(product);clearTimeout(opsPrivacyTimer);opsPrivacyTimer=setTimeout(()=>opsHideKeys(),60000);
   opsNotice(opsText('Visible for 60 seconds. Keep your keys confidential.','کدها تا ۶۰ ثانیه نمایش داده می‌شوند؛ آن‌ها را محرمانه نگه دارید.'));
- }catch(e){if(opsActive(epoch))opsNotice(e.message,true)}finally{button.disabled=false}
+ }catch(e){if(opsActive(epoch))opsNotice(window.DrFXI18N?.error?.(e,locale)??'Something went wrong. Try again.',true)}finally{button.disabled=false}
 }));
 function opsRenderOverview(d){
  opsOverview=d;const m=$('miniAdminMetrics');m.replaceChildren();
@@ -108,7 +108,7 @@ async function loadMiniAdmin(){
  if(!opsActive()||opsBusy)return;const epoch=opsEpoch;opsBusy=true;clearTimeout(opsTimer);$('miniAdminRefresh').disabled=true;adminLanguage();
  opsNotice(opsText('Refreshing administration data…','در حال به‌روزرسانی اطلاعات مدیریت…'));
  try{const d=await api('/api/admin/overview');if(!opsActive(epoch))return;opsRenderOverview(d);await opsScan(epoch);if(!opsActive(epoch))return;opsNotice(opsText('Statistics refresh every 30 seconds while this panel is open.','آمار هنگام باز بودن پنل هر ۳۰ ثانیه به‌روز می‌شود.'));if(opsView==='customers')await opsLoadUsers();if(opsView==='orders')await opsLoadOrders()}
- catch(e){if(opsActive(epoch))opsNotice(opsText('Refresh failed: ','به‌روزرسانی ناموفق: ')+e.message,true)}
+ catch(e){if(opsActive(epoch))opsNotice(window.DrFXI18N?.error?.(e,locale)??'Something went wrong. Try again.',true)}
  finally{if(opsActive(epoch)){opsBusy=false;$('miniAdminRefresh').disabled=false;opsTimer=setTimeout(loadMiniAdmin,30000)}}
 }
 async function opsLoadUsers(more=false){
@@ -121,7 +121,7 @@ async function opsLoadUsers(more=false){
    select.addEventListener('change',()=>{login.hidden=!select.value.startsWith('grant_scalper_');button.disabled=!select.value});
    button.addEventListener('click',async()=>{if(button.disabled||!select.value||!opsActive())return;const action=select.value;if(action.startsWith('grant_scalper_')&&!/^[1-9][0-9]{3,18}$/.test(login.value.trim())){opsNotice(opsText('Enter a valid MT5 login.','شماره حساب MT5 معتبر وارد کنید.'),true);login.focus();return}
     let question=select.selectedOptions[0].textContent+'\n'+(u.email||u.telegram_name||u.id);if(action.startsWith('grant_scalper_'))question+='\nMT5 #'+login.value.trim();if(['suspend','revoke_license'].includes(action))question+='\n'+opsText('Existing offline Scalper keys will continue to work.','کلیدهای آفلاین قبلی اسکلپر همچنان کار می‌کنند.');if(!confirm(question))return;
-    button.disabled=true;select.disabled=true;opsNotice(opsText('Applying account change…','در حال اعمال تغییر…'));try{await api('/api/admin/user',{user_id:u.id,action,account_login:login.value.trim()});if(!opsActive(epoch))return;opsNotice(opsText('Account updated. Issued keys are in the recipient’s own account.','تغییر انجام شد. کلید صادرشده در حساب خود دریافت‌کننده است.'));await opsLoadUsers();await loadMiniAdmin()}catch(e){if(opsActive(epoch))opsNotice(e.message,true)}finally{button.disabled=false;select.disabled=false}
+    button.disabled=true;select.disabled=true;opsNotice(opsText('Applying account change…','در حال اعمال تغییر…'));try{await api('/api/admin/user',{user_id:u.id,action,account_login:login.value.trim()});if(!opsActive(epoch))return;opsNotice(opsText('Account updated. Issued keys are in the recipient’s own account.','تغییر انجام شد. کلید صادرشده در حساب خود دریافت‌کننده است.'));await opsLoadUsers();await loadMiniAdmin()}catch(e){if(opsActive(epoch))opsNotice(window.DrFXI18N?.error?.(e,locale)??'Something went wrong. Try again.',true)}finally{button.disabled=false;select.disabled=false}
    });actions.append(select,button,login);
    const gift=opsNode('button',opsText('Send free 3-month Signal Bridge license','ارسال لایسنس رایگان ۳ ماهه سیگنال بریج'),'btn primary ops-gift');gift.type='button';gift.disabled=u.status!=='active'||u.license_status==='revoked';
    let giftRequest;
@@ -137,15 +137,15 @@ async function opsLoadUsers(more=false){
       result.notification==='sent'?opsText('Three months added and Telegram notification sent.','سه ماه اعتبار اضافه شد و اعلان تلگرام ارسال شد.'):
       opsText('Three months added. Telegram notification was unavailable.','سه ماه اعتبار اضافه شد. ارسال اعلان تلگرام در دسترس نبود.'));
      await opsLoadUsers();
-    }catch(e){if(opsActive(epoch))opsNotice(e.message,true);gift.disabled=false}
+    }catch(e){if(opsActive(epoch))opsNotice(window.DrFXI18N?.error?.(e,locale)??'Something went wrong. Try again.',true);gift.disabled=false}
    });actions.append(gift);card.append(head,meta,products,actions);root.append(card)
   }
   opsOffset=d.next_offset;$('opsMoreUsers').hidden=!d.has_more;set('opsDirectoryCount',opsNum(root.children.length)+' '+opsText('shown','نمایش داده شد'));if(!root.children.length)opsEmpty(root,'No matching customers.','کاربری مطابق جست‌وجو یافت نشد.');
- }catch(e){if(opsActive(epoch))opsNotice(e.message,true)}finally{if(request===opsDirectoryEpoch)root.removeAttribute('aria-busy')}
+ }catch(e){if(opsActive(epoch))opsNotice(window.DrFXI18N?.error?.(e,locale)??'Something went wrong. Try again.',true)}finally{if(request===opsDirectoryEpoch)root.removeAttribute('aria-busy')}
 }
-async function opsLoadOrders(){if(!opsActive())return;const epoch=opsEpoch,product=$('opsOrderFilter').value;try{const d=await api('/api/admin/orders?product='+product);if(!opsActive(epoch)||product!==$('opsOrderFilter').value)return;const root=$('opsOrders');root.replaceChildren();for(const o of d.orders){const row=opsNode('div',undefined,'ops-order'),info=opsNode('div');info.append(opsNode('b',(o.product==='signalbridge'?'Signal Bridge':'Scalper Pro')+' · '+o.plan),opsNode('small',o.id+' · '+o.status),opsNode('small',o.user_id),opsNode('small',opsDate(o.created_at)));row.append(info,opsNode('span','$'+opsNum(o.amount_usd)));root.append(row)}if(!d.orders.length)opsEmpty(root,'No orders recorded.','سفارشی ثبت نشده است.')}catch(e){if(opsActive(epoch))opsNotice(e.message,true)}}
+async function opsLoadOrders(){if(!opsActive())return;const epoch=opsEpoch,product=$('opsOrderFilter').value;try{const d=await api('/api/admin/orders?product='+product);if(!opsActive(epoch)||product!==$('opsOrderFilter').value)return;const root=$('opsOrders');root.replaceChildren();for(const o of d.orders){const row=opsNode('div',undefined,'ops-order'),info=opsNode('div');info.append(opsNode('b',(o.product==='signalbridge'?'Signal Bridge':'Scalper Pro')+' · '+o.plan),opsNode('small',o.id+' · '+o.status),opsNode('small',o.user_id),opsNode('small',opsDate(o.created_at)));row.append(info,opsNode('span','$'+opsNum(o.amount_usd)));root.append(row)}if(!d.orders.length)opsEmpty(root,'No orders recorded.','سفارشی ثبت نشده است.')}catch(e){if(opsActive(epoch))opsNotice(window.DrFXI18N?.error?.(e,locale)??'Something went wrong. Try again.',true)}}
 $('miniAdminRefresh').addEventListener('click',loadMiniAdmin);
-$('opsSyncBot').addEventListener('click',async()=>{if(!opsActive())return;const b=$('opsSyncBot'),epoch=opsEpoch;b.disabled=true;try{await api('/api/admin/bot/commands',{});if(opsActive(epoch))opsNotice(opsText('Signal Bridge and Scalper commands registered in the bot menu.','فرمان‌های سیگنال‌بریج و اسکلپر در منوی ربات ثبت شدند.'))}catch(e){if(opsActive(epoch))opsNotice(e.message,true)}finally{b.disabled=false}});
+$('opsSyncBot').addEventListener('click',async()=>{if(!opsActive())return;const b=$('opsSyncBot'),epoch=opsEpoch;b.disabled=true;try{await api('/api/admin/bot/commands',{});if(opsActive(epoch))opsNotice(opsText('Signal Bridge and Scalper commands registered in the bot menu.','فرمان‌های سیگنال‌بریج و اسکلپر در منوی ربات ثبت شدند.'))}catch(e){if(opsActive(epoch))opsNotice(window.DrFXI18N?.error?.(e,locale)??'Something went wrong. Try again.',true)}finally{b.disabled=false}});
 let opsSearchTimer=null;$('miniAdminSearch').addEventListener('input',()=>{clearTimeout(opsSearchTimer);opsSearchTimer=setTimeout(()=>opsLoadUsers(),300)});
 for(const id of ['opsProductFilter','opsStatusFilter'])$(id).addEventListener('change',()=>opsLoadUsers());
 $('opsOrderFilter').addEventListener('change',opsLoadOrders);$('opsMoreUsers').addEventListener('click',()=>opsLoadUsers(true));
