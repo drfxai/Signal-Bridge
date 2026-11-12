@@ -165,3 +165,28 @@ export async function sendPrivateCard(env,h,user,{title,subtitle,action,buttons=
  await h.raw(env,'sendWidget',{chat_id:user.telegram_id,html:BOT_WORKSPACE_WIDGET_HTML,
   chat_data:widgetViewData(view),caption:'DrFXAi · Signal Bridge',allow_queries:true,protect_content:true});
 }
+
+// Localize the fixed labels of older private cards. Data values and request IDs
+// stay in their original wire format.
+export function localizePrivateWidget(html,language){
+ if(!['fa','tr','ru','hi'].includes(language))return html;
+ const [markup,script]=html.split('<script>');
+ const escape=value=>value.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+ const rendered=markup.replace('<html>','<html lang="'+language+'" dir="'+(language==='fa'?'rtl':'ltr')+'">')
+  .replace(/>([^<>]+)</g,(full,source)=>{
+   const label=source.trim().replaceAll('&amp;','&');
+   const translated=widgetText(language,label);
+   return translated===label?full:'>'+source.replace(source.trim(),escape(translated))+'<';
+  });
+ const messages=new Set(['● ACCOUNT ACTIVE','● ACCOUNT STATUS','Not activated','Browser preview mode','Checking membership…',
+  'Account refreshed','Refresh failed:','Open this widget in Telegram','Check this chat','Request failed. Try /licenses in this chat.',
+  'No key issued','days','Checking licensed records…','Licenses refreshed','NO RECORDED SIGNAL','No recorded timestamp','Not supplied',
+  'Checking last recorded alert…','Record refreshed','Refresh unavailable. Try /signal again.','Your workspace appears below.',
+  'Send /menu to open your workspace.']);
+ return rendered+'<script>'+script.replace(/'((?:[^'\\]|\\.)*)'/g,(full,source)=>{
+  const label=source.trim();
+  if(!messages.has(label))return full;
+  const translated=widgetText(language,label);
+  return translated===label?full:JSON.stringify(source.replace(label,translated)).replaceAll('<','\\u003c');
+ });
+}
