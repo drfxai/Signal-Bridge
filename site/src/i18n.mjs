@@ -50,4 +50,71 @@ window.DrFXI18N.error=function(value,language=document.documentElement.lang){
  const code=typeof value==='string'?value.split(':',1)[0]:value?.name==='TypeError'?'NETWORK_ERROR':value?.message?.split(':',1)[0];
  return translate(Object.hasOwn(errors,code)?errors[code]:'Something went wrong. Try again.',language);
 };
+
+// Fixed-key text/attribute localization for content inserted after initial render.
+// No network, storage, timer or D1 activity; monitors DOM changes only in a non-English locale.
+(function(){
+ if(typeof document==='undefined'||typeof MutationObserver==='undefined')return;
+ const i18n=window.DrFXI18N, original=new WeakMap(), attrOriginal=new WeakMap();
+ const excluded='script,style,noscript,pre,code,textarea,svg,[contenteditable="true"],[data-no-translate],#serial,#myWebhookUrl,#setupLicense,.secret-value';
+ let watcher=null;
+ function current(){return i18n.languages.includes(document.documentElement.lang)?document.documentElement.lang:'en'}
+ function localizeText(node,lang){
+  const parent=node.parentElement;
+  if(!parent||parent.closest(excluded)||parent.closest('[data-i18n],[data-i],[data-tr],[data-su],[data-pp-text],[data-tj-text]'))return;
+  const now=node.nodeValue, before=original.get(node);
+  const english=before&&now===before.last?before.en:now;
+  const value=english.trim();
+  if(!Object.hasOwn(i18n.keys,value))return;
+  const next=i18n.translate(value,lang);
+  if(next===value&&now===english)return;
+  const prefix=english.match(/^\s*/)?.[0]||'',suffix=english.match(/\s*$/)?.[0]||'';
+  const target=prefix+next+suffix;
+  original.set(node,{en:english,last:target});
+  if(now!==target)node.nodeValue=target;
+ }
+ function localizeAttrs(el,lang){
+  if(el.closest(excluded))return;
+  let remembered=attrOriginal.get(el);
+  for(const name of ['placeholder','title','aria-label']){
+   if(!el.hasAttribute(name)||el.hasAttribute('data-i18n-attr-'+name))continue;
+   const value=el.getAttribute(name),prev=remembered?.[name],english=prev&&prev.last===value?prev.en:value;
+   if(!Object.hasOwn(i18n.keys,english))continue;
+   const next=i18n.translate(english,lang);
+   if(!remembered){remembered={};attrOriginal.set(el,remembered)}
+   remembered[name]={en:english,last:next};
+   if(next!==value)el.setAttribute(name,next);
+  }
+ }
+ function apply(node,lang=current()){
+  if(!node)return;
+  if(node.nodeType===3){localizeText(node,lang);return}
+  if(node.nodeType!==1&&node.nodeType!==9)return;
+  if(node.nodeType===1)localizeAttrs(node,lang);
+  if(typeof document.createTreeWalker!=='function')return;
+  const walk=document.createTreeWalker(node,5);
+  let item;while((item=walk.nextNode())){
+   if(item.nodeType===3)localizeText(item,lang);
+   else localizeAttrs(item,lang);
+  }
+ }
+ function sync(){
+  const lang=current();
+  if(watcher){watcher.disconnect();watcher=null}
+  apply(document.body,lang);
+  if(lang==='en'||!document.body)return;
+  watcher=new MutationObserver(records=>{
+   const targets=new Set();
+   for(const record of records){
+    if(record.type==='characterData')targets.add(record.target);
+    else for(const node of record.addedNodes)targets.add(node);
+   }
+   for(const target of targets)apply(target,current());
+  });
+  watcher.observe(document.body,{subtree:true,childList:true,characterData:true});
+ }
+ i18n.applyToDOM=apply;
+ window.addEventListener('drfx-language-change',sync);
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});else sync();
+})();
 `;
