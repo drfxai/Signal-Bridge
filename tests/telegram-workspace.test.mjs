@@ -237,3 +237,27 @@ test('all localized terms pages fit Telegram widget limits and can be opened',as
   }
  }
 });
+
+test('private account, Scalper and signal widgets keep request IDs and compile in all five languages',async()=>{
+ const {localizePrivateWidget}=await import('../site/src/telegram-workspace.mjs');
+ const {SIGNAL_BRIDGE_WIDGET_HTML}=await import('../site/src/telegram-widgets.mjs');
+ const {SCALPER_WIDGET_HTML}=await import('../site/src/telegram-scalper-widget.mjs');
+ const {SIGNAL_HISTORY_WIDGET_HTML}=await import('../site/src/telegram-signal-widget.mjs');
+ const cases=[
+  [SIGNAL_BRIDGE_WIDGET_HTML,'Checking membership…','sb:refresh'],
+  [SCALPER_WIDGET_HTML,'Checking licensed records…','sb:scalper:refresh'],
+  [SIGNAL_HISTORY_WIDGET_HTML,'Checking last recorded alert…','sb:signal:refresh']
+ ];
+ for(const language of ['en','fa','tr','ru','hi'])for(const [source,waiting,request] of cases){
+  const html=localizePrivateWidget(source,language);
+  assert.ok(deflateSync(html,{level:9}).length<=4096);
+  assert.ok(html.includes(request));
+  const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  assert.doesNotThrow(()=>new Function(script));
+  if(language==='en')assert.equal(html,source);
+  else{
+   assert.ok(html.includes('lang="'+language+'" dir="'+(language==='fa'?'rtl':'ltr')+'"'));
+   assert.ok(!html.includes(waiting));
+  }
+ }
+});
