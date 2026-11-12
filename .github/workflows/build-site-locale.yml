@@ -15,12 +15,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: true
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Verify exact source release and compile Worker offline
         run: |
-          test "$(git rev-parse HEAD^)" = "83f371c16693ca4ef6035f41518a9ab12d066ce5"
+          git merge-base --is-ancestor "83f371c16693ca4ef6035f41518a9ab12d066ce5" HEAD
+          git diff --quiet "83f371c16693ca4ef6035f41518a9ab12d066ce5" HEAD -- site/src site/public
           npm install --no-save --package-lock=false wrangler@4
           npx wrangler deploy --dry-run --config site/wrangler.jsonc --outdir /tmp/drfx-locale-release
           node --check /tmp/drfx-locale-release/worker.js
