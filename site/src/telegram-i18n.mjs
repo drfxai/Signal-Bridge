@@ -4,7 +4,8 @@ export const BOT_LANGUAGES=Object.freeze({
  en:{label:'🇬🇧 English',name:'English'},
  fa:{label:'🇮🇷 فارسی',name:'فارسی'},
  tr:{label:'🇹🇷 Türkçe',name:'Türkçe'},
- ru:{label:'🇷🇺 Русский',name:'Русский'}
+ ru:{label:'🇷🇺 Русский',name:'Русский'},
+ hi:{label:'🇮🇳 हिन्दी',name:'हिन्दी'}
 });
 export const BOT_LANGUAGE_CODES=Object.freeze(Object.keys(BOT_LANGUAGES));
 const copy={
@@ -73,6 +74,22 @@ const copy={
  licensePending:'Аккаунт готов, лицензия EA настраивается. Попробуйте /code позже.',
  loginUnavailable:'Вход на сайт временно недоступен. Лицензия EA не затронута.',
  licenseUnavailable:'Сервис лицензирования EA временно недоступен.',languageError:'Выберите язык из списка.'
+ },
+ hi:{
+ choose:'🌐 <b>अपनी भाषा चुनें</b>\nDrFX Signal Bridge बॉट संदेशों की भाषा चुनें।\nडिफ़ॉल्ट अंग्रेज़ी है। बाद में /language से बदल सकते हैं।',
+ selected:'✅ हिन्दी भाषा चुनी गई।',
+ welcome:'⚡ <b>DrFX Company में स्वागत है</b>\nआपका वेबसाइट खाता और MT5 EA लाइसेंस तैयार हैं।\nसदस्यता प्रबंधित करने के लिए Mini App खोलें।\n/login — वेबसाइट लॉगिन कुंजी\n/resetlogin — लॉगिन कुंजी बदलें\n/code — MT5 EA एक्टिवेशन कोड\n/language — भाषा बदलें',
+ app:'📱 सदस्यता और MT5 EA लाइसेंस प्रबंधित करने के लिए DrFX Mini App खोलें।',
+ loginTitle:'🔐 <b>वेबसाइट लॉगिन कुंजी</b>',
+ loginText:'आपकी 32-अक्षर वाली वेबसाइट कुंजी दोबारा इस्तेमाल हो सकती है। इसे पासवर्ड की तरह सुरक्षित रखें।\nइसे केवल https://drfx.company के Telegram टैब में डालें।\nकुंजी लीक हो तो /resetlogin इस्तेमाल करें।\n⚠️ /code अलग MT5 EA कोड है।',
+ reset:'पुरानी वेबसाइट कुंजी रद्द और पुराने सेशन समाप्त किए गए।',
+ serialTitle:'🔑 <b>आपका निजी MT5 EA एक्टिवेशन कोड</b>',
+ serialNotice:'केवल MetaTrader 5 के लिए। यह कोड साझा न करें।',
+ member:'👤 <b>मेरी सदस्यता</b>',plan:'प्लान',license:'EA लाइसेंस',expires:'समाप्ति',notActivated:'पहले EA एक्टिवेशन से शुरू होगा',dashboard:'डैशबोर्ड',
+ tooMany:'बहुत अधिक अनुरोध। बाद में प्रयास करें।',suspended:'आपका खाता निलंबित है। सहायता से संपर्क करें।',
+ licensePending:'खाता तैयार है, EA लाइसेंस सेट हो रहा है। बाद में /code आज़माएँ।',
+ loginUnavailable:'वेबसाइट लॉगिन अभी उपलब्ध नहीं है। आपका EA लाइसेंस सुरक्षित है।',
+ licenseUnavailable:'EA लाइसेंस सेवा अस्थायी रूप से उपलब्ध नहीं है।',languageError:'कृपया सूची में से कोई भाषा चुनें।'
  }
 };
 export const botLanguage=code=>Object.hasOwn(BOT_LANGUAGES,code)?code:'en';
