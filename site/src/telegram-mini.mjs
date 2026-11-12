@@ -234,6 +234,7 @@ export const MINI_JS=String.raw`(() => {
  const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
  let locale='en';
  const englishLookup=Object.fromEntries(Object.entries(dictionary.en||{}).map(([key,value])=>[value,key]));
+ const localeError=err=>window.DrFXI18N?.error?.(err,locale)??'Something went wrong. Try again.';
  const ui=(en,fallbackFa)=>{
   if(locale==='en')return en;
   const key=englishLookup[en];
@@ -369,7 +370,7 @@ async function refreshMiniConnection(){
   set('miniConnectionLast',d.live_snapshot_available?(d.terminal_online?'● MT5 ONLINE':d.live_socket_verified?'● EA CONNECTED':'● EA OFFLINE'):(d.last_handshake||'Live status unknown'));
   set('miniConnectionInfo',d.live_snapshot_available?(d.terminal_online?'Live MT5 terminal confirmed. No order placed.':'No matching live MT5 terminal connected. No order placed.'):'Live WebSocket check unavailable. Showing historical handshake only.');
   displayMiniWebhook(w.webhook);
- }catch(e){set('miniConnectionInfo','Connection status unavailable: '+e.message);}
+ }catch(e){set('miniConnectionInfo',localeError(e));}
 }
 function displayMiniWebhook(w){
  document.dispatchEvent(new CustomEvent('signalbridge-webhook',{detail:w}));
@@ -381,9 +382,9 @@ function displayMiniWebhook(w){
  set('miniWebhookInfo',available?'Dry Run · '+Number(w.received||0)+' alerts received. Keep this URL private.':'Create a personal TradingView webhook to start in Dry Run.');
 }
 $('miniTestConnection').addEventListener('click',refreshMiniConnection);
-$('miniCreateWebhook').addEventListener('click',async()=>{try{const r=await api('/api/webhook/create',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',e.message)}});
+$('miniCreateWebhook').addEventListener('click',async()=>{try{const r=await api('/api/webhook/create',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',localeError(e))}});
 $('miniCopyWebhook').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('miniWebhookUrl').textContent);set('miniWebhookInfo','Copied. Keep the private URL safe.')}catch{set('miniWebhookInfo','Copy not allowed on this device.')}});
-$('miniRotateWebhook').addEventListener('click',async()=>{if(!confirm('Regenerate URL? Your old TradingView alerts will stop reaching SignalBridge.'))return;try{const r=await api('/api/webhook/rotate',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',e.message)}});
+$('miniRotateWebhook').addEventListener('click',async()=>{if(!confirm('Regenerate URL? Your old TradingView alerts will stop reaching SignalBridge.'))return;try{const r=await api('/api/webhook/rotate',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',localeError(e))}});
 ${ADMIN_JS}
  function applyUser(user){
   try{sessionStorage.removeItem('drfx-explicit-signout')}catch{}

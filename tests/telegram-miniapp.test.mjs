@@ -298,3 +298,20 @@ test('live Mini App labels use the current locale and keep data unchanged',async
  assert.match(option,/<option value="All" data-tr="common_\d+">All<\/option>/);
  assert.match(MINI_HTML,/<li data-tr="common_\d+">Open your chart and press Alert/);
 });
+
+test('common API and connection errors render in all five languages without raw error details',async()=>{
+ const {I18N_JS,LOCALES}=await import('../site/src/i18n.mjs');
+ const window={},document={documentElement:{lang:'en'}};
+ new Function('window','document',I18N_JS)(window,document);
+ const text=window.DrFXI18N;
+ const defaults=['Connect your EA in MetaTrader 5 and try again.','Something went wrong. Try again.'];
+ for(const locale of LOCALES){
+  document.documentElement.lang=locale;
+  const known=text.error(new Error('EA_NOT_READY: internal diagnostic'));
+  const unknown=text.error(new Error('INTERNAL_LOG: private detail'));
+  assert.doesNotMatch(known+unknown,/EA_NOT_READY|INTERNAL_LOG|private detail|internal diagnostic/);
+  if(locale==='en')assert.deepEqual([known,unknown],defaults);
+  else {assert.notEqual(known,defaults[0]);assert.notEqual(unknown,defaults[1]);}
+  assert.notEqual(text.error(new TypeError('Fetch failed')),unknown);
+ }
+});
