@@ -73,26 +73,41 @@ function mountSetup(){
  $('refAccount').onclick=()=>document.querySelector('.sb-top nav [data-sb-tab=settings]')?.click();$('refHelp').onclick=()=>document.querySelector('.sb-top nav [data-sb-tab=setup]')?.click();
  const fa={navMt5:'نصب اکسپرت',progressHint:'کدهای شما محرمانه می‌مانند',next:'شروع ←',more:'حساب و تنظیمات پیشرفته',scalperManage:'اسکلپر پرو · اشتراک و لایسنس',eyebrow:'مرکز اتصال‌های شما',title:'ستاپ',intro:'سه اتصال، یک نقطه برای شروع' ,refresh:'↻ به‌روزرسانی',pathNote:'مقصد را انتخاب کنید: اکسپرت متاتریدر یا کانال تلگرام. هر مقصد وب‌هوک مخصوص خود را دارد.',step1:'۰۱ · نصب و فعال‌سازی',install:'اکسپرت‌های شما',download:'دانلود EX5 ↓',license:'۱ · لایسنس EA · اولین گزینهٔ تنظیمات',show:'نمایش',copy:'کپی',symbol:'۲ · نماد بروکر · دومین گزینهٔ تنظیمات',example:'مثال: XAUUSD.p یا GOLD',symbolHelp:'کلید F7 ← Inputs: ابتدا لایسنس، سپس نام دقیق نماد طلا در Market Watch را وارد کنید.',scalperHint:'اکسپرت مستقل · لایسنس مستقل',installHelp:'فایل EX5 را کجا نصب کنم؟',install1:'در متاتریدر دسکتاپ: File → Open Data Folder → MQL5 → Experts. فایل EX5 را اینجا کپی کنید.',install2:'در Navigator روی Expert Advisors راست‌کلیک و Refresh کنید. اکسپرت را روی چارت طلای بروکر بکشید.',install3:'سیگنال بریج: F7 → Inputs → لایسنس، سپس نماد. آدرس https://signalbridge.drfx.online را در Tools → Options → Expert Advisors مجاز کنید.',installAlgo:'در تنظیمات Common اکسپرت، معامله‌گری الگوریتمی را مجاز و دکمهٔ Algo Trading در نوار ابزار متاتریدر را روشن کنید.',install4:'اسکلپر پرو را روی چارت M15 طلا قرار دهید. دورهٔ آزمایشی یا لایسنس خودش را فعال کنید. متاتریدر باید روشن بماند.',step2:'۰۲ · اتصال تردینگ‌ویو',webhookTitle:'تردینگ‌ویو ← متاتریدر',mt5Hook:'وب‌هوک شخصی متاتریدر شما',create:'ساخت وب‌هوک',hookHelp:'در تردینگ‌ویو: Create Alert → Notifications → Webhook URL. برای ارسال به متاتریدر، این لینک را وارد کنید.',tvGuide:'راهنمای تنظیم تردینگ‌ویو',tv1:'چارت اندیکاتور یا استراتژی را باز و Create Alert را انتخاب کنید.',tv2:'در Notifications گزینهٔ Webhook URL را فعال و لینک مقصد موردنظر را وارد کنید.',tv3:'پیام سازگار با SignalBridge را از استراتژی خود وارد کنید. ابتدا پارس پیام و اتصال را بررسی کنید.',tvNote:'دسترسی به وب‌هوک به حساب تردینگ‌ویو بستگی دارد. حالت dry_run سفارش باز نمی‌کند؛ اجرای عادی سیگنال در حساب واقعی غیرفعال است.',checkTitle:'بررسی اتصال',checkHint:'نمای روزانه ← بررسی اتصال. وضعیت سبز EA دریافت ضربان معتبر از متاتریدر را نشان می‌دهد.',daily:'بازکردن نمای روزانه ↗',step3:'۰۳ · انتخاب کانال',channelTitle:'تردینگ‌ویو ← تلگرام',channelHint:'ربات را ادمین کانال کنید و مجوز ارسال پیام بدهید؛ سپس به‌روزرسانی کنید.',addBot:'افزودن ربات به کانال ↗',destination:'کانال مقصد',channelCreate:'دریافت وب‌هوک این کانال',channelHook:'وب‌هوک کانال انتخاب‌شده · فقط تلگرام',channelGuide:'سیگنال چطور به کانال می‌رسد؟',channelGuideText:'وب‌هوک کانال انتخاب‌شده را در هشدار تردینگ‌ویو وارد کنید. این لینک فقط در همان کانال پیام می‌فرستد و معاملهٔ متاتریدر باز نمی‌کند. برای هر کانال لینک جدا وجود دارد.',template:'قالب پیام تردینگ‌ویو',advanced:'تنظیمات پیشرفته، اشتراک و مدیریت',routing:'مسیریابی پیشرفتهٔ سیگنال'};
  let online=false;
- function chooseStep(id){if(!['setupStep1','setupStep2','setupStep3'].includes(id))return;if(root.dataset.step&&root.dataset.step!==id){$('setupLicense').type='password';$('setupReveal').setAttribute('aria-pressed','false');$('setupReveal').textContent=document.documentElement.lang==='fa'?'نمایش':'Show';root.querySelectorAll('.su-key-row input').forEach(e=>e.type='password');root.querySelectorAll('.su-key-row button[aria-pressed]').forEach(e=>{e.setAttribute('aria-pressed','false');e.textContent=document.documentElement.lang==='fa'?'نمایش':'Show';});}root.dataset.step=id;root.querySelectorAll('[data-setup-step]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.setupStep===id)));}
+ const localized=(en,faText)=>{const lang=document.documentElement.lang||'en';return lang==='fa'?faText:(window.DrFXI18N?.translate?.(en,lang)||en)};
+ function chooseStep(id){if(!['setupStep1','setupStep2','setupStep3'].includes(id))return;if(root.dataset.step&&root.dataset.step!==id){$('setupLicense').type='password';$('setupReveal').setAttribute('aria-pressed','false');$('setupReveal').textContent=localized('Show','نمایش');root.querySelectorAll('.su-key-row input').forEach(e=>e.type='password');root.querySelectorAll('.su-key-row button[aria-pressed]').forEach(e=>{e.setAttribute('aria-pressed','false');e.textContent=localized('Show','نمایش');});}root.dataset.step=id;root.querySelectorAll('[data-setup-step]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.setupStep===id)));}
  chooseStep('setupStep1');
  root.querySelectorAll('[data-setup-step]').forEach(b=>b.onclick=()=>{chooseStep(b.dataset.setupStep);if(root.clientWidth>700)$(b.dataset.setupStep)?.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});
  function updateReadiness(){
-  const isFa=document.documentElement.lang==='fa',channelReady=!!$('setupChannelHook').value;
+  const channelReady=!!$('setupChannelHook').value;
   const ready=[online,!!$('setupMt5Hook').value,channelReady],ids=['setupMt5State','setupTvState','setupTgState'];
-  const texts=isFa?[online?'EA متصل':'بررسی متاتریدر',ready[1]?'وب‌هوک آماده':'دریافت وب‌هوک',channelReady?'کانال آماده':'انتخاب کانال']:[online?'EA connected':'Check terminal',ready[1]?'Webhook ready':'Get webhook',channelReady?'Channel ready':'Pick channel'];
+  const texts=[
+   online?localized('EA connected','EA متصل'):localized('Check terminal','بررسی متاتریدر'),
+   ready[1]?localized('Webhook ready','وب‌هوک آماده'):localized('Get webhook','دریافت وب‌هوک'),
+   channelReady?localized('Channel ready','کانال آماده'):localized('Pick channel','انتخاب کانال')
+  ];
   ids.forEach((id,i)=>{if($(id).textContent!==texts[i])$(id).textContent=texts[i];const b=root.querySelector('[data-setup-step="setupStep'+(i+1)+'"]');b.dataset.ready=String(ready[i]);b.querySelector('em').textContent=ready[i]?'✓':'0'+(i+1);});
-  $('setupProgress').textContent=ready.filter(Boolean).length+' / 3 '+(isFa?'آماده':'configured');
+  $('setupProgress').textContent=ready.filter(Boolean).length+' / 3 '+localized('configured','آماده');
   const next=ready.findIndex(r=>!r),n=next<0?0:next;
-  $('setupNextTitle').textContent=next<0?(isFa?'اتصال‌ها آماده‌اند':'Your connections are ready'):(isFa?['از متاتریدر شروع کنید','تردینگ‌ویو را وصل کنید','کانال مقصد را انتخاب کنید'][n]:['Start with MetaTrader 5','Connect TradingView','Choose your channel'][n]);
-  $('setupNextHint').textContent=next<0?(isFa?'وضعیت حساب را در نمای روزانه ببینید.':'Review your account in Daily view.'):(isFa?['EA را نصب و لایسنس خود را وارد کنید.','لینک شخصی را در هشدار تردینگ‌ویو وارد کنید.','ربات را ادمین کنید و وب‌هوک کانال را دریافت کنید.'][n]:['Download the EA and paste your private license.','Paste your personal link into a TradingView alert.','Add the bot as admin, then get your channel link.'][n]);
-  $('setupNext').textContent=next<0?(isFa?'نمای روزانه ←':'Daily view →'):(isFa?'ادامه ←':'Continue →');
+  const nextTitles=[
+   localized('Start with MetaTrader 5','از متاتریدر شروع کنید'),
+   localized('Connect TradingView','تردینگ‌ویو را وصل کنید'),
+   localized('Choose your channel','کانال مقصد را انتخاب کنید')
+  ];
+  const nextHints=[
+   localized('Download the EA and paste your private license.','EA را نصب و لایسنس خود را وارد کنید.'),
+   localized('Paste your personal link into a TradingView alert.','لینک شخصی را در هشدار تردینگ‌ویو وارد کنید.'),
+   localized('Add the bot as admin, then get your channel link.','ربات را ادمین کنید و وب‌هوک کانال را دریافت کنید.')
+  ];
+  $('setupNextTitle').textContent=next<0?localized('Your connections are ready','اتصال‌ها آماده‌اند'):nextTitles[n];
+  $('setupNextHint').textContent=next<0?localized('Review your account in Daily view.','وضعیت حساب را در نمای روزانه ببینید.'):nextHints[n];
+  $('setupNext').textContent=next<0?localized('Daily view →','نمای روزانه ←'):localized('Continue →','ادامه ←');
   $('setupNext').onclick=()=>{if(next<0)root.querySelector('[data-sb-tab=overview]')?.click();else chooseStep('setupStep'+(n+1));};
  }
  window.addEventListener('signalbridge-connection',e=>{online=!!e.detail?.terminal_online;updateReadiness();});
  const english=new Map([...root.querySelectorAll('[data-su]')].map(e=>[e,e.textContent]));
  function locale(){const lang=document.documentElement.lang||'en',persian=lang==='fa',translate=text=>window.DrFXI18N?.translate?.(text,lang)||text;for(const [e,t] of english)e.textContent=persian?(fa[e.dataset.su]||translate(t)):translate(t);$('setupReveal').textContent=$('setupLicense').type==='password'?(persian?'نمایش':translate('Show')):(persian?'مخفی':translate('Hide'));updateReadiness();}
  locale();new MutationObserver(locale).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
- const say=(en,persian)=>document.documentElement.lang==='fa'?persian:(window.DrFXI18N?.translate?.(en)||en);
+ const say=localized;
  async function api(path,body){const r=await fetch(path,{credentials:'same-origin',method:body===undefined?'GET':'POST',headers:{'content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});const d=await r.json();if(!r.ok)throw Error(d.error||'SERVICE_UNAVAILABLE');return d;}
  const errors={UNAUTHENTICATED:['Sign in to load your setup.','برای نمایش ستاپ وارد حساب شوید.'],LINK_TELEGRAM_FIRST:['Link Telegram in account settings first.','ابتدا تلگرام را در تنظیمات حساب متصل کنید.'],BOT_CANNOT_POST:['Give the bot Post messages permission, then refresh.','مجوز ارسال پیام ربات را فعال و به‌روزرسانی کنید.'],ADMIN_RIGHTS_REQUIRED:['You must be an administrator of this channel.','باید ادمین این کانال باشید.']};
  function fail(e){const a=errors[e.message];status(a?say(...a):say('Could not update setup. Retry refresh.','ستاپ به‌روز نشد؛ دوباره به‌روزرسانی کنید.')+' · '+e.message);}
