@@ -96,7 +96,7 @@ export async function signalRecords(env,user){
 export function workspaceQueryPage(action){
  const custom=/^ui:(page|open):([a-z-]+)$/.exec(String(action||''));
  if(custom&&onboardingPages.includes(custom[2]))return {mode:custom[1],page:custom[2]};
- const m=/^ui:(page|open):(home|account|licenses|shop|setup|help|webhooks|tvhook|channels|language|app|link|terms|support|login|resetconfirm|reset|bridgecode|scalperkeys|admin|adminhelp|history(?::[0-9]{1,2})?|signal:[0-9]{1,2}|orders(?::[0-9]{1,2})?|users(?::[0-9]{1,3})?|lang:(?:en|fa|tr|ru|hi))$/.exec(String(action||''));
+ const m=/^ui:(page|open):(home|account|licenses|shop|setup|help|webhooks|tvhook|channels|language|app|link|terms(?::[0-9])?|support|login|resetconfirm|reset|bridgecode|scalperkeys|admin|adminhelp|history(?::[0-9]{1,2})?|signal:[0-9]{1,2}|orders(?::[0-9]{1,2})?|users(?::[0-9]{1,3})?|lang:(?:en|fa|tr|ru|hi))$/.exec(String(action||''));
  return m?{mode:m[1],page:m[2]}:null;
 }
 export async function workspaceView(env,h,user,page){
@@ -118,7 +118,16 @@ export async function workspaceView(env,h,user,page){
  if(page==='link')return {...view('Linked Accounts','Link an existing verified website account securely.',[{label:'Email',value:user.email||'Not linked'},{label:'Telegram',value:user.telegram_name||'Connected'}],[{label:'Copy linking command',action:'copy'},pageButton('Open Mini App','app'),back()]),copy:'/link YOUR_LINKING_CODE',footer:'Get a fresh linking code from your verified website account. Paste it into the command in this chat.'};
  if(page==='language')return onboardingView(page,h.language||'en');
  if(page==='resetconfirm')return view('Replace your login code?','Your existing website login code will stop working.',[],[pageButton('Confirm Reset','reset','primary'),pageButton('Cancel','account')]);
- if(page==='terms')return {...noticeView(h.terms),page,title:'License Terms',badge:'TERMS',buttons:[pageButton('Buy & Renew','shop'),pageButton('Payment Support','support'),back()]};
+ if(page==='terms'||page.startsWith('terms:')){
+  const parts=String(h.terms||'').split('\n'),heading=parts.shift(),sections=parts.filter(Boolean);
+  const index=Math.min(Math.max(0,sections.length-1),Number(page.split(':')[1])||0);
+  const language=h.language||'en',t=text=>widgetText(language,text);
+  return {...view(heading,(index+1)+' / '+sections.length,[],[
+   ...(index>0?[pageButton(t('Previous page'),'terms:'+(index-1))]:[]),
+   ...(index+1<sections.length?[pageButton(t('Next page'),'terms:'+(index+1),'primary')]:[]),
+   pageButton(t('Buy & Renew'),'shop'),back()
+  ]),language,pages:sections.length?[sections[index]]:[]};
+ }
  if(page==='support')return {...view('Payment Support','For payment, delivery or refund help, include your order ID.',[],[{label:'Copy support command',action:'copy'},pageButton('My Orders','orders:0'),pageButton('Terms','terms'),{label:'@DrFXGOD',action:'link',url:'https://t.me/DrFXGOD'},back()]),copy:'/paysupport ORDER_ID YOUR_MESSAGE',footer:'Paste the command in this chat, add your message and send. Your request is recorded for the DrFX admin.'};
  if(page.startsWith('history')||page.startsWith('signal:')){
   const rows=await signalRecords(env,user),n=Math.min(39,Math.max(0,Number(page.split(':')[1])||0));

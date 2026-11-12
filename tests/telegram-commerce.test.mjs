@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import {deflateSync} from 'node:zlib';
-import {STAR_PLANS,starPrice,matchesPayment,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,sendPrivateLicenses} from '../site/src/telegram-commerce.mjs';
+import {STAR_PLANS,starPrice,matchesPayment,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,sendPrivateLicenses,licenseTerms} from '../site/src/telegram-commerce.mjs';
 import {LICENSE_SHOP_WIDGET_HTML} from '../site/src/telegram-license-shop.mjs';
 
 function fixture(){
@@ -104,4 +104,25 @@ test('failed chat delivery never loses paid entitlement and own code remains ret
  assert.equal(f.db.prepare('SELECT status,notified_at FROM telegram_star_orders').get().status,'paid');
  f.h.api=real;await sendPrivateLicenses(f.env,f.h,f.user);
  assert.ok(f.calls.some(c=>c.body.text?.includes('test-activation-code')));
+});
+
+
+
+test('checkout terms, consent and invoice follow the selected language in every locale',async()=>{
+ for(const [language,consent] of Object.entries({en:'Accept & pay',fa:'پذیرش شرایط و پرداخت',tr:'Kabul et ve öde',ru:'Принять и оплатить',hi:'स्वीकार करें और भुगतान करें'})){
+  const f=fixture();
+  try{
+   await purchaseQuote(f.env,{...f.h,language},f.user,'quarterly');
+   const msg=f.calls[0].body,button=msg.reply_markup.inline_keyboard[0][0];
+   assert.ok(msg.text.includes(licenseTerms(language)));
+   assert.ok(msg.text.includes('/paysupport'));
+   assert.ok(button.text.startsWith(consent));
+   await acceptStarQuote({id:'q1',data:button.callback_data,from:{id:123},message:{chat:{id:123,type:'private'}}},f.env,{...f.h,locale:async()=>language});
+   const invoice=f.calls.find(c=>c.method==='sendInvoice').body;
+   assert.equal(invoice.currency,'XTR');
+   assert.equal(invoice.prices[0].amount,2350);
+   assert.equal(invoice.payload,button.callback_data.slice(6));
+   if(language!=='en')assert.notEqual(invoice.title,STAR_PLANS.quarterly.label);
+  }finally{f.db.close()}
+ }
 });
