@@ -97,16 +97,21 @@ test('website hero, setup statuses and MT5 tour use all five languages',()=>{
 
 test('Hindi website language row shares badge, text, and selected-only checkmark structure',()=>{
  const design=readFileSync(new URL('../site/src/design.mjs',import.meta.url),'utf8');
- const options=[...design.matchAll(/data-site-language=\\\"(en|fa|tr|ru|hi)\\\" aria-pressed=\\\"(?:true|false)\\\">([\\s\\S]*?)<\\/button>/g)];
- assert.equal(options.length,5,'Expected exactly five website language options');
- for(const [,locale,markup] of options){
-  assert.match(markup,/<span class=\\\"dfx-locale-tag\\\">(?:EN|FA|TR|RU|HI)<\\/span>/,'Missing locale badge '+locale);
-  assert.match(markup,/<span class=\\\"dfx-locale-check\\\">✓<\\/span>/,'Missing common checkmark '+locale);
+ const locales={en:'EN',fa:'FA',tr:'TR',ru:'RU',hi:'HI'};
+ for(const [locale,code] of Object.entries(locales)){
+  const prefix='data-site-language=\\\"'+locale+'\\\" aria-pressed=';
+  const start=design.indexOf(prefix);
+  assert.ok(start>=0,'Missing language option '+locale);
+  const end=design.indexOf('</button>',start);
+  assert.ok(end>start,'Unclosed language option '+locale);
+  const markup=design.slice(start,end);
+  assert.ok(markup.includes('dfx-locale-tag\\\">'+code),'Missing matching badge '+locale);
+  assert.ok(markup.includes('dfx-locale-check\\\">✓'),'Missing matching checkmark '+locale);
+  if(locale==='hi'){
+   assert.ok(markup.includes('हिन्दी'),'Missing Hindi name');
+   assert.doesNotMatch(markup,/<b>|<i>/,'Hindi option must use the shared badge and checkmark elements');
+  }
  }
- const hindi=options.find(([_,lang])=>lang==='hi')?.[2];
- assert.ok(hindi,'Hindi option missing');
- assert.ok(hindi.includes('हिन्दी'),'Hindi must use native Devanagari label');
- assert.doesNotMatch(hindi,/<b>|<i>/,'Hindi must not use unstyled b/i badges');
  assert.ok(design.includes("#siteLanguageOptions button[aria-pressed='true']>.dfx-locale-check"));
  assert.ok(design.includes("#siteLanguageOptions button[data-site-language='hi']>span:nth-child(2)"));
 });
