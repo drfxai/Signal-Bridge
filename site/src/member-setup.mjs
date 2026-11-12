@@ -154,5 +154,5 @@ function mountSetup(sourceEnglish){
 // Capture canonical English from the server-side template, before any DOM localization
 // observer or restored language preference can mutate rendered text.
 const SETUP_SOURCE_EN=Object.fromEntries([...SETUP_HTML.matchAll(/data-su="([^"]+)"[^>]*>([^<]*)</g)].map(([,key,text])=>[key,text]));
-export const SETUP_JS='\\n('+mountSetup.toString()+')('+JSON.stringify(SETUP_SOURCE_EN)+');\\n';
+export const SETUP_JS='\n('+mountSetup.toString()+')('+JSON.stringify(SETUP_SOURCE_EN)+');\n';
 
