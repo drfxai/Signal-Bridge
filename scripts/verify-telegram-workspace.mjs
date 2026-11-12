@@ -37,7 +37,7 @@ try{
   const page=await browser.newPage({viewport:{width:320,height:700},deviceScaleFactor:1});
   page.on('pageerror',e=>errors.push(locale+': '+String(e)));
   const state=signalHistoryWidgetData(sample);
-  const stub='<script>window.TelegramWidget={chatData:'+JSON.stringify(state).replace(/</g,'\\u003c')+',onEvent(){},ready(){},request(){return Promise.resolve({result:"{}"})},copyText(){}};<\\/script>';
+  const stub='<script>window.TelegramWidget={chatData:'+JSON.stringify(state).replace(/</g,'\\u003c')+',onEvent(){},ready(){},request(){return Promise.resolve({result:"{}"})},copyText(){}};<\/script>';
   await page.setContent(stub+localizeNativeWidget(SIGNAL_HISTORY_WIDGET_HTML,locale,'signal'));
   const bounds=await page.locator('.shell').boundingBox();
   assert.ok(bounds&&bounds.height<=560,'Signal widget too tall for '+locale);
