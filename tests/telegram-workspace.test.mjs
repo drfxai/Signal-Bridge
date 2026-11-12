@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {deflateSync} from 'node:zlib';
 import worker from '../site/src/worker.mjs';
 import {BOT_WORKSPACE_WIDGET_HTML,workspaceView,widgetViewData,unpackWorkspaceView,workspaceQueryPage,signalRecords,sendBotNotice} from '../site/src/telegram-workspace.mjs';
-import {STAR_PLANS,starPrice,LICENSE_TERMS} from '../site/src/telegram-commerce.mjs';
+import {STAR_PLANS,starPrice,LICENSE_TERMS,licenseTerms} from '../site/src/telegram-commerce.mjs';
 const user={id:'usr_'+('a'.repeat(32)),telegram_id:'123',status:'active',role:'user',plan:'trial'};
 const signal=(symbol,side='BUY')=>({action:'OPEN',symbol,side,order:{reference_price:4077,stop_loss:4065,take_profits:[4085,4090,4100]}});
 function fixture(role='user'){
@@ -220,4 +220,20 @@ test('trial widget issues only in its owner’s private chat and sends a private
   assert.doesNotMatch(card.body.chat_data,/DRFX-[A-Z2-9]{5}-/);
   assert.equal(f.sql.filter(s=>s.query.startsWith('INSERT INTO scalper_keys')).length,1);
  });
+});
+
+
+test('all localized terms pages fit Telegram widget limits and can be opened',async()=>{
+ for(const language of ['en','fa','tr','ru','hi']){
+  const terms=licenseTerms(language),sections=terms.split('\n').slice(1);
+  assert.equal(sections.length,3);
+  for(const [i,section] of sections.entries()){
+   const page=i?'terms:'+i:'terms';
+   assert.ok(workspaceQueryPage('ui:page:'+page));
+   const view=await workspaceView({}, {...helpers,language,terms}, {},page);
+   const data=widgetViewData(view);
+   assert.ok(Buffer.byteLength(data)<=1024);
+   assert.equal(unpackWorkspaceView(JSON.parse(data)).pages[0],section);
+  }
+ }
 });
