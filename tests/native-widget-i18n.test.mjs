@@ -8,6 +8,7 @@ import {SIGNAL_HISTORY_WIDGET_HTML,signalWidgetHtml} from '../site/src/telegram-
 import {localizeNativeWidget,widgetCaption,WIDGET_LANGUAGE_CODES} from '../site/src/telegram-widget-i18n.mjs';
 import {localizeWorkspace} from '../site/src/telegram-onboarding.mjs';
 import {TRANSLATIONS,LOCALES,markCommonText} from '../site/src/i18n.mjs';
+import {widgetText} from '../site/src/telegram-onboarding.mjs';
 import {DESIGN_HTML} from '../site/src/design.mjs';
 
 const expected={
@@ -103,4 +104,17 @@ test('admin operations and mini app dynamic messages have five-language dictiona
   assert.ok(phrases.length>0,path+' no phrases parsed');
   for(const label of phrases)assert.ok(english.has(label),path+' untranslated dynamic message: '+label);
  }
+});
+
+test('native widget refresh response and errors retain the selected five-language locale',()=>{
+ for(const language of LOCALES){
+  for(const phrase of ['Issued license summary refreshed. Activation state is not verified.','Last recorded alert checked. Not a live market quote.','Account status refreshed','Account status temporarily unavailable']){
+   const translated=widgetText(language,phrase);
+   assert.equal(typeof translated,'string');
+   if(language!=='en')assert.notEqual(translated,phrase,language+': '+phrase);
+  }
+ }
+ const worker=readFileSync(new URL('../site/src/worker.mjs',import.meta.url),'utf8');
+ assert.ok(worker.includes('replyLocale=await userBotLocale(env,telegramId);'));
+ assert.ok(worker.includes('widgetText(replyLocale,payload.message)'));
 });
