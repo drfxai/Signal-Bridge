@@ -245,6 +245,7 @@ export const MINI_JS=String.raw`(() => {
   adminLanguage();
   document.documentElement.lang=locale;
   document.documentElement.dir=locale==='fa'?'rtl':'ltr';
+  window.DrFXI18N?.applyAttributes?.(locale);
   document.querySelectorAll('[data-tr]').forEach(el=>{
    const key=el.dataset.tr;
    el.textContent=dictionary[locale]?.[key]||english[key];
