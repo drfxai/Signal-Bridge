@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {I18N_JS,TRANSLATIONS,LOCALES,markCommonText} from '../site/src/i18n.mjs';
+import {TOUR_EXTRA} from '../site/src/setup-tour.mjs';
 
 test('new public pages have literal five-language translations for core UI, terms and safety',()=>{
  const required=[
@@ -34,12 +35,13 @@ test('portal and setup modules use five-language shared keys instead of Persian-
 test('runtime updates dynamic text and restores original English on language changes without changing secrets',()=>{
  const visible={nodeType:3,nodeValue:'Get a licence key',parentElement:{closest:()=>null}};
  const secret={nodeType:3,nodeValue:'Get a licence key',parentElement:{closest:()=>({id:'private-secret'})}};
+ const legacy={nodeType:3,nodeValue:'تقویم عملکرد',parentElement:{closest:()=>null}};
  const body={nodeType:1,closest:()=>null,hasAttribute:()=>false};
  const events={};let listener;
  const doc={
   documentElement:{lang:'tr'},body,readyState:'complete',
   createTreeWalker(root){
-   const items=root===body?[visible,secret]:[];
+   const items=root===body?[visible,secret,legacy]:[];
    let i=0;return {nextNode:()=>items[i++]||null};
   }
  };
@@ -48,11 +50,47 @@ test('runtime updates dynamic text and restores original English on language cha
  vm.runInNewContext(I18N_JS,{window:win,document:doc,MutationObserver:Observer,WeakMap,Set,Object});
  assert.equal(visible.nodeValue,'Lisans anahtarı al');
  assert.equal(secret.nodeValue,'Get a licence key');
+ assert.equal(legacy.nodeValue,'Performans takvimi');
  const newNode={nodeType:3,nodeValue:'No broker data yet.',parentElement:{closest:()=>null}};
  listener([{type:'childList',addedNodes:[newNode]}]);
  assert.equal(newNode.nodeValue,'Henüz broker verisi yok.');
  doc.documentElement.lang='ru';events['drfx-language-change']();
  assert.equal(visible.nodeValue,'Получить ключ лицензии');
+ assert.equal(legacy.nodeValue,'Календарь результатов');
  doc.documentElement.lang='en';events['drfx-language-change']();
  assert.equal(visible.nodeValue,'Get a licence key');
+ assert.equal(legacy.nodeValue,'Performance calendar');
+});
+
+test('website hero, setup statuses and MT5 tour use all five languages',()=>{
+ const required=[
+  'A new standard for','signal execution.','A meticulously engineered workspace that eliminates legacy Windows DLL bridges, third-party VPS lag, and fragmented licensing between your signal source and MetaTrader 5 terminal.',
+  'Webhook ready','Channel ready','Your connections are ready','Choose your channel','Continue →','Language'
+ ];
+ for(const english of required){
+  const key=Object.keys(TRANSLATIONS.en).find(k=>TRANSLATIONS.en[k]===english);
+  assert.ok(key,'Source key missing: '+english);
+  for(const lang of LOCALES){
+   assert.ok(TRANSLATIONS[lang][key],'Missing '+lang+' translation for '+english);
+   if(lang!=='en')assert.notEqual(TRANSLATIONS[lang][key],english,'Untranslated '+lang+': '+english);
+  }
+ }
+ for(const lang of ['tr','ru','hi']){
+  assert.equal(TOUR_EXTRA[lang].titles.length,11);
+  assert.equal(TOUR_EXTRA[lang].bodies.length,11);
+  assert.equal(new Set(TOUR_EXTRA[lang].titles).size,11);
+  for(const text of [...TOUR_EXTRA[lang].titles,...TOUR_EXTRA[lang].bodies]){
+   assert.ok(text.length>10,'Empty guided-tour translation');
+  }
+  for(const word of ['DRFX / GUIDED SETUP','Start guided setup','End tour','Next →','Done ✓','Show'])assert.ok(TOUR_EXTRA[lang].ui[word],'Missing '+lang+' tour UI '+word);
+ }
+ const selector=readFileSync(new URL('../site/src/design.mjs',import.meta.url),'utf8');
+ assert.match(selector,/data-site-language=\\\"hi\\\" aria-pressed=\\\"false\\\"/);
+ assert.ok(selector.includes('dfx-locale-tag\\\">HI'));
+ assert.ok(selector.includes('dfx-locale-check\\\">✓'));
+ const setup=readFileSync(new URL('../site/src/member-setup.mjs',import.meta.url),'utf8');
+ assert.ok(setup.includes('const localized=(en,faText)=>'));
+ assert.ok(setup.includes('SETUP_SOURCE_EN=Object.fromEntries'));
+ assert.ok(setup.includes('mountSetup(sourceEnglish)'));
+ assert.ok(setup.includes("localized('Webhook ready'"));
 });
