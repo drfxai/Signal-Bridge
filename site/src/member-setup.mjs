@@ -67,7 +67,7 @@ export const SETUP_CSS=String.raw`
 @media(max-width:700px){.su-route-controls{padding:8px 10px;margin-bottom:8px}.su-route-controls button{min-height:40px;font-size:12px}.su-route-controls p{font-size:10px}.su-path{margin-bottom:8px}.su-path>button{min-height:40px;flex-direction:row;align-items:center;gap:5px}.su-path .su-brand{width:18px;height:18px}.su-path b{font-size:10px}.su-card>header small{display:none}.su-card h3{font-size:13px!important}.su-card button,.su-card a{min-height:36px}.su-card label{font-size:10px}.su-product b{font-size:12px}.su-symbol strong{font-size:21px}.su-keys{max-height:45px}.su-card details{margin-top:6px;padding-top:5px}.su-card summary{min-height:28px}.su-footer #setupStatus{display:none}}
 
 `;
-function mountSetup(){
+function mountSetup(sourceEnglish){
  const root=document.getElementById('memberSetup');if(!root?.querySelector)return;
  const $=id=>document.getElementById(id),status=t=>$('setupStatus').textContent=t;
  $('refAccount').onclick=()=>document.querySelector('.sb-top nav [data-sb-tab=settings]')?.click();$('refHelp').onclick=()=>document.querySelector('.sb-top nav [data-sb-tab=setup]')?.click();
@@ -104,7 +104,7 @@ function mountSetup(){
   $('setupNext').onclick=()=>{if(next<0)root.querySelector('[data-sb-tab=overview]')?.click();else chooseStep('setupStep'+(n+1));};
  }
  window.addEventListener('signalbridge-connection',e=>{online=!!e.detail?.terminal_online;updateReadiness();});
- const english=new Map([...root.querySelectorAll('[data-su]')].map(e=>[e,e.textContent]));
+ const english=new Map([...root.querySelectorAll('[data-su]')].map(e=>[e,sourceEnglish[e.dataset.su]||e.textContent]));
  function locale(){const lang=document.documentElement.lang||'en',persian=lang==='fa',translate=text=>window.DrFXI18N?.translate?.(text,lang)||text;for(const [e,t] of english)e.textContent=persian?(fa[e.dataset.su]||translate(t)):translate(t);$('setupReveal').textContent=$('setupLicense').type==='password'?(persian?'نمایش':translate('Show')):(persian?'مخفی':translate('Hide'));updateReadiness();}
  locale();new MutationObserver(locale).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
  const say=localized;
@@ -151,5 +151,8 @@ function mountSetup(){
  window.addEventListener('signalbridge-webhook',e=>hook(e.detail));
  window.addEventListener('signalbridge-workspace-tab',e=>{if(e.detail==='setup')refresh();else{$('setupLicense').type='password';$('setupReveal').setAttribute('aria-pressed','false');root.querySelectorAll('.su-key-row input').forEach(e=>e.type='password');locale();}});
 }
-export const SETUP_JS='\n('+mountSetup.toString()+')();\n';
+// Capture canonical English from the server-side template, before any DOM localization
+// observer or restored language preference can mutate rendered text.
+const SETUP_SOURCE_EN=Object.fromEntries([...SETUP_HTML.matchAll(/data-su="([^"]+)"[^>]*>([^<]*)</g)].map(([,key,text])=>[key,text]));
+export const SETUP_JS='\\n('+mountSetup.toString()+')('+JSON.stringify(SETUP_SOURCE_EN)+');\\n';
 
