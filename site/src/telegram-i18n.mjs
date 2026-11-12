@@ -3,10 +3,8 @@
 export const BOT_LANGUAGES=Object.freeze({
  en:{label:'🇬🇧 English',name:'English'},
  fa:{label:'🇮🇷 فارسی',name:'فارسی'},
- ar:{label:'🇸🇦 العربية',name:'العربية'},
  tr:{label:'🇹🇷 Türkçe',name:'Türkçe'},
- ru:{label:'🇷🇺 Русский',name:'Русский'},
- hi:{label:'🇮🇳 हिन्दी',name:'हिन्दी'}
+ ru:{label:'🇷🇺 Русский',name:'Русский'}
 });
 export const BOT_LANGUAGE_CODES=Object.freeze(Object.keys(BOT_LANGUAGES));
 const copy={
@@ -44,22 +42,6 @@ const copy={
  loginUnavailable:'ورود سایت موقتاً در دسترس نیست. لایسنس EA شما محفوظ است.',
  licenseUnavailable:'سرویس لایسنس EA موقتاً در دسترس نیست.',languageError:'یکی از زبان‌های فهرست را انتخاب کنید.'
  },
- ar:{
- choose:'🌐 <b>اختر لغتك</b>\nاختر لغة رسائل بوت DrFX Signal Bridge.\nاللغة الافتراضية الإنجليزية. يمكنك تغييرها باستخدام /language.',
- selected:'✅ تم اختيار اللغة العربية.',
- welcome:'⚡ <b>مرحبًا بك في DrFX Company</b>\nحساب الموقع وترخيص MT5 EA جاهزان.\nافتح التطبيق المصغر لإدارة اشتراكك.\n/login — رمز الدخول إلى الموقع\n/resetlogin — استبدال رمز الدخول\n/code — رمز تفعيل MT5 EA\n/language — تغيير اللغة',
- app:'📱 افتح تطبيق DrFX المصغر لإدارة اشتراكك وترخيص MT5 EA.',
- loginTitle:'🔐 <b>رمز دخول الموقع</b>',
- loginText:'رمز الموقع المكون من 32 حرفًا قابل لإعادة الاستخدام. احتفظ به ككلمة مرور.\nأدخله فقط في قسم Telegram على https://drfx.company\nاستخدم /resetlogin إذا تم كشفه.\n⚠️ /code مخصص لرمز MT5 EA المنفصل.',
- reset:'تم إلغاء الرمز السابق وإنهاء جلسات الموقع السابقة.',
- serialTitle:'🔑 <b>رمز تفعيل MT5 EA الخاص بك</b>',
- serialNotice:'خاص بميتاتريدر 5 فقط. لا تشارك هذا الرمز.',
- member:'👤 <b>اشتراكي</b>',plan:'الخطة',license:'ترخيص EA',expires:'ينتهي',notActivated:'يبدأ عند أول تفعيل للـ EA',dashboard:'لوحة التحكم',
- tooMany:'طلبات كثيرة جدًا. حاول لاحقًا.',suspended:'حسابك موقوف. اتصل بالدعم.',
- licensePending:'حسابك جاهز، لكن الترخيص قيد الإعداد. حاول /code لاحقًا.',
- loginUnavailable:'تسجيل الدخول غير متاح مؤقتًا. ترخيص EA لم يتأثر.',
- licenseUnavailable:'خدمة ترخيص EA غير متاحة مؤقتًا.',languageError:'اختر لغة من القائمة.'
- },
  tr:{
  choose:'🌐 <b>Dilinizi seçin</b>\nDrFX Signal Bridge bot mesajlarının dilini seçin.\nVarsayılan dil İngilizcedir. /language ile değiştirebilirsiniz.',
  selected:'✅ Türkçe seçildi.',
@@ -91,30 +73,12 @@ const copy={
  licensePending:'Аккаунт готов, лицензия EA настраивается. Попробуйте /code позже.',
  loginUnavailable:'Вход на сайт временно недоступен. Лицензия EA не затронута.',
  licenseUnavailable:'Сервис лицензирования EA временно недоступен.',languageError:'Выберите язык из списка.'
- },
- hi:{
- choose:'🌐 <b>अपनी भाषा चुनें</b>\nDrFX Signal Bridge बॉट संदेशों की भाषा चुनें।\nडिफ़ॉल्ट अंग्रेज़ी है। बाद में /language से बदल सकते हैं।',
- selected:'✅ हिन्दी भाषा चुनी गई।',
- welcome:'⚡ <b>DrFX Company में स्वागत है</b>\nआपका वेबसाइट खाता और MT5 EA लाइसेंस तैयार हैं।\nसदस्यता प्रबंधित करने के लिए Mini App खोलें।\n/login — वेबसाइट लॉगिन कुंजी\n/resetlogin — लॉगिन कुंजी बदलें\n/code — MT5 EA एक्टिवेशन कोड\n/language — भाषा बदलें',
- app:'📱 सदस्यता और MT5 EA लाइसेंस प्रबंधित करने के लिए DrFX Mini App खोलें।',
- loginTitle:'🔐 <b>वेबसाइट लॉगिन कुंजी</b>',
- loginText:'आपकी 32-अक्षर वाली वेबसाइट कुंजी दोबारा इस्तेमाल हो सकती है। इसे पासवर्ड की तरह सुरक्षित रखें।\nइसे केवल https://drfx.company के Telegram टैब में डालें।\nकुंजी लीक हो तो /resetlogin इस्तेमाल करें।\n⚠️ /code अलग MT5 EA कोड है।',
- reset:'पुरानी वेबसाइट कुंजी रद्द और पुराने सेशन समाप्त किए गए।',
- serialTitle:'🔑 <b>आपका निजी MT5 EA एक्टिवेशन कोड</b>',
- serialNotice:'केवल MetaTrader 5 के लिए। यह कोड साझा न करें।',
- member:'👤 <b>मेरी सदस्यता</b>',plan:'प्लान',license:'EA लाइसेंस',expires:'समाप्ति',notActivated:'पहले EA एक्टिवेशन से शुरू होगा',dashboard:'डैशबोर्ड',
- tooMany:'बहुत अधिक अनुरोध। बाद में प्रयास करें।',suspended:'आपका खाता निलंबित है। सहायता से संपर्क करें।',
- licensePending:'खाता तैयार है, EA लाइसेंस सेट हो रहा है। बाद में /code आज़माएँ।',
- loginUnavailable:'वेबसाइट लॉगिन अभी उपलब्ध नहीं है। आपका EA लाइसेंस सुरक्षित है।',
- licenseUnavailable:'EA लाइसेंस सेवा अस्थायी रूप से उपलब्ध नहीं है।',languageError:'कृपया सूची में से कोई भाषा चुनें।'
  }
 };
 export const botLanguage=code=>Object.hasOwn(BOT_LANGUAGES,code)?code:'en';
 export const botText=(lang,key)=>copy[botLanguage(lang)][key]||copy.en[key]||key;
 export const botLanguageKeyboard=()=>({
- inline_keyboard:[
-  [{text:'🇬🇧 English',callback_data:'lang:en'},{text:'🇮🇷 فارسی',callback_data:'lang:fa'}],
-  [{text:'🇸🇦 العربية',callback_data:'lang:ar'},{text:'🇹🇷 Türkçe',callback_data:'lang:tr'}],
-  [{text:'🇷🇺 Русский',callback_data:'lang:ru'},{text:'🇮🇳 हिन्दी',callback_data:'lang:hi'}]
- ]
+ inline_keyboard:[BOT_LANGUAGE_CODES.slice(0,2),BOT_LANGUAGE_CODES.slice(2)].map(row=>row.map(code=>({
+  text:BOT_LANGUAGES[code].label,callback_data:'lang:'+code
+ })))
 });

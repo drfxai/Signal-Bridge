@@ -334,7 +334,7 @@ test('public marketing is compelling but never invents realized trading returns'
  assert.ok(DESIGN_JS.includes('XAUUSD BUY · PREVIEW'));
  assert.ok(DESIGN_HTML.includes('dfx-globe-icon'));
  assert.ok(DESIGN_HTML.includes('data-site-language="fa"'));
- assert.ok(DESIGN_HTML.includes('data-site-language="hi"'));
+ assert.ok(DESIGN_HTML.includes('data-site-language="ru"'));
 });
 
 

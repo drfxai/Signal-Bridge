@@ -60,14 +60,14 @@ async function withTelegramStub(fn){
  };
  try{return await fn(calls)}finally{globalThis.fetch=orig}
 }
-test('English is the default and six language options are consistently defined',()=>{
- assert.deepEqual(BOT_LANGUAGE_CODES,['en','fa','ar','tr','ru','hi']);
+test('English is the default and four language options are consistently defined',()=>{
+ assert.deepEqual(BOT_LANGUAGE_CODES,['en','fa','tr','ru']);
  assert.equal(botLanguage('unknown'),'en');
  assert.equal(botLanguage(undefined),'en');
  assert.ok(botText('en','choose').includes('Choose your language'));
  const kb=botLanguageKeyboard();
- assert.equal(kb.inline_keyboard.length,3);
- assert.deepEqual(kb.inline_keyboard.flat().map(x=>x.callback_data),['lang:en','lang:fa','lang:ar','lang:tr','lang:ru','lang:hi']);
+ assert.equal(kb.inline_keyboard.length,2);
+ assert.deepEqual(kb.inline_keyboard.flat().map(x=>x.callback_data),['lang:en','lang:fa','lang:tr','lang:ru']);
  for(const lang of BOT_LANGUAGE_CODES){
   for(const key of ['choose','selected','welcome','app','loginTitle','loginText','serialTitle','serialNotice','member','license','tooMany','licenseUnavailable','suspended']){
    assert.ok(botText(lang,key).length>4,lang+':'+key);
@@ -84,7 +84,9 @@ test('/start shows the private workspace with an explicit language selector',asy
   assert.equal(calls[0].method,'sendWidget');
   const view=unpackWorkspaceView(JSON.parse(calls[0].body.chat_data));
   assert.equal(view.page,'language');
-  assert.ok(view.buttons.some(b=>b.action==='ui:page:lang:fa'));
+  assert.equal(view.language,'en');
+  assert.equal(view.title,'Choose language');
+  assert.deepEqual(view.buttons.map(b=>b.action),BOT_LANGUAGE_CODES.map(code=>'ui:page:lang:'+code));
   assert.doesNotMatch(calls[0].body.chat_data,/mock-cipher|mock-nonce/);
   assert.equal(env.preferences.size,0);
   assert.ok(!env.sqlCalls.some(x=>x.includes('INSERT INTO site_bot_preferences')));
@@ -109,14 +111,16 @@ test('inline-language callback saves locale and delivers localized welcome with 
   assert.equal(unpackWorkspaceView(JSON.parse(calls.at(-1).body.chat_data)).page,'language');
  });
 });
-test('all six selections persist and localize subsequent bot /start or /app',async()=>{
+test('all four selections persist and localize subsequent bot /start or /app',async()=>{
  const env={...fakeDB(),TELEGRAM_BOT_TOKEN:TOKEN,TELEGRAM_WEBHOOK_SECRET:SECRET};
  await withTelegramStub(async(calls)=>{
   for(const lang of BOT_LANGUAGE_CODES){
    await worker.fetch(botRequest(botCallback(lang)),env);
    assert.equal(env.preferences.get(String(who.id)),lang);
    await worker.fetch(botRequest(botMessage('/app')),env);
-   assert.equal(unpackWorkspaceView(JSON.parse(calls.at(-1).body.chat_data)).language,lang);
+   const app=unpackWorkspaceView(JSON.parse(calls.at(-1).body.chat_data));
+   assert.equal(app.language,lang);
+   assert.equal(app.title,{en:'Open Signal Bridge',fa:'ورود به سیگنال بریج',tr:'Signal Bridge’i aç',ru:'Открыть Signal Bridge'}[lang]);
   }
  });
 });
