@@ -357,5 +357,54 @@ export const UI_COMPLETENESS_PHRASES=[
   "Bağlantı şeması örnektir. Simülasyon işlemleri gerçek işlem olarak gösterilmez.",
   "Схема подключения иллюстративная. Смоделированные сделки не выдаются за реальные.",
   "कनेक्शन आरेख केवल उदाहरण है। सिमुलेटेड ट्रेड को लाइव ट्रेड के रूप में नहीं दिखाया जाता।"
+ ],
+ [
+  "In the Signal Bridge bot, send /start and tap",
+  "در ربات سیگنال بریج دستور /start را ارسال کنید و روی",
+  "Signal Bridge botunda /start gönderin ve şuna dokunun:",
+  "В боте Signal Bridge отправьте /start и нажмите",
+  "Signal Bridge बॉट में /start भेजें और टैप करें"
+ ],
+ [
+  "under the bot's message. Do not use Open website.",
+  "در پیام ربات بزنید. از گزینه باز کردن وب‌سایت استفاده نکنید.",
+  "bot mesajının altında. Web sitesini aç seçeneğini kullanmayın.",
+  "под сообщением бота. Не выбирайте открытие веб-сайта.",
+  "बॉट के संदेश के नीचे। वेबसाइट खोलें विकल्प का उपयोग न करें।"
+ ],
+ [
+  "to your Signal Bridge bot, then paste its",
+  "را به ربات سیگنال بریج ارسال کنید و سپس",
+  "komutunu Signal Bridge botuna gönderin ve ardından",
+  "в боте Signal Bridge, затем вставьте",
+  "अपने Signal Bridge बॉट को भेजें, फिर उसका"
+ ],
+ [
+  "below. This opens your existing membership and EA license. Do not enter your EA activation code here.",
+  "را در کادر زیر وارد کنید. این کار اشتراک و لایسنس فعلی EA شما را باز می‌کند. کد فعال‌سازی EA را اینجا وارد نکنید.",
+  "aşağıya yapıştırın. Mevcut üyeliğinizi ve EA lisansınızı açar. EA etkinleştirme kodunu buraya girmeyin.",
+  "ниже. Это откроет вашу действующую подписку и лицензию EA. Не вводите здесь код активации EA.",
+  "नीचे पेस्ट करें। इससे आपकी मौजूदा सदस्यता और EA लाइसेंस खुलेंगे। यहाँ EA सक्रियण कोड दर्ज न करें।"
+ ],
+ [
+  "Your unique EA code is hidden until you choose to reveal or copy it. Never share it in screenshots.",
+  "کد اختصاصی EA شما تا زمان انتخاب نمایش یا کپی مخفی می‌ماند. هرگز آن را در اسکرین‌شات به اشتراک نگذارید.",
+  "EA kodunuz siz gösterene veya kopyalayana kadar gizlidir. Ekran görüntülerinde asla paylaşmayın.",
+  "Ваш персональный код EA скрыт, пока вы не выберете просмотр или копирование. Никогда не публикуйте его на снимках экрана.",
+  "आपका निजी EA कोड तब तक छिपा रहता है जब तक आप उसे दिखाएँ या कॉपी न करें। इसे स्क्रीनशॉट में साझा न करें।"
+ ],
+ [
+  "Regenerate",
+  "ساخت مجدد",
+  "Yeniden oluştur",
+  "Создать заново",
+  "फिर से बनाएँ"
+ ],
+ [
+  "Connect your",
+  "اتصال",
+  "Bağlayın:",
+  "Подключите",
+  "कनेक्ट करें"
  ]
 ];
