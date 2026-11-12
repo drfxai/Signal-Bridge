@@ -121,7 +121,7 @@ test('Telegram navigation, bilingual mode and license privacy remain functional'
  for(const token of [
   "document.querySelectorAll('[data-jump]')","document.body.dataset.tab=tab",
   "tg?.BackButton?.onClick","language(b.dataset.miniLang)",
-  "document.documentElement.dir=['fa','ar'].includes(locale)?'rtl':'ltr'",
+  "document.documentElement.dir=locale==='fa'?'rtl':'ltr'",
   "state.serialVisible","'/api/auth/telegram/webapp'",
   "'/api/me'","tg?.initData"
  ]) assert.ok(MINI_JS.includes(token),token);
@@ -274,9 +274,10 @@ test('Mini App has matching accessible globe language picker and factual product
  assert.ok(MINI_HTML.includes('mini-globe-icon'));
  assert.ok(MINI_HTML.includes('data-mini-lang="en"'));
  assert.ok(MINI_HTML.includes('data-mini-lang="fa"'));
- assert.ok(MINI_HTML.includes('data-mini-lang="hi"'));
+ assert.deepEqual([...MINI_HTML.matchAll(/data-mini-lang="([a-z]+)"/g)].map(match=>match[1]),['en','fa','tr','ru']);
  assert.ok(MINI_HTML.includes('Your signals.'));
  assert.ok(MINI_HTML.includes('One powerful bridge.'));
  assert.ok(!MINI_HTML.includes('github.com'));
  assert.ok(!MINI_HTML.includes('fictional trading profits'));
 });
+
