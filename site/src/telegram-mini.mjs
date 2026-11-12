@@ -71,6 +71,12 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 .mini-lang-options button{min-height:49px;font-weight:650;border-radius:10px}
 .mini-lang-options button[aria-pressed=true]{background:linear-gradient(110deg,#a8873d38,#233c3048);border-color:#ddb66870}
 @media(max-width:420px){.lang-toggle{height:40px;min-width:54px;padding:0 8px;gap:5px}.mini-lang-chevron{display:none}.mini-globe-icon{width:17px;height:17px}}
+/* Locale-aware mobile controls: allow longer labels to wrap without losing actions. */
+.mini-account-action{white-space:normal}
+.mini-account-action>span:first-child{min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.25}
+.mini-lang-options button>span{min-width:0;overflow-wrap:anywhere}
+html[dir=rtl] .mini-lang-options{right:auto;left:0}
+html[lang=hi] .mini-lang-options button[data-mini-lang=hi]>span{font-family:'Noto Sans Devanagari','Nirmala UI',system-ui,sans-serif}
 ${SXM_CSS}
 ${CHM_CSS}
 ${RESPONSIVE_REFRESH}
