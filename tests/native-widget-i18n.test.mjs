@@ -89,3 +89,14 @@ test('website and mini app explicitly bind all localization keys',()=>{
  assert.match(worker,/html:signalWidgetHtml\(lang\)/);
  assert.match(worker,/caption:widgetCaption\('signal',lang\)/);
 });
+
+test('admin operations and mini app dynamic messages have five-language dictionary entries',()=>{
+ const english=new Set(Object.values(TRANSLATIONS.en));
+ for(const [path,callee] of [['../site/src/admin-mini.mjs','opsText'],['../site/src/telegram-mini.mjs','ui']]){
+  const source=readFileSync(new URL(path,import.meta.url),'utf8');
+  const regex=new RegExp('\\b'+callee+"\\(\\s*'([^'\\\\\\n]{3,100})'\\s*,\\s*'([^'\\\\\\n]{2,100})'",'g');
+  const phrases=[...source.matchAll(regex)].map(m=>m[1]);
+  assert.ok(phrases.length>0,path+' no phrases parsed');
+  for(const label of phrases)assert.ok(english.has(label),path+' untranslated dynamic message: '+label);
+ }
+});
