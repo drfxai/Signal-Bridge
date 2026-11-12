@@ -1,0 +1,50 @@
+name: Build verified Signal Bridge locale release bundle
+on:
+  push:
+    branches:
+      - ops/site-locale-deploy-20261112
+    paths:
+      - .github/workflows/build-site-locale.yml
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact source release and compile Worker offline
+        run: |
+          test "$(git rev-parse HEAD^)" = "83f371c16693ca4ef6035f41518a9ab12d066ce5"
+          npm install --no-save --package-lock=false wrangler@4
+          npx wrangler deploy --dry-run --config site/wrangler.jsonc --outdir /tmp/drfx-locale-release
+          node --check /tmp/drfx-locale-release/worker.js
+      - name: Export exact deployable content without production access
+        run: |
+          mkdir -p .ci-build
+          cp /tmp/drfx-locale-release/worker.js .ci-build/worker.js
+          node --input-type=module <<'NODE'
+          import {createHash} from 'node:crypto';
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const data=readFileSync('.ci-build/worker.js');
+          const manifest={
+            sourceCommit:'83f371c16693ca4ef6035f41518a9ab12d066ce5',
+            sha256:createHash('sha256').update(data).digest('hex'),
+            bytes:data.length,
+            worker:'drfx-company-site',
+            release:'20261112-five-languages-22.0',
+            mode:'code-only-content-update',
+          };
+          if(data.length<200000)throw new Error('Unexpectedly small bundle');
+          writeFileSync('.ci-build/manifest.json',JSON.stringify(manifest,null,2)+'\n');
+          NODE
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f .ci-build/worker.js .ci-build/manifest.json
+          git commit -m "ops: stage verified release bundle from main 83f371c"
+          git push origin HEAD:refs/heads/ops/site-locale-deploy-20261112
