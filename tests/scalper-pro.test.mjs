@@ -83,7 +83,7 @@ test('Scalper Pro is on the website, in the portal and in the Mini App',async()=
  const fs=await import('node:fs');
  for(const id of ['scalper','suite','sxVideo','sxTour','sxPricing','scalperPanel','spLogin','spPay','spKeys','spOrders','spDownload'])assert.ok(SITE_HTML.includes('id="'+id+'"'),id);
  assert.ok(SITE_HTML.includes('<button data-sb-tab="scalper">'),'desktop portal tab');
- assert.ok(SITE_HTML.includes('<button data-sb-tab="scalper">◎<span>Scalper</span>'),'mobile portal tab');
+ assert.match(SITE_HTML,/<button data-sb-tab="scalper">◎<span data-i18n="[^"]+">Scalper<\/span>/,'localized mobile portal tab');
  assert.ok(SITE_HTML.includes('href="#scalper"'));
  assert.ok(SITE_HTML.includes('$19')&&SITE_HTML.includes('$49'));
  assert.ok(SITE_JS.includes("'/api/scalper/checkout'")&&SITE_JS.includes("'/api/scalper'"));
