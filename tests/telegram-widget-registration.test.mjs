@@ -12,6 +12,8 @@ test('widget registration preserves existing Telegram webhook updates and secret
  assert.match(code,/secret_token:env\.TELEGRAM_WEBHOOK_SECRET/);
  assert.match(code,/drop_pending_updates:false/);
  assert.match(code,/setMyCommands'.+commands:BOT_COMMANDS_VISIBLE/);
+ assert.match(code,/setChatMenuButton'.+type:'web_app'.+web_app:\{url:'https:\/\/drfx\.company\/telegram'\}/);
+ assert.doesNotMatch(code,/setChatMenuButton'.+type:'default'/);
  assert.doesNotMatch(code,/console\.log\(env\.TELEGRAM_BOT_TOKEN/);
 });
 

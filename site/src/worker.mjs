@@ -600,7 +600,7 @@ async function reconcileWidgetBot(env){
    allowed_updates:allowed,drop_pending_updates:false,max_connections:10});
  }
  await telegramWidgetApi(env,'setMyCommands',{commands:BOT_COMMANDS_VISIBLE});
- await telegramWidgetApi(env,'setChatMenuButton',{menu_button:{type:'default'}});
+ await telegramWidgetApi(env,'setChatMenuButton',{menu_button:{type:'web_app',text:'Open DrFX Mini App',web_app:{url:'https://drfx.company/telegram'}}});
  widgetSetupLast=Date.now();
 }
 
