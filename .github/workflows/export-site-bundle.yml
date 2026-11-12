@@ -30,6 +30,24 @@ jobs:
           node --input-type=module -e "import{createHash}from'node:crypto';import{readFileSync,writeFileSync}from'node:fs';const s=readFileSync('.ci-build/worker.js');writeFileSync('.ci-build/manifest.json',JSON.stringify({sourceCommit:process.env.GITHUB_SHA,sha256:createHash('sha256').update(s).digest('hex'),bytes:s.length,worker:'drfx-company-site'},null,2)+'\\n');"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f .ci-build/worker.js .ci-build/manifest.json
+          node --input-type=module <<'NODE'
+          import {readdirSync,statSync,readFileSync,writeFileSync} from 'node:fs';
+          import {join,relative,extname} from 'node:path';
+          import {createHash} from 'node:crypto';
+          const root='site/public',manifest={};
+          function visit(dir){
+            for(const f of readdirSync(dir)){
+              const p=join(dir,f),st=statSync(p);
+              if(st.isDirectory()){visit(p);continue}
+              if(!st.isFile())continue;
+              const content=readFileSync(p),extension=extname(p).slice(1);
+              const hash=createHash('sha256').update(content.toString('base64')+extension).digest('hex').slice(0,32);
+              manifest['/'+relative(root,p).replaceAll('\\','/')]={hash,size:content.length};
+            }
+          }
+          visit(root);
+          writeFileSync('.ci-build/assets.json',JSON.stringify(manifest,null,2)+'\n');
+          NODE
+          git add -f .ci-build/worker.js .ci-build/manifest.json .ci-build/assets.json
           git commit -m "ops: export tested site Worker for Cloudflare API deploy"
           git push origin HEAD:refs/heads/ops/site-production-build-20261112
