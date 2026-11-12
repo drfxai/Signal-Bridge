@@ -45,8 +45,31 @@ jobs:
           if(data.length<200000)throw new Error('Unexpectedly small bundle');
           writeFileSync('.ci-build/manifest.json',JSON.stringify(manifest,null,2)+'\n');
           NODE
+          node --input-type=module <<'NODE'
+          import {gzipSync} from 'node:zlib';
+          import {createHash} from 'node:crypto';
+          import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+          const src=readFileSync('.ci-build/worker.js');
+          const zipped=gzipSync(src,{level:9});
+          const encoded=zipped.toString('base64');
+          const width=32000,parts=[];
+          mkdirSync('.ci-build/chunks',{recursive:true});
+          for(let i=0;i<encoded.length;i+=width){
+            const name=String(parts.length).padStart(3,'0')+'.b64';
+            writeFileSync('.ci-build/chunks/'+name,encoded.slice(i,i+width));
+            parts.push(name);
+          }
+          writeFileSync('.ci-build/gzip-manifest.json',JSON.stringify({
+            sourceSha256:createHash('sha256').update(src).digest('hex'),
+            gzipSha256:createHash('sha256').update(zipped).digest('hex'),
+            sourceBytes:src.length,
+            gzipBytes:zipped.length,
+            base64Length:encoded.length,
+            parts,
+          },null,2)+'\n');
+          NODE
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f .ci-build/worker.js .ci-build/manifest.json
+          git add -f .ci-build/worker.js .ci-build/manifest.json .ci-build/gzip-manifest.json .ci-build/chunks/
           git commit -m "ops: stage verified release bundle from main 83f371c"
           git push origin HEAD:refs/heads/ops/site-locale-deploy-20261112
