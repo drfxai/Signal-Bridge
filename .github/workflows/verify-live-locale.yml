@@ -38,6 +38,11 @@ jobs:
           curl --retry 3 --retry-delay 2 -fsS -o /tmp/config.json "$root/api/config?$stamp"
           grep -q '"ok":true' /tmp/config.json
           echo "PASS: backend health endpoint responds."
+          curl --retry 2 --retry-delay 2 -fsS -o /tmp/telegram-health.json "$root/api/telegram/health?$stamp"
+          jq -c '{ok,configured,bot_token_valid,webhook_matches,widget_queries_registered,mini_app_menu_configured,widget_commands_registered,webhook_pending_updates}' /tmp/telegram-health.json
+          jq -e '.ok == true and .configured == true and .bot_token_valid == true and .webhook_matches == true and .widget_queries_registered == true and .mini_app_menu_configured == true' /tmp/telegram-health.json >/dev/null
+          echo "PASS: Telegram bot, widget queries and Mini App menu are configured."
+
           curl --retry 3 --retry-delay 2 -fsS -o /tmp/hero.webp "$root/media/scalper/hero.webp"
           test "$(wc -c </tmp/hero.webp)" -gt 10000
           echo "PASS: static images are retained."
