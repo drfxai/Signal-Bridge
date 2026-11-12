@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {I18N_JS,TRANSLATIONS,LOCALES,markCommonText} from '../site/src/i18n.mjs';
+import {TOUR_EXTRA} from '../site/src/setup-tour.mjs';
 
 test('new public pages have literal five-language translations for core UI, terms and safety',()=>{
  const required=[
@@ -55,4 +56,35 @@ test('runtime updates dynamic text and restores original English on language cha
  assert.equal(visible.nodeValue,'Получить ключ лицензии');
  doc.documentElement.lang='en';events['drfx-language-change']();
  assert.equal(visible.nodeValue,'Get a licence key');
+});
+
+test('website hero, setup statuses and MT5 tour use all five languages',()=>{
+ const required=[
+  'A new standard for','signal execution.','A meticulously engineered workspace that eliminates legacy Windows DLL bridges, third-party VPS lag, and fragmented licensing between your signal source and MetaTrader 5 terminal.',
+  'Webhook ready','Channel ready','Your connections are ready','Choose your channel','Continue →','Language'
+ ];
+ for(const english of required){
+  const key=Object.keys(TRANSLATIONS.en).find(k=>TRANSLATIONS.en[k]===english);
+  assert.ok(key,'Source key missing: '+english);
+  for(const lang of LOCALES){
+   assert.ok(TRANSLATIONS[lang][key],'Missing '+lang+' translation for '+english);
+   if(lang!=='en')assert.notEqual(TRANSLATIONS[lang][key],english,'Untranslated '+lang+': '+english);
+  }
+ }
+ for(const lang of ['tr','ru','hi']){
+  assert.equal(TOUR_EXTRA[lang].titles.length,11);
+  assert.equal(TOUR_EXTRA[lang].bodies.length,11);
+  assert.equal(new Set(TOUR_EXTRA[lang].titles).size,11);
+  for(const text of [...TOUR_EXTRA[lang].titles,...TOUR_EXTRA[lang].bodies]){
+   assert.ok(text.length>10,'Empty guided-tour translation');
+  }
+  for(const word of ['DRFX / GUIDED SETUP','Start guided setup','End tour','Next →','Done ✓','Show'])assert.ok(TOUR_EXTRA[lang].ui[word],'Missing '+lang+' tour UI '+word);
+ }
+ const selector=readFileSync(new URL('../site/src/design.mjs',import.meta.url),'utf8');
+ assert.match(selector,/data-site-language=\\\"hi\\\" aria-pressed=\\\"false\\\"/);
+ assert.ok(selector.includes('dfx-locale-tag\\\">HI'));
+ assert.ok(selector.includes('dfx-locale-check\\\">✓'));
+ const setup=readFileSync(new URL('../site/src/member-setup.mjs',import.meta.url),'utf8');
+ assert.match(setup,/const localized=\\(en,faText\\)=>/);
+ assert.match(setup,/localized\\('Webhook ready'/);
 });
