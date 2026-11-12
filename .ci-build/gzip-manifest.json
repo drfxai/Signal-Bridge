@@ -1,0 +1,15 @@
+{
+  "sourceSha256": "4a7abdff12e32a0336cd144bc4f0aecf32b9e01658a2bf8a094f5adcc9663702",
+  "gzipSha256": "3db3669ae1a9f36f42a4feaa7573ac0499669f7908c374e6ce77bbf54d7be6a7",
+  "sourceBytes": 2210483,
+  "gzipBytes": 713108,
+  "base64Length": 950812,
+  "parts": [
+    "000.b64",
+    "001.b64",
+    "002.b64",
+    "003.b64",
+    "004.b64",
+    "005.b64"
+  ]
+}
