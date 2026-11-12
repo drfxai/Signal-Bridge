@@ -29,8 +29,13 @@ body[data-tab=admin] nav.bottom{left:50%;right:auto;transform:translateX(-50%);w
 // Inserted inside the authenticated Mini App closure; uses the same API and identity.
 export const ADMIN_JS=String.raw`
 let opsView='overview',opsEpoch=0,opsTimer=null,opsBusy=false,opsDirectoryEpoch=0,opsOffset=null,opsOverview=null,opsVisibleKeys=new Set(),opsPrivacyTimer=null,opsKeyGeneration={signalbridge:0,scalper:0};
-const opsText=(en,fa)=>locale==='fa'?fa:en;
-function adminLanguage(){document.querySelectorAll('[data-ops-fa]').forEach(el=>{if(!el.dataset.opsEn)el.dataset.opsEn=el.textContent;el.textContent=locale==='fa'?el.dataset.opsFa:el.dataset.opsEn})}
+const opsText=(en,fa)=>{
+ if(locale==='fa')return fa;
+ const catalog=window.DrFXI18N?.text;
+ const key=Object.keys(catalog?.en||{}).find(k=>catalog.en[k]===en);
+ return catalog?.[locale]?.[key]||en;
+};
+function adminLanguage(){document.querySelectorAll('[data-ops-fa]').forEach(el=>{if(!el.dataset.opsEn)el.dataset.opsEn=el.textContent;el.textContent=opsText(el.dataset.opsEn,el.dataset.opsFa)})}
 function opsActive(epoch){return state.user?.role==='admin'&&document.body.dataset.tab==='admin'&&(epoch===undefined||epoch===opsEpoch)}
 function opsNotice(text,error=false){set('miniAdminStatus',text);$('miniAdminStatus').dataset.error=String(error)}
 function opsNode(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
