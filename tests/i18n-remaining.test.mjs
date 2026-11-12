@@ -94,3 +94,24 @@ test('website hero, setup statuses and MT5 tour use all five languages',()=>{
  assert.ok(setup.includes('mountSetup(sourceEnglish)'));
  assert.ok(setup.includes("localized('Webhook ready'"));
 });
+
+test('Hindi website language row shares badge, text, and selected-only checkmark structure',()=>{
+ const design=readFileSync(new URL('../site/src/design.mjs',import.meta.url),'utf8');
+ const locales={en:'EN',fa:'FA',tr:'TR',ru:'RU',hi:'HI'};
+ for(const [locale,code] of Object.entries(locales)){
+  const prefix='data-site-language=\\\"'+locale+'\\\" aria-pressed=';
+  const start=design.indexOf(prefix);
+  assert.ok(start>=0,'Missing language option '+locale);
+  const end=design.indexOf('</button>',start);
+  assert.ok(end>start,'Unclosed language option '+locale);
+  const markup=design.slice(start,end);
+  assert.ok(markup.includes('dfx-locale-tag\\\">'+code),'Missing matching badge '+locale);
+  assert.ok(markup.includes('dfx-locale-check\\\">✓'),'Missing matching checkmark '+locale);
+  if(locale==='hi'){
+   assert.ok(markup.includes('हिन्दी'),'Missing Hindi name');
+   assert.doesNotMatch(markup,/<b>|<i>/,'Hindi option must use the shared badge and checkmark elements');
+  }
+ }
+ assert.ok(design.includes("#siteLanguageOptions button[aria-pressed='true']>.dfx-locale-check"));
+ assert.ok(design.includes("#siteLanguageOptions button[data-site-language='hi']>span:nth-child(2)"));
+});
