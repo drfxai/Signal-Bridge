@@ -1,0 +1,35 @@
+name: Verify production site release
+on:
+  push:
+    branches:
+      - ops/site-production-build-20261112
+    paths:
+      - .github/workflows/verify-production-release.yml
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check production release, locale selector and static assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://drfx.company"
+          curl --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 40 --compressed -fsS -D /tmp/site-headers.txt -o /tmp/site.html "$url/?locale-smoke=20261112"
+          grep -qi 'x-drfx-ui-release: 20261112-hindi-picker-21.2' /tmp/site-headers.txt
+          grep -q 'data-site-language="hi"' /tmp/site.html
+          grep -q 'dfx-locale-tag">HI' /tmp/site.html
+          grep -q 'dfx-locale-check">✓' /tmp/site.html
+          grep -q 'हिन्दी' /tmp/site.html
+          echo "PASS: production release header and Hindi UI are current."
+          curl --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 40 -fsS -o /tmp/i18n.js "$url/assets/i18n.js?v=20261112-hindi-picker-21.2"
+          grep -q 'DrFXI18N' /tmp/i18n.js
+          echo "PASS: translation asset is served."
+          curl --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 40 -fsS -o /tmp/telegram.html "$url/telegram"
+          grep -q 'DrFX' /tmp/telegram.html
+          echo "PASS: Telegram mini app is served."
+          curl --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 40 -fsS -o /tmp/hero.webp "$url/media/scalper/hero.webp"
+          test "$(wc -c </tmp/hero.webp)" -gt 10000
+          echo "PASS: static media asset is intact."
