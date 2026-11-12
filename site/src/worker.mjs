@@ -876,7 +876,7 @@ async function botLanguageCallback(update,env){
  const cb=update?.callback_query;
  if(!cb?.id||!cb.from?.id||cb.message?.chat?.type!=='private'||!cb.message?.chat?.id||
   String(cb.from.id)!==String(cb.message.chat.id))return json({ok:true,ignored:'CALLBACK_NOT_PRIVATE'});
- const match=/^lang:(en|fa|ar|tr|ru|hi)$/.exec(String(cb.data||''));
+ const match=/^lang:(en|fa|tr|ru)$/.exec(String(cb.data||''));
  if(!match){await botAnswerCallback(env,cb.id);return json({ok:true,ignored:'UNKNOWN_CALLBACK'});}
  const telegramId=String(cb.from.id),chatId=String(cb.message.chat.id);
  let user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(telegramId).first();
