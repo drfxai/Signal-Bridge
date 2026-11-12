@@ -10,6 +10,7 @@ import {STAR_PLANS,starPrice,licenseTerms,sendPrivateLicenses,purchaseQuote,acce
 import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
 import {signalWidgetHtml,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
 import {SCALPER_WIDGET_HTML,scalperWidgetData} from './telegram-scalper-widget.mjs';
+import {localizeNativeWidget,widgetCaption} from './telegram-widget-i18n.mjs';
 import {adminOverview,adminDirectory,adminConnections,adminOrders} from './admin-operations.mjs';
 import {UI_RELEASE} from './ui-release.mjs';
 import {memberControls} from './member-controls.mjs';
@@ -606,9 +607,10 @@ async function reconcileWidgetBot(env){
 async function sendMemberWidget(env,chatId,user){
  const rec=await licenseRecord(env,user);
  const data=bridgeWidgetData({plan:user.plan,licenseStatus:rec.status,expiresAt:rec.expires_at,accountStatus:user.status});
+ const lang=await userBotLocale(env,chatId);
  await telegramWidgetApi(env,'sendWidget',{
-  chat_id:chatId,html:SIGNAL_BRIDGE_WIDGET_HTML,chat_data:data,
-  caption:'DrFXAi Signal Bridge · Private member status',allow_queries:true,protect_content:true
+  chat_id:chatId,html:localizeNativeWidget(SIGNAL_BRIDGE_WIDGET_HTML,lang,'bridge'),chat_data:data,
+  caption:widgetCaption('bridge',lang),allow_queries:true,protect_content:true
  });
 }
 async function latestSignalWidgetData(env,member){
@@ -617,9 +619,10 @@ async function latestSignalWidgetData(env,member){
 }
 async function sendLatestSignalWidget(env,chatId,user){
  const data=await latestSignalWidgetData(env,user);
+ const lang=await userBotLocale(env,chatId);
  await telegramWidgetApi(env,'sendWidget',{
-  chat_id:chatId,html:signalWidgetHtml(await userBotLocale(env,chatId)),chat_data:data,
-  caption:'DrFXAi · Latest recorded signal · Broker execution unverified',
+  chat_id:chatId,html:signalWidgetHtml(lang),chat_data:data,
+  caption:widgetCaption('signal',lang),
   allow_queries:true,protect_content:true
  });
 }
@@ -629,9 +632,10 @@ async function latestScalperWidgetData(env,member){
 }
 async function sendScalperWidget(env,chatId,user){
  const data=await latestScalperWidgetData(env,user);
+ const lang=await userBotLocale(env,chatId);
  await telegramWidgetApi(env,'sendWidget',{
-  chat_id:chatId,html:SCALPER_WIDGET_HTML,chat_data:data,
-  caption:'DrFXAi Scalper Pro · Private issuance overview (no keys)',
+  chat_id:chatId,html:localizeNativeWidget(SCALPER_WIDGET_HTML,lang,'scalper'),chat_data:data,
+  caption:widgetCaption('scalper',lang),
   allow_queries:true,protect_content:true
  });
 }
