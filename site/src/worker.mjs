@@ -6,7 +6,7 @@ import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand} from './bot-commands.mjs';
 import {LICENSE_SHOP_WIDGET_HTML} from './telegram-license-shop.mjs';
 import {BOT_NAVIGATION,BOT_WORKSPACE_WIDGET_HTML,workspaceView,workspaceQueryPage,sendWorkspacePage,sendPrivateCard,sendBotNotice,signalRecords} from './telegram-workspace.mjs';
-import {STAR_PLANS,starPrice,LICENSE_TERMS,LICENSE_TERMS_FA,sendPrivateLicenses,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,starOrders} from './telegram-commerce.mjs';
+import {STAR_PLANS,starPrice,licenseTerms,sendPrivateLicenses,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,starOrders} from './telegram-commerce.mjs';
 import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from './telegram-widgets.mjs';
 import {signalWidgetHtml,signalHistoryWidgetData} from './telegram-signal-widget.mjs';
 import {SCALPER_WIDGET_HTML,scalperWidgetData} from './telegram-scalper-widget.mjs';
@@ -639,10 +639,10 @@ async function commerceWidgetApi(env,method,body){
  if(method==='sendMessage')return botSend(env,body.chat_id,body.text,body.reply_markup);
  return telegramWidgetApi(env,method,body);
 }
-const commerceHelpers=()=>({api:commerceWidgetApi,licenseRecord,encryptCode,decryptCode,uid,reconcile:reconcileWidgetBot});
-const workspaceHelpers=(language='en',membership)=>({raw:telegramWidgetApi,licenseRecord,plans:STAR_PLANS,price:starPrice,terms:language==='fa'?LICENSE_TERMS_FA:LICENSE_TERMS,language,membership});
+const commerceHelpers=()=>({api:commerceWidgetApi,licenseRecord,encryptCode,decryptCode,uid,reconcile:reconcileWidgetBot,locale:userBotLocale});
+const workspaceHelpers=(language='en',membership)=>({raw:telegramWidgetApi,licenseRecord,plans:STAR_PLANS,price:starPrice,terms:licenseTerms(language),language,membership});
 async function sendLicenseShop(env,user){
- return sendWorkspacePage(env,workspaceHelpers(),user,'shop');
+ return sendWorkspacePage(env,workspaceHelpers(await userBotLocale(env,user.telegram_id)),user,'shop');
 }
 
 async function handleWorkspaceCommand(command,text,env,user,language){
@@ -817,8 +817,8 @@ async function signalBridgeWidgetQuery(q,env,req){
    const h=commerceHelpers();
    if(q.data==='sb:shop')await sendLicenseShop(env,user);
    else if(q.data==='sb:license'||q.data==='sb:keys')await sendPrivateLicenses(env,{...h,language},user,q.data==='sb:keys'?'scalper':'bridge');
-   else if(q.data==='sb:orders')await starOrders(env,h,user);
-   else if(q.data==='sb:terms')await telegramWidgetApi(env,'sendMessage',{chat_id:telegramId,text:LICENSE_TERMS});
+   else if(q.data==='sb:orders')await starOrders(env,{...h,language},user);
+   else if(q.data==='sb:terms')await telegramWidgetApi(env,'sendMessage',{chat_id:telegramId,text:licenseTerms(language)});
    else{
     const plan=q.data.slice(7);
     const account=plan.startsWith('scalper_')?(await licenseRecord(env,user)).account_login:null;
@@ -940,13 +940,13 @@ async function telegramWebhook(req,env,ctx){
   const args=text.split(/\s+/);
   try{
    if(command==='/licenses'||args.length===1)await sendLicenseShop(env,user);
-   else if(args.length<=3&&Object.hasOwn(STAR_PLANS,args[1]))await purchaseQuote(env,commerceHelpers(),user,args[1],args[2]);
+   else if(args.length<=3&&Object.hasOwn(STAR_PLANS,args[1]))await purchaseQuote(env,{...commerceHelpers(),language},user,args[1],args[2]);
    else await botSend(env,chatId,'Send /buy to view plans. For Scalper: /buy scalper_1m MT5_LOGIN or /buy scalper_3m MT5_LOGIN.');
   }catch{await botSend(env,chatId,'License store is temporarily unavailable. Please retry shortly.');}
  }else if(command==='/orders'){
-  await starOrders(env,commerceHelpers(),user);
+  await starOrders(env,{...commerceHelpers(),language},user);
  }else if(command==='/terms'){
-  await botSend(env,chatId,LICENSE_TERMS);
+  await botSend(env,chatId,licenseTerms(language));
  }else if(command==='/paysupport'){
   const detail=text.slice(text.indexOf(' ')+1).trim();
   if(detail===text||detail.length<8)await botSend(env,chatId,'For payment or refund help send: /paysupport ORDER_ID your message\nUse /orders to find your Telegram purchase. Your request will be recorded for the DrFX admin.');
