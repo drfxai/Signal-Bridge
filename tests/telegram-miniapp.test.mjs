@@ -274,7 +274,7 @@ test('Mini App has matching accessible globe language picker and factual product
  assert.ok(MINI_HTML.includes('mini-globe-icon'));
  assert.ok(MINI_HTML.includes('data-mini-lang="en"'));
  assert.ok(MINI_HTML.includes('data-mini-lang="fa"'));
- assert.deepEqual([...MINI_HTML.matchAll(/data-mini-lang="([a-z]+)"/g)].map(match=>match[1]),['en','fa','tr','ru']);
+ assert.deepEqual([...MINI_HTML.matchAll(/data-mini-lang="([a-z]+)"/g)].map(match=>match[1]),['en','fa','tr','ru','hi']);
  assert.ok(MINI_HTML.includes('Your signals.'));
  assert.ok(MINI_HTML.includes('One powerful bridge.'));
  assert.ok(!MINI_HTML.includes('github.com'));

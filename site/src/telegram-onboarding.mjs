@@ -1,3 +1,4 @@
+import {TRANSLATIONS} from './i18n.mjs';
 import {BOT_LANGUAGES,BOT_LANGUAGE_CODES} from './telegram-i18n.mjs';
 import {eaDownloadCatalog} from './ea-downloads.mjs';
 
@@ -45,6 +46,12 @@ const courses = {
  ]
 };
 const guideText={
+ hi:{
+  'bridge-install':'1. EA डाउनलोड करें। MT5 में File → Open Data Folder → MQL5/Experts खोलें।\n2. EX5 कॉपी करें, Navigator रीफ़्रेश करें और EA चार्ट पर लगाएँ।\n3. Inputs में एक्टिवेशन कोड और ब्रोकर का सटीक सिंबल डालें। Algo Trading चालू करें और डेमो खाते पर कनेक्शन जाँचें।',
+  'scalper-install':'1. EX5 को MQL5/Experts में कॉपी करें और Navigator रीफ़्रेश करें।\n2. EA चार्ट पर लगाएँ और Algo Trading चालू करें।\n3. ENTER LICENCE KEY में अपने MT5 खाते की कुंजी डालें और ACTIVATE दबाएँ।',
+  'channel-install':'1. बॉट को चैनल या ग्रुप में जोड़ें और संदेश भेजने की अनुमति दें।\n2. चैट चुनें और वेबहुक व टेम्पलेट कॉपी करें।\n3. TradingView में Webhook URL और Message भरें, दिशा सेट करें और टेस्ट अलर्ट जाँचें।',
+  'forward-install':'1. MT5 में Signal Bridge जोड़ें और पैनल में Telegram → MT5 चालू करें।\n2. सिंबल, दिशा, स्टॉप-लॉस और लक्ष्य वाला सिग्नल बॉट की निजी चैट में भेजें।\n3. पहले डेमो खाते पर टेस्ट करें और नतीजा पैनल या MT5 में जाँचें।'
+ },
  tr:{
   'bridge-install':'1. EA dosyasını indirin. MT5’te File → Open Data Folder → MQL5/Experts klasörünü açın.\n2. EX5’i kopyalayın, Navigator’ı yenileyin ve EA’yı grafiğe ekleyin.\n3. Inputs bölümünde lisans kodunu ve broker sembolünü girin. Algo Trading’i açın ve demo bağlantısını kontrol edin.',
   'scalper-install':'1. EX5’i MQL5/Experts klasörüne kopyalayın ve Navigator’ı yenileyin.\n2. EA’yı grafiğe ekleyip Algo Trading’i açın.\n3. ENTER LICENCE KEY bölümüne MT5 hesabınıza ait anahtarı yapıştırıp ACTIVATE düğmesine basın.',
@@ -207,6 +214,43 @@ const widgetLabels=new Map([
  ['Member Directory','Üye listesi','Список пользователей']
 ].map(([en,tr,ru])=>[en,{tr,ru}]));
 
+const sharedLabels=new Map(Object.entries(TRANSLATIONS.en).map(([key,label])=>[label,key]));
 export function widgetText(language,value){
- return widgetLabels.get(value)?.[language]??value;
+ return (language==='hi'&&typeof value==='string'&&Object.hasOwn(hindiWidget,value)?hindiWidget[value]:widgetLabels.get(value)?.[language])??TRANSLATIONS[language]?.[sharedLabels.get(value)]??value;
 }
+
+const hindiWidget={
+ 'Choose language':'भाषा चुनें','Main Menu':'मुख्य मेनू','‹ Main Menu':'‹ मुख्य मेनू','Language':'भाषा',
+ 'Settings & Support':'सेटिंग्स और सहायता','Telegram Support':'Telegram सहायता','Payment Support':'भुगतान सहायता',
+ 'My Orders':'मेरे ऑर्डर','Linked Accounts':'लिंक किए गए खाते',
+ 'Start with the installation and activation guide.':'इंस्टॉलेशन और एक्टिवेशन गाइड से शुरू करें।',
+ 'Sign in to the website and web app':'वेबसाइट और वेब ऐप में साइन इन करें',
+ 'Get sign-in code':'साइन-इन कोड लें','Get Sign-in Code':'साइन-इन कोड लें',
+ 'Membership check unavailable':'सदस्यता की जाँच उपलब्ध नहीं है','Try again shortly.':'कुछ देर बाद फिर कोशिश करें।','Check again':'फिर जाँचें',
+ 'Join the DrFXAi channel':'DrFXAi चैनल से जुड़ें',
+ 'Join the channel, then check your membership to get your sign-in code.':'चैनल से जुड़ें और साइन-इन कोड लेने के लिए सदस्यता की जाँच करें।',
+ 'Join @DrFXAi':'@DrFXAi से जुड़ें','Check membership':'सदस्यता जाँचें',
+ 'Open Signal Bridge':'Signal Bridge खोलें','Use your sign-in code to access your account.':'अपने खाते में जाने के लिए साइन-इन कोड इस्तेमाल करें।',
+ 'Open Web App':'वेब ऐप खोलें','Open Website':'वेबसाइट खोलें','Open Mini App':'मिनी ऐप खोलें',
+ 'Install & Activate':'इंस्टॉल और सक्रिय करें','Choose a guide.':'एक गाइड चुनें।','Back to Guides':'गाइड पर लौटें',
+ 'Profile & License':'प्रोफ़ाइल और लाइसेंस','Download Signal Bridge EA':'Signal Bridge EA डाउनलोड करें','Download Scalper Pro EA':'Scalper Pro EA डाउनलोड करें',
+ 'Free Licenses':'मुफ़्त लाइसेंस','Buy Licenses':'लाइसेंस खरीदें','Webhooks & Channels':'वेबहुक और चैनल','Signal History':'सिग्नल इतिहास',
+ 'No recorded signals yet.':'अभी कोई सिग्नल दर्ज नहीं है।',
+ 'TradingView Webhooks':'TradingView वेबहुक','Choose where your TradingView alerts should go.':'चुनें कि TradingView अलर्ट कहाँ भेजने हैं।',
+ 'Personal Signal Bridge Webhook':'निजी Signal Bridge वेबहुक','Telegram Channel or Group Webhook':'Telegram चैनल या ग्रुप वेबहुक','TradingView Setup Guide':'TradingView सेटअप गाइड',
+ 'Activate Signal Bridge in MT5':'MT5 में Signal Bridge सक्रिय करें','Activate Scalper Pro in MT5':'MT5 में Scalper Pro सक्रिय करें',
+ 'TradingView alerts in a channel or group':'चैनल या ग्रुप में TradingView अलर्ट','Forward Telegram signals to MT5':'Telegram सिग्नल MT5 पर भेजें',
+ 'Get Signal Bridge License':'Signal Bridge लाइसेंस लें','Get 7-day Scalper Pro License':'7 दिन का Scalper Pro लाइसेंस लें',
+ 'Scalper Pro Setup Guide':'Scalper Pro सेटअप गाइड','Scalper Pro free license':'मुफ़्त Scalper Pro लाइसेंस',
+ 'Enter your MT5 login. One 7-day key per member and account.':'MT5 खाता नंबर डालें। हर सदस्य और खाते के लिए 7 दिन की एक कुंजी।',
+ 'Back':'वापस','Account & Access':'खाता और पहुँच','Manage your plan and secure account access.':'अपनी योजना और खाते की पहुँच प्रबंधित करें।',
+ 'Expiry · UTC':'समाप्ति · UTC','Remaining':'शेष अवधि','Scalper key duration':'Scalper कुंजी की अवधि','Scalper expiry':'Scalper की समाप्ति',
+ 'Check in the EA':'EA में जाँचें','No key issued':'कोई कुंजी जारी नहीं हुई','Starts on activation':'सक्रिय करने पर शुरू होगा',
+ 'Get EA Code':'EA कोड लें','Get Scalper Keys':'Scalper कुंजियाँ लें','Website Login':'वेबसाइट लॉगिन',
+ 'Reset Login Code':'लॉगिन कोड बदलें','My Licenses':'मेरे लाइसेंस','Buy & Renew':'खरीदें और नवीनीकृत करें',
+ 'Website and web app sign-in code':'वेबसाइट और वेब ऐप का साइन-इन कोड','Signal Bridge license':'Signal Bridge लाइसेंस',
+ 'Scalper Pro licenses':'Scalper Pro लाइसेंस','7-day Scalper Pro license':'7 दिन का Scalper Pro लाइसेंस',
+ 'Reveal to copy':'कॉपी करने के लिए दिखाएँ','Support · @DrFXGOD':'सहायता · @DrFXGOD','Personal TradingView webhook':'निजी TradingView वेबहुक',
+ 'Channel or group webhook':'चैनल या ग्रुप वेबहुक','Copy alert template':'अलर्ट टेम्पलेट कॉपी करें','Back to channels':'चैनल पर लौटें',
+ 'No Telegram purchases yet.':'अभी कोई Telegram खरीद नहीं है।','Admin Console':'प्रशासक पैनल','Member Directory':'सदस्य सूची'
+};
