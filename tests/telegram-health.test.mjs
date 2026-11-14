@@ -13,7 +13,7 @@ const mocked=(methodData)=>async url=>{
 };
 const good={
  getMe:{id:123456789,is_bot:true,first_name:'DrFX Bot',username:'SignalBridgeDemoBot'},
- getWebhookInfo:{url:'https://drfx.company/api/telegram/webhook',pending_update_count:0,allowed_updates:['message','callback_query','widget_query','my_chat_member'],last_error_message:'private provider info'},
+ getWebhookInfo:{url:'https://drfx.company/api/telegram/webhook',pending_update_count:0,allowed_updates:['message','callback_query','widget_query','my_chat_member','channel_post','edited_channel_post','edited_message'],last_error_message:'private provider info'},
  getMyCommands:[{command:'widget'},{command:'signal'},{command:'scalperwidget'},{command:'start'}],
  getChatMenuButton:{type:'web_app',text:'Open App',web_app:{url:'https://drfx.company/telegram'}}
 };
@@ -22,7 +22,7 @@ test('Telegram diagnostics confirms real webhook and menu without leaking privat
  assert.deepEqual(status,{
   membership_channel_admin:false,native_commands_hidden:false,ok:true,configured:true,bot_token_valid:true,bot_username:'SignalBridgeDemoBot',webhook_secret_format_valid:true,
   admin_id_format_valid:true,webhook_registered:true,webhook_matches:true,
-  widget_queries_registered:true,widget_commands_registered:true,
+  widget_queries_registered:true,signal_updates_registered:true,widget_commands_registered:true,
   mini_app_menu_configured:true,webhook_pending_updates:0
  });
  const text=JSON.stringify(status);
@@ -44,6 +44,7 @@ test('Telegram diagnostics detects missing webhook or wrong menu and wrong admin
  assert.equal(status.webhook_matches,false);
  assert.equal(status.mini_app_menu_configured,false);
  assert.equal(status.widget_queries_registered,false);
+ assert.equal(status.signal_updates_registered,false);
  assert.equal(status.widget_commands_registered,false);
  assert.equal(status.admin_id_format_valid,false);
  assert.equal(status.webhook_pending_updates,8);
@@ -56,6 +57,7 @@ test('Telegram diagnostics reports invalid webhook secret and bad token without 
  assert.equal(status.bot_username,null);
  assert.equal(status.webhook_secret_format_valid,false);
  assert.equal(status.widget_queries_registered,false);
+ assert.equal(status.signal_updates_registered,false);
  assert.equal(status.widget_commands_registered,false);
  assert.equal(status.webhook_matches,false);
  assert.ok(!JSON.stringify(status).includes('https://drfx.company/api/telegram/webhook'));

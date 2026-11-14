@@ -1,6 +1,6 @@
 import {BOT_COMMANDS_VISIBLE,channelMembership,widgetText} from './telegram-onboarding.mjs';
 import {productArt} from './product-art.mjs';
-import {resolveOwnerSession} from './owner-account.mjs';
+import {resolveOwnerSession,verifiedOwnerAdmin} from './owner-account.mjs';
 import {accountProfile} from './account-profile.mjs';
 import {eaDownload,eaDownloadCatalog} from './ea-downloads.mjs';
 import {normalizeBotCommand} from './bot-commands.mjs';
@@ -99,7 +99,10 @@ async function authUser(req,env){
  "FROM site_sessions s JOIN site_users u ON u.id=s.user_id " +
  "WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP AND u.status='active' LIMIT 1"
  ).bind(await sha(token)).first();
- return resolveOwnerSession(env,session);
+ const resolved=await resolveOwnerSession(env,session);
+ // Old or externally changed role flags cannot grant administrative privileges.
+ if(resolved?.role==='admin'&&!verifiedOwnerAdmin(env,resolved))return {...resolved,role:'user'};
+ return resolved;
 }
 async function login(env,userId){
  const token=b64u(rand()),hash=await sha(token);
@@ -594,8 +597,10 @@ async function reconcileWidgetBot(env){
  const target='https://drfx.company/api/telegram/webhook';
  const current=await telegramWidgetApi(env,'getWebhookInfo',{});
  const existing=Array.isArray(current?.allowed_updates)?current.allowed_updates:[];
- if(current?.url!==target||!existing.includes('widget_query')||!existing.includes('pre_checkout_query')){
-  const allowed=[...new Set([...existing,'message','callback_query','widget_query','my_chat_member'].concat('pre_checkout_query'))];
+ const requiredUpdates=['message','callback_query','widget_query','my_chat_member','pre_checkout_query','channel_post','edited_channel_post','edited_message'];
+ if(current?.url!==target||!existing.includes('widget_query')||requiredUpdates.some(type=>!existing.includes(type))){
+  // Channel posts are a separate Telegram update type, not a private message.
+  const allowed=[...new Set([...existing,'message','callback_query','widget_query','my_chat_member'].concat('pre_checkout_query','channel_post','edited_channel_post','edited_message'))];
   await telegramWidgetApi(env,'setWebhook',{url:target,secret_token:env.TELEGRAM_WEBHOOK_SECRET,
    allowed_updates:allowed,drop_pending_updates:false,max_connections:10});
  }
@@ -659,7 +664,7 @@ async function handleWorkspaceCommand(command,text,env,user,language){
   membership=await channelMembership(telegramWidgetApi,env,user.telegram_id);
   if(membership!=='member')page='onboarding';
  }
- if((page==='admin'||page==='adminhelp'||page.startsWith('users'))&&user.role!=='admin'){await botSend(env,user.telegram_id,'This action is available only to the DrFX admin.');return true;}
+ if((page==='admin'||page==='adminhelp'||page.startsWith('users'))&&(user.role!=='admin'||!verifiedOwnerAdmin(env,user))){await botSend(env,user.telegram_id,'This action is available only to the DrFX admin.');return true;}
  try{const h=workspaceHelpers(language,membership);if(command==='/app')h.subtitle=botText(language,'app');await sendWorkspacePage(env,h,user,page);}
  catch{await botSend(env,user.telegram_id,'Workspace temporarily unavailable. Please retry /menu, or open the Mini App.',true);}
  return true;
@@ -759,7 +764,7 @@ async function signalBridgeWidgetQuery(q,env,req){
   if(!allowed||q.type?.type!=='data'){await answer({message:'Request not allowed'});return json({ok:true,ignored:'NOT_ALLOWED'});}
   const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(String(q.from.id)).first();
   if(!user||(user.status!=='active'&&!/^(support|terms|orders)/.test(navigation.page))){await answer({message:'Account unavailable. Use /start.'});return json({ok:true,ignored:'NO_ACTIVE_MEMBER'});}
-  if((navigation.page==='admin'||navigation.page==='adminhelp'||navigation.page.startsWith('users'))&&user.role!=='admin'){await answer({message:'Admin access required'});return json({ok:true,ignored:'FORBIDDEN'});}
+  if((navigation.page==='admin'||navigation.page==='adminhelp'||navigation.page.startsWith('users'))&&(user.role!=='admin'||!verifiedOwnerAdmin(env,user))){await answer({message:'Admin access required'});return json({ok:true,ignored:'FORBIDDEN'});}
   if(!await limited(req,env,'widget:navigation:'+user.telegram_id,30)){await answer({message:'Please wait a minute before trying again.'});return json({ok:true});}
   let page=navigation.page;
   let language=replyLocale=await userBotLocale(env,user.telegram_id);
@@ -1027,7 +1032,7 @@ async function telegramWebhook(req,env,ctx){
   for(const r of rows)out+='\nMT5 #'+r.account_login+' · '+r.days+' days\n<code>'+await decryptCode(env,r.encrypted_key,r.nonce)+'</code>';
   out+=rows.length?'\n\nPaste a key on the panel: ENTER LICENCE KEY → ACTIVATE.':'\n\nSend /buy to purchase with Telegram Stars.';
   await botSend(env,chatId,out,true);
- }else if(command==='/scalperkey'&&user.role==='admin'){
+ }else if(command==='/scalperkey'&&user.role==='admin'&&verifiedOwnerAdmin(env,user)){
   const args=text.split(/\s+/),login=args[1],plan=({'1m':'scalper_1m','3m':'scalper_3m'})[args[2]],target=args[3]||user.id;
   if(!login||!plan||!/^usr_[0-9a-z_]{1,40}$/.test(target)){await botSend(env,chatId,'Use: /scalperkey MT5_LOGIN 1m|3m [usr_...]');return json({ok:true});}
   const recipient=await env.DB.prepare('SELECT id FROM site_users WHERE id=?').bind(target).first();
@@ -1035,14 +1040,14 @@ async function telegramWebhook(req,env,ctx){
   try{const k=await scalperGrant(env,scalperHelpers(env),{adminId:user.id,userId:target,login,plan});
    await botSend(env,chatId,'✅ Scalper Pro key for MT5 #'+k.account_login+' ('+k.days+' days)\n<code>'+k.key+'</code>');}
   catch(e){await botSend(env,chatId,'Could not issue key: '+safeText(e.message,60));}
- }else if(command==='/admin'&&user.role==='admin'){
+ }else if(command==='/admin'&&user.role==='admin'&&verifiedOwnerAdmin(env,user)){
   const stats=await env.DB.prepare('SELECT COUNT(*) AS total,SUM(CASE WHEN plan="quarterly" THEN 1 ELSE 0 END) AS quarter,SUM(CASE WHEN plan="annual" THEN 1 ELSE 0 END) AS annual FROM site_users').first();
   await botSend(env,chatId,'DrFX Admin\nUsers: '+stats.total+'\nQuarterly: '+stats.quarter+'\nAnnual: '+stats.annual+'\nFull management: '+API_ORIGIN);
- }else if(command==='/users'&&user.role==='admin'){
+ }else if(command==='/users'&&user.role==='admin'&&verifiedOwnerAdmin(env,user)){
   const r=await env.DB.prepare("SELECT id,email,telegram_name,telegram_id,plan,status FROM site_users ORDER BY created_at DESC LIMIT 15").all();
   const message=(r.results||[]).map(x=>'<code>'+x.id+'</code> | '+safeText(x.email||x.telegram_name||x.telegram_id||'member',60)+' | '+x.plan+' | '+x.status).join('\n');
   await botSend(env,chatId,'👥 <b>Recent DrFX members</b>\n'+(message||'No users')+'\nFull management: '+API_ORIGIN);
- }else if(['/detail','/suspend','/resume','/revoke'].includes(command)&&user.role==='admin'){
+ }else if(['/detail','/suspend','/resume','/revoke'].includes(command)&&user.role==='admin'&&verifiedOwnerAdmin(env,user)){
   const target=text.split(/\s+/)[1]||'';
   if(!/^usr_[0-9a-f]{32}$/.test(target)){await botSend(env,chatId,'Usage: '+command+' usr_...');return json({ok:true});}
   const recipient=await env.DB.prepare('SELECT * FROM site_users WHERE id=?').bind(target).first();
@@ -1063,7 +1068,7 @@ async function telegramWebhook(req,env,ctx){
    await audit(env,user.id,'bot_'+command.slice(1),target);
    await botSend(env,chatId,'✅ '+command.slice(1)+' applied to <code>'+target+'</code>');
   }
- }else if(command==='/grant'&&user.role==='admin'){
+ }else if(command==='/grant'&&user.role==='admin'&&verifiedOwnerAdmin(env,user)){
   const args=text.split(/\s+/),target=args[1],plan=args[2];
   if(!/^usr_[0-9a-f]{32}$/.test(target||'')||!['trial','quarterly','annual'].includes(plan)){
    await botSend(env,chatId,'Use: /grant usr_... trial|quarterly|annual');return json({ok:true});
@@ -1135,7 +1140,7 @@ async function api(req,env,ctx){
   return json({ok:true,orders:rows.results||[]});
  }
  if(!path.startsWith('/api/admin/'))return fail('NOT_FOUND',404);
- if(user.role!=='admin')return fail('FORBIDDEN',403);
+ if(user.role!=='admin'||!verifiedOwnerAdmin(env,user))return fail('FORBIDDEN',403);
  if(path==='/api/admin/bot/commands'&&req.method==='POST'){
   if(!env.TELEGRAM_BOT_TOKEN)return fail('BOT_NOT_CONFIGURED',503);
   if(!await limited(req,env,'admin:bot-commands:'+user.id,2))return fail('RATE_LIMITED',429);

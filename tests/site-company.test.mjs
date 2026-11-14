@@ -346,7 +346,7 @@ test('existing verified administrator identities are promoted after secure admin
  assert.ok(worker.includes("'verified_telegram_admin_granted'"));
  assert.ok(worker.includes("'verified_email_admin_granted'"));
  assert.ok(worker.includes("if(updated.meta?.changes===1)"));
- assert.ok(worker.includes("if(user.role!=='admin')return fail('FORBIDDEN',403)"));
+ assert.ok(worker.includes("if(user.role!=='admin'||!verifiedOwnerAdmin(env,user))return fail('FORBIDDEN',403)"));
 });
 test('promoting admin does not infer identity from Telegram username or bypass actual sign-in',()=>{
  const code=worker.slice(worker.indexOf('async function getOrCreateTelegram'),worker.indexOf('async function issueCode'));
