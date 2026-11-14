@@ -11,3 +11,14 @@ export async function resolveOwnerSession(env,session){
  if(primary.status!=='active')return null;
  return {...primary,email:primary.email||session.email,token_hash:session.token_hash};
 }
+
+// Never authorize a privileged operation using a stored role alone.
+// A legitimate owner may use either the configured email or Telegram identity.
+export function verifiedOwnerAdmin(env,user){
+ if(!user||user.role!=='admin'||user.status!=='active')return false;
+ const email=String(env?.ADMIN_EMAIL||'').trim().toLowerCase();
+ const telegramId=String(env?.ADMIN_TELEGRAM_ID||'').trim();
+ const emailMatches=!!email&&!!user.email&&String(user.email).trim().toLowerCase()===email;
+ const telegramMatches=/^\d{5,20}$/.test(telegramId)&&!!user.telegram_id&&String(user.telegram_id)===telegramId;
+ return emailMatches||telegramMatches;
+}
