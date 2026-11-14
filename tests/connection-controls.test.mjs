@@ -286,3 +286,21 @@ test('signal inspector exposes only the signed-in tenant trade fields, never raw
   const response=await f.request('/api/member/report'),data=await response.json();assert.equal(response.status,200);assert.equal(data.commands.length,1);assert.equal(data.commands[0].id,'inspect_a');assert.equal(data.commands[0].entry,2671.2);assert.equal(data.commands[0].sl,2667);assert.equal(data.commands[0].tp1,2675);assert.equal(data.commands[0].tp2,2679);assert.ok(data.commands[0].updated_at);assert.ok(!JSON.stringify(data).includes('MUST_NOT_APPEAR'));assert.ok(!JSON.stringify(data).includes('payload_json'));
  }finally{f.db.close()}
 });
+
+test('Telegram re-verification preserves explicitly enabled routes only for the same verified chat',async()=>{
+ const f=fixture();
+ try{
+  f.db.exec("UPDATE site_users SET telegram_id='123456789' WHERE id='usr_a'");
+  f.db.exec("INSERT INTO member_signal_settings(user_id,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5) VALUES ('usr_a','123456789',1,1,1)");
+  const same=await f.request('/api/member/telegram/verify',{chat_id:'123456789'});
+  assert.equal(same.status,200);
+  assert.deepEqual([(await same.json()).settings.tv_to_telegram,f.db.prepare("SELECT telegram_to_mt5 FROM member_signal_settings WHERE user_id='usr_a'").get().telegram_to_mt5],[true,1]);
+  f.db.exec("UPDATE member_signal_settings SET telegram_chat_id='-100987654321',telegram_verified=1,tv_to_telegram=1,telegram_to_mt5=1 WHERE user_id='usr_a'");
+  const changed=await f.request('/api/member/telegram/verify',{chat_id:'123456789'});
+  assert.equal(changed.status,200);
+  const settings=(await changed.json()).settings;
+  assert.equal(settings.telegram_verified,true);
+  assert.equal(settings.tv_to_telegram,false);
+  assert.equal(settings.telegram_to_mt5,false);
+ }finally{f.db.close()}
+});
