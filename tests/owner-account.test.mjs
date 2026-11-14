@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {resolveOwnerSession} from '../site/src/owner-account.mjs';
+import {resolveOwnerSession,verifiedOwnerAdmin} from '../site/src/owner-account.mjs';
 const emailAccount={id:'email-owner',email:'owner@example.test',role:'admin',plan:'trial',status:'active',telegram_id:null,token_hash:'email-session-hash'};
 const primary={id:'telegram-owner',email:null,telegram_id:'123456789',telegram_name:'Owner',role:'admin',plan:'annual',status:'active',created_at:'2026-01-01'};
 function fixture(row=primary,config={}){let reads=0;const env={ADMIN_EMAIL:'owner@example.test',ADMIN_TELEGRAM_ID:'123456789',...config,DB:{prepare(sql){assert.match(sql,/SELECT .* FROM site_users WHERE telegram_id=\?/);return {bind(id){assert.equal(id,'123456789');return {async first(){reads++;return row}}}}}}};return {env,reads:()=>reads}}
@@ -8,3 +8,14 @@ test('verified owner email session shares the Telegram account for licenses and 
 test('ordinary users, other admins and already linked sessions cannot inherit the configured owner identity',async()=>{for(const s of [null,{...emailAccount,role:'user'},{...emailAccount,email:'other@example.test'},{...emailAccount,telegram_id:'987654321'}]){const f=fixture();assert.equal(await resolveOwnerSession(f.env,s),s);assert.equal(f.reads(),0)}});
 test('missing or invalid owner configuration leaves the authenticated account unchanged',async()=>{for(const config of [{ADMIN_EMAIL:''},{ADMIN_TELEGRAM_ID:''},{ADMIN_TELEGRAM_ID:'@owner'},{ADMIN_TELEGRAM_ID:'-10012345'}]){const f=fixture(primary,config);assert.equal(await resolveOwnerSession(f.env,emailAccount),emailAccount);assert.equal(f.reads(),0)}});
 test('owner resolution does not promote a non-admin or bypass a suspended primary account',async()=>{for(const row of [null,{...primary,role:'user'}])assert.equal(await resolveOwnerSession(fixture(row).env,emailAccount),emailAccount);assert.equal(await resolveOwnerSession(fixture({...primary,status:'suspended'}).env,emailAccount),null)});
+
+test('admin authority requires both the admin role and a live match to configured owner credentials',()=>{
+ const f=fixture();
+ assert.equal(verifiedOwnerAdmin(f.env,emailAccount),true);
+ assert.equal(verifiedOwnerAdmin(f.env,primary),true);
+ assert.equal(verifiedOwnerAdmin(f.env,{...primary,telegram_id:'999999999'}),false);
+ assert.equal(verifiedOwnerAdmin(f.env,{...emailAccount,email:'other@example.test'}),false);
+ assert.equal(verifiedOwnerAdmin(f.env,{...emailAccount,role:'user'}),false);
+ assert.equal(verifiedOwnerAdmin(f.env,{...primary,status:'suspended'}),false);
+ assert.equal(verifiedOwnerAdmin({...f.env,ADMIN_EMAIL:'',ADMIN_TELEGRAM_ID:''},emailAccount),false);
+});
