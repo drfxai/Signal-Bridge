@@ -41,6 +41,7 @@ export async function telegramHealth(env,fetcher=fetch,now=Date.now()){
   webhook_registered:typeof hook?.url==='string'&&hook.url.length>0,
   webhook_matches:hook?.url===EXPECTED_WEBHOOK,
   widget_queries_registered:Array.isArray(hook?.allowed_updates)&&hook.allowed_updates.includes('widget_query'),
+  signal_updates_registered:Array.isArray(hook?.allowed_updates)&&['message','channel_post','edited_channel_post'].every(type=>hook.allowed_updates.includes(type)),
   widget_commands_registered:Array.isArray(commands)&&['widget','signal','scalperwidget'].every(cmd=>commands.some(c=>c.command===cmd)),
   mini_app_menu_configured:menu?.type==='web_app'&&menu.web_app?.url===EXPECTED_MINI_APP,
   webhook_pending_updates:typeof hook?.pending_update_count==='number'?hook.pending_update_count:null
