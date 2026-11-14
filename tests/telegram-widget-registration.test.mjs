@@ -27,3 +27,9 @@ test('private bot command triggers nonblocking reconciliation; cron is low frequ
  assert.match(config,/"crons":\s*\["0 \*\/6 \* \* \*"\]/);
 });
 
+
+test('Telegram webhook requests channel posts, edited posts and fresh private messages',()=>{
+ assert.match(code,/requiredUpdates=\['message','callback_query','widget_query','my_chat_member','pre_checkout_query','channel_post','edited_channel_post','edited_message'\]/);
+ assert.match(code,/requiredUpdates\.some\(type=>!existing\.includes\(type\)\)/);
+ assert.match(code,/concat\('pre_checkout_query','channel_post','edited_channel_post','edited_message'\)/);
+});
