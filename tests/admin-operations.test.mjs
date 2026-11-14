@@ -12,7 +12,7 @@ function fixture(){
  const run=(sql,...args)=>db.prepare(sql).run(...args),owner='usr_'+'a'.repeat(32),member='usr_'+'b'.repeat(32),otherAdmin='usr_'+'c'.repeat(32);
  for(const [id,role,name,telegram] of [[owner,'admin','Owner','123'],[member,'user','Member','456'],[otherAdmin,'admin','Second','789']]){run('INSERT INTO site_users(id,email,telegram_id,telegram_name,role) VALUES (?,?,?,?,?)',id,name+'@example.test',telegram,name,role);run("INSERT INTO site_sessions(token_hash,user_id,expires_at) VALUES (?,?,datetime('now','+1 day'))",digest(id.slice(-1).repeat(43)),id)}
  function prepared(sql,args=[]){return {bind(...a){return prepared(sql,a)},async first(){return db.prepare(sql).get(...args)||null},async all(){return {results:db.prepare(sql).all(...args)}},async run(){return {success:true,meta:{changes:Number(run(sql,...args).changes)}}}}}
- const env={LICENSE_VAULT_KEY:Buffer.alloc(32,9).toString('base64'),SCALPER_LICENSE_SECRET:'test-secret',DB:{prepare:sql=>prepared(sql),async batch(stmts){db.exec('BEGIN');try{const out=[];for(const s of stmts)out.push(await s.run());db.exec('COMMIT');return out}catch(e){db.exec('ROLLBACK');throw e}}}};
+ const env={ADMIN_EMAIL:'Owner@example.test',LICENSE_VAULT_KEY:Buffer.alloc(32,9).toString('base64'),SCALPER_LICENSE_SECRET:'test-secret',DB:{prepare:sql=>prepared(sql),async batch(stmts){db.exec('BEGIN');try{const out=[];for(const s of stmts)out.push(await s.run());db.exec('COMMIT');return out}catch(e){db.exec('ROLLBACK');throw e}}}};
  const request=(path,{user=owner,body,method}={})=>worker.fetch(new Request('https://drfx.company'+path,{method:method||(body===undefined?'GET':'POST'),headers:{...(user?{cookie:'__Host-drfx_session='+user.slice(-1).repeat(43)}:{}),origin:'https://drfx.company','content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})}),env);
  return {db,run,owner,member,otherAdmin,env,request};
 }
@@ -62,9 +62,9 @@ test('private vault is self-scoped even when a second administrator supplies the
  const f=fixture();try{
   const granted=await f.request('/api/admin/user',{body:{action:'grant_scalper_3m',user_id:f.owner,account_login:'8718098'}});assert.equal(granted.status,200);const {scalper}=await granted.json();
   const own=await(await f.request('/api/admin/licenses?product=scalper')).json();assert.equal(own.keys[0].key,scalper.key);
-  const other=await(await f.request('/api/admin/licenses?product=scalper&user_id='+f.owner,{user:f.otherAdmin})).json();assert.deepEqual(other.keys,[]);
+  const other=await f.request('/api/admin/licenses?product=scalper&user_id='+f.owner,{user:f.otherAdmin});assert.equal(other.status,403,'stale admin role cannot access any vault');
   const response=await f.request('/api/admin/licenses?product=signalbridge');const bridge=await response.json();assert.match(bridge.license.activation_code,/^[A-Za-z0-9_-]{43}$/);assert.equal(response.headers.get('cache-control'),'no-store');
-  const otherBridge=await(await f.request('/api/admin/licenses?product=signalbridge&user_id='+f.owner,{user:f.otherAdmin})).json();assert.notEqual(otherBridge.license.activation_code,bridge.license.activation_code);
+  const otherBridge=await f.request('/api/admin/licenses?product=signalbridge&user_id='+f.owner,{user:f.otherAdmin});assert.equal(otherBridge.status,403);
   for(const path of ['/api/admin/overview','/api/admin/directory','/api/admin/orders']){const text=await(await f.request(path)).text();assert.ok(!text.includes(scalper.key));assert.ok(!text.includes(bridge.license.activation_code));assert.ok(!text.includes('encrypted_key'));assert.ok(!text.includes('encrypted_code'))}
   assert.equal((await f.request('/api/admin/licenses?product=unknown')).status,400);
  }finally{f.db.close()}
