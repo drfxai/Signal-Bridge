@@ -614,10 +614,27 @@ function telegramWidgetTextFallback(body){
  options.push([{text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}}]);
  return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:options}};
 }
+const PREMIUM_CHAT_CARD_URL='https://raw.githubusercontent.com/drfxai/Signal-Bridge/8c4dcdff4ae5659b5af6abb78181b85dc16f4f5f/site/public/media/signal-bridge/premium-card.jpg';
+function premiumChatPhoto(body){
+ const fallback=telegramWidgetTextFallback(body);
+ let data={};try{data=JSON.parse(body.chat_data||'{}')}catch{}
+ if(/<code[\s>]/i.test(body.caption||'')||!data.t||data.p==='notice')return null;
+ return {chat_id:fallback.chat_id,photo:PREMIUM_CHAT_CARD_URL,
+  caption:('✦ DrFXAi · SIGNAL BRIDGE\n\n'+fallback.text).slice(0,930),
+  protect_content:true,reply_markup:fallback.reply_markup};
+}
+async function sendPremiumChatCard(env,body){
+ const media=premiumChatPhoto(body);
+ if(media){
+  try{return await telegramWidgetApi(env,'sendPhoto',media)}
+  catch(error){console.warn('Telegram premium media fallback: '+String(error?.message||'SEND_FAILED').slice(0,72));}
+ }
+ return telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback(body));
+}
 let nativeWidgetBlockedUntil=0;
 async function telegramWidgetApi(env,method,body){
  if(method==='sendWidget'&&Date.now()<nativeWidgetBlockedUntil)
-  return telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback(body));
+  return sendPremiumChatCard(env,body);
  const retry=body?.__compact_retry===true;
  const outgoing=retry?Object.fromEntries(Object.entries(body).filter(([key])=>key!=='__compact_retry')):body;
  const response=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{
@@ -633,13 +650,13 @@ async function telegramWidgetApi(env,method,body){
    if(reason.includes('INPUT_MEDIA_WIDGET_NOT_ALLOWED')){
     // Telegram currently disallows native HTML widgets for general bots; avoid double-failing API calls.
     nativeWidgetBlockedUntil=Date.now()+60*60*1000;
-    if(!retry)return telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback(body));
+    if(!retry)return sendPremiumChatCard(env,body);
    }
    if(!retry){
     try{
      return await telegramWidgetApi(env,'sendWidget',{...body,html:COMPACT_WORKSPACE_WIDGET_HTML,__compact_retry:true});
     }catch{
-     return telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback(body));
+     return sendPremiumChatCard(env,body);
     }
    }
   }
@@ -989,9 +1006,20 @@ async function nativeMenuCallback(callback,env,req){
   const helpers=workspaceHelpers(language,membership);
   const view=onboardingView(effectivePage,language,membership)||
     localizeWorkspace(await workspaceView(env,helpers,user,effectivePage),language);
-  await telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback({
-   chat_id:sender,caption:'DrFXAi · Signal Bridge',chat_data:widgetViewData(view)
-  }));
+  const state={chat_id:sender,caption:'DrFXAi · Signal Bridge',chat_data:widgetViewData(view)};
+  const media=premiumChatPhoto(state),fallback=telegramWidgetTextFallback(state);
+  const messageId=callback?.message?.message_id;
+  if(Number.isSafeInteger(messageId)){
+   try{
+    if(callback.message?.photo?.length&&media)
+     await telegramWidgetApi(env,'editMessageCaption',{chat_id:sender,message_id:messageId,caption:media.caption,reply_markup:media.reply_markup});
+    else if(!callback.message?.photo?.length)
+     await telegramWidgetApi(env,'editMessageText',{chat_id:sender,message_id:messageId,text:fallback.text,reply_markup:fallback.reply_markup});
+    else throw Error('MEDIA_EDIT_UNAVAILABLE');
+   }catch(error){
+    if(!String(error?.message||'').includes('not modified'))await sendPremiumChatCard(env,state);
+   }
+  }else await sendPremiumChatCard(env,state);
  }catch(error){
   console.warn('Telegram native menu navigation failed: '+String(error?.name||'UNKNOWN').slice(0,50));
   await telegramWidgetApi(env,'sendMessage',{chat_id:sender,text:'Menu unavailable. Open the DrFX Mini App using the button below.',protect_content:true,reply_markup:{inline_keyboard:[[{text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}}]]}});
