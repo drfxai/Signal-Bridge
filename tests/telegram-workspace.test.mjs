@@ -280,3 +280,60 @@ test('a second widget rejection delivers a useful private text response with lan
   assert.ok(!JSON.stringify(fallback).includes('test:token'));
  }finally{globalThis.fetch=real}
 });
+
+test('native Telegram inline menu navigates without using disabled HTML widgets',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ const prepare=f.env.DB.prepare.bind(f.env.DB);
+ f.env.DB.prepare=sql=>sql.includes('SELECT requests FROM site_rate_limits')?{bind(){return this},async first(){return {requests:1}}}:prepare(sql);
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  return Response.json({ok:true,result:method==='getChatMember'?{status:'member'}:true});
+ };
+ try{
+  const callback={id:'native-nav-1',from:{id:123},message:{chat:{id:123,type:'private'},message_id:8},data:'native:setup'};
+  const response=await worker.fetch(request({update_id:881,callback_query:callback}),f.env);
+  assert.equal(response.status,200);
+  assert.ok(calls.some(c=>c.method==='answerCallbackQuery'));
+  assert.ok(calls.some(c=>c.method==='getChatMember'));
+  assert.ok(!calls.some(c=>c.method==='sendWidget'));
+  const sent=calls.find(c=>c.method==='sendMessage')?.body;
+  assert.match(sent.text,/Install & Activate/);
+  assert.ok(sent.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='native:bridge-install'));
+  assert.ok(sent.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='native:home'));
+  assert.equal(sent.protect_content,true);
+ }finally{globalThis.fetch=original}
+});
+
+test('native Telegram menu denies forged group navigation before any private reads',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{calls.push(String(url));return Response.json({ok:true,result:true})};
+ try{
+  const response=await worker.fetch(request({update_id:882,callback_query:{id:'spoof-1',from:{id:999},message:{chat:{id:123,type:'private'}},data:'native:account'}}),f.env);
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).ignored,'CALLBACK_NOT_PRIVATE');
+  assert.equal(calls.length,0);
+  assert.equal(f.sql.length,0);
+ }finally{globalThis.fetch=original}
+});
+
+test('Telegram provider widget-disable error immediately switches to message with working language controls',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
+  return Response.json({ok:true,result:{message_id:19}});
+ };
+ try{
+  for(const update_id of [883,884]){
+   const res=await worker.fetch(request({update_id,message:{text:'/start',from:{id:123},chat:{id:123,type:'private'}}}),f.env);
+   assert.equal(res.status,200);
+  }
+  assert.deepEqual(calls.map(c=>c.method),['sendWidget','sendMessage','sendMessage']);
+  for(const c of calls.filter(c=>c.method==='sendMessage')){
+   assert.ok(c.body.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='lang:en'));
+   assert.equal(c.body.protect_content,true);
+  }
+ }finally{globalThis.fetch=original}
+});
