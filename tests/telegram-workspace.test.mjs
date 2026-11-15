@@ -237,3 +237,46 @@ test('all localized terms pages fit Telegram widget limits and can be opened',as
   }
  }
 });
+
+test('private /start retries rejected premium HTML as an interactive compact Telegram widget',async()=>{
+ const f=fixture(),real=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  if(method==='sendWidget'&&calls.filter(x=>x.method==='sendWidget').length===1)
+   return Response.json({ok:false,error_code:400,description:'Bad Request: premium widget rejected'},{status:400});
+  return Response.json({ok:true,result:{message_id:17}});
+ };
+ try{
+  const response=await worker.fetch(request({update_id:876,message:{message_id:7,date:Math.floor(Date.now()/1000),chat:{id:123,type:'private'},from:{id:123,first_name:'Tester'},text:'/start'}}),f.env);
+  assert.equal(response.status,200);
+  assert.deepEqual(calls.map(x=>x.method),['sendWidget','sendWidget']);
+  assert.ok(calls[0].body.html.length>calls[1].body.html.length);
+  assert.ok(calls[1].body.html.includes('TelegramWidget'));
+  assert.equal(calls[1].body.__compact_retry,undefined);
+  assert.equal(calls[1].body.chat_data,calls[0].body.chat_data);
+ }finally{globalThis.fetch=real}
+});
+
+test('a second widget rejection delivers a useful private text response with language controls',async()=>{
+ const f=fixture(),real=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  if(method==='sendWidget')
+   return Response.json({ok:false,error_code:400,description:'Bad Request: widgets unavailable'},{status:400});
+  return Response.json({ok:true,result:{message_id:18}});
+ };
+ try{
+  const response=await worker.fetch(request({update_id:877,message:{message_id:8,date:Math.floor(Date.now()/1000),chat:{id:123,type:'private'},from:{id:123,first_name:'Tester'},text:'/start'}}),f.env);
+  assert.equal(response.status,200);
+  assert.deepEqual(calls.map(x=>x.method),['sendWidget','sendWidget','sendMessage']);
+  const fallback=calls[2].body;
+  assert.equal(fallback.chat_id,'123');
+  assert.equal(fallback.protect_content,true);
+  assert.match(fallback.text,/language/i);
+  assert.ok(fallback.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='lang:en'));
+  assert.ok(fallback.reply_markup.inline_keyboard.some(row=>row[0].web_app?.url==='https://drfx.company/telegram'));
+  assert.ok(!JSON.stringify(fallback).includes('test:token'));
+ }finally{globalThis.fetch=real}
+});
