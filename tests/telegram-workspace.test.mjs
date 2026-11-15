@@ -258,7 +258,7 @@ test('private /start retries rejected premium HTML as an interactive compact Tel
  }finally{globalThis.fetch=real}
 });
 
-test('a second widget rejection delivers a premium image card with language controls',async()=>{
+test('rejected widgets fall back to Telegram Rich Messages with in-message controls',async()=>{
  const f=fixture(),real=globalThis.fetch,calls=[];
  globalThis.fetch=async(url,init)=>{
   const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
@@ -270,14 +270,16 @@ test('a second widget rejection delivers a premium image card with language cont
  try{
   const response=await worker.fetch(request({update_id:877,message:{message_id:8,date:Math.floor(Date.now()/1000),chat:{id:123,type:'private'},from:{id:123,first_name:'Tester'},text:'/start'}}),f.env);
   assert.equal(response.status,200);
-  assert.deepEqual(calls.map(x=>x.method),['sendWidget','sendWidget','sendPhoto']);
+  assert.deepEqual(calls.map(x=>x.method),['sendWidget','sendWidget','sendRichMessage']);
   const fallback=calls[2].body;
   assert.equal(fallback.chat_id,'123');
   assert.equal(fallback.protect_content,true);
-  assert.match(fallback.caption,/language/i);
-  assert.match(fallback.photo,/premium-card\.jpg/);
-  assert.ok(fallback.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='lang:en'));
-  assert.ok(fallback.reply_markup.inline_keyboard.some(row=>row[0].web_app?.url==='https://drfx.company/telegram'));
+  assert.match(fallback.rich_message.html,/<h2>◆ DrFXAi/);
+  assert.match(fallback.rich_message.html,/premium-card\.jpg/);
+  assert.match(fallback.rich_message.html,/type="callback_data"/);
+  assert.match(fallback.rich_message.html,/data="lang:en"/);
+  assert.match(fallback.rich_message.html,/type="web_app"/);
+  assert.match(fallback.rich_message.html,/https:\/\/drfx\.company\/telegram/);
   assert.ok(!JSON.stringify(fallback).includes('test:token'));
  }finally{globalThis.fetch=real}
 });
@@ -319,7 +321,7 @@ test('native Telegram menu denies forged group navigation before any private rea
  }finally{globalThis.fetch=original}
 });
 
-test('Telegram provider widget-disable error immediately switches to message with working language controls',async()=>{
+test('Telegram widget-disable error immediately switches to rich messages and avoids repeat widget requests',async()=>{
  const f=fixture(),original=globalThis.fetch,calls=[];
  globalThis.fetch=async(url,init)=>{
   const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
@@ -332,12 +334,33 @@ test('Telegram provider widget-disable error immediately switches to message wit
    const res=await worker.fetch(request({update_id,message:{text:'/start',from:{id:123},chat:{id:123,type:'private'}}}),f.env);
    assert.equal(res.status,200);
   }
-  assert.deepEqual(calls.map(c=>c.method),['sendWidget','sendPhoto','sendPhoto']);
-  for(const c of calls.filter(c=>c.method==='sendPhoto')){
-   assert.ok(c.body.photo.includes('premium-card.jpg'));
-   assert.ok(c.body.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='lang:en'));
+  assert.deepEqual(calls.map(c=>c.method),['sendWidget','sendRichMessage','sendRichMessage']);
+  for(const c of calls.filter(c=>c.method==='sendRichMessage')){
+   assert.ok(c.body.rich_message.html.includes('premium-card.jpg'));
+   assert.match(c.body.rich_message.html,/data="lang:en"/);
    assert.equal(c.body.protect_content,true);
   }
+ }finally{globalThis.fetch=original}
+});
+
+test('a native rich message stays interactive and edits itself on callback',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ const prepare=f.env.DB.prepare.bind(f.env.DB);
+ f.env.DB.prepare=sql=>sql.includes('SELECT requests FROM site_rate_limits')?{bind(){return this},async first(){return {requests:1}}}:prepare(sql);
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  return Response.json({ok:true,result:method==='getChatMember'?{status:'member'}:true});
+ };
+ try{
+  const callback={id:'rich-nav-1',from:{id:123},message:{chat:{id:123,type:'private'},message_id:87,rich_message:{blocks:[]}},data:'native:setup'};
+  const response=await worker.fetch(request({update_id:893,callback_query:callback}),f.env);
+  assert.equal(response.status,200);
+  const edit=calls.find(c=>c.method==='editMessageText')?.body;
+  assert.equal(edit.message_id,87);
+  assert.match(edit.rich_message.html,/Install &amp; Activate/);
+  assert.match(edit.rich_message.html,/type="callback_data"/);
+  assert.ok(!calls.some(c=>c.method==='sendPhoto'));
  }finally{globalThis.fetch=original}
 });
 
@@ -347,6 +370,7 @@ test('premium image card shows in chat and preserves buttons without HTML widget
   const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
   calls.push({method,body});
   if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
+  if(method==='sendRichMessage')return Response.json({ok:false,error_code:400,description:'Bad Request: rich message temporarily unavailable'},{status:400});
   return Response.json({ok:true,result:{message_id:77}});
  };
  try{

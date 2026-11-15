@@ -623,8 +623,51 @@ function premiumChatPhoto(body){
   caption:('✦ DrFXAi · SIGNAL BRIDGE\n\n'+fallback.text).slice(0,930),
   protect_content:true,reply_markup:fallback.reply_markup};
 }
+// Native Rich Messages (Bot API 10.3+) support headings, media and in-message buttons.
+// Unlike custom HTML widgets, these are structured Telegram message blocks.
+let richMessagesBlockedUntil=0;
+const richEscape=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function telegramRichCard(body){
+ const photo=premiumChatPhoto(body);
+ if(!photo)return null;
+ let state={};try{state=JSON.parse(body.chat_data||'{}')}catch{}
+ const title=richEscape(String(state.t||'Your private trading dashboard').slice(0,105));
+ const subtitle=richEscape(String(state.s||'TradingView • Telegram • MetaTrader 5').slice(0,180));
+ const rows=(state.r||[]).slice(0,5).map(row=>'<p><b>'+richEscape(String(row[0]).slice(0,52))+'</b> · '+richEscape(String(row[1]).slice(0,125))+'</p>').join('\n');
+ const buttons=(photo.reply_markup?.inline_keyboard||[]).flat().slice(0,12).flatMap(button=>{
+  const name=richEscape(String(button.text||'').slice(0,55));
+  if(!name)return [];
+  if(button.callback_data&&/^[\x20-\x7E]{1,64}$/.test(button.callback_data)){
+   const style=/^(?:lang:|native:home|native:setup)/.test(button.callback_data)?'primary':'success';
+   return ['<tg-button type="callback_data" style="'+style+'" data="'+richEscape(button.callback_data)+'">'+name+'</tg-button>'];
+  }
+  const url=button.web_app?.url||button.url;
+  if(url&&/^https:\/\/[^\s"<>]+$/.test(url))return ['<tg-button type="'+(button.web_app?'web_app':'url')+'" style="'+(button.web_app?'primary':'success')+'" url="'+richEscape(url)+'">'+name+'</tg-button>'];
+  return [];
+ });
+ const buttonRows=[];for(let i=0;i<buttons.length;i+=2)buttonRows.push('<tg-button-row align="center">'+buttons.slice(i,i+2).join('')+'</tg-button-row>');
+ const html=[
+  '<h2>◆ DrFXAi · SIGNAL BRIDGE</h2>',
+  '<p>TradingView → Telegram → MT5</p>',
+  '<img src="'+richEscape(PREMIUM_CHAT_CARD_URL)+'"/>',
+  '<h3>'+title+'</h3>',
+  ...(subtitle?['<p>'+subtitle+'</p>']:[]),
+  rows,'<hr/>',...buttonRows
+ ].filter(Boolean).join('\n');
+ return {chat_id:body.chat_id,rich_message:{html,is_rtl:state.l==='fa'},protect_content:true};
+}
 async function sendPremiumChatCard(env,body){
  const media=premiumChatPhoto(body);
+ if(media&&Date.now()>=richMessagesBlockedUntil){
+  const rich=telegramRichCard(body);
+  if(rich){
+   try{return await telegramWidgetApi(env,'sendRichMessage',rich)}
+   catch(error){
+    richMessagesBlockedUntil=Date.now()+10*60*1000;
+    console.warn('Telegram rich card fallback: '+String(error?.message||'UNSUPPORTED').slice(0,65));
+   }
+  }
+ }
  if(media){
   try{return await telegramWidgetApi(env,'sendPhoto',media)}
   catch(error){console.warn('Telegram premium media fallback: '+String(error?.message||'SEND_FAILED').slice(0,72));}
@@ -1013,8 +1056,17 @@ async function nativeMenuCallback(callback,env,req){
    try{
     if(callback.message?.photo?.length&&media)
      await telegramWidgetApi(env,'editMessageCaption',{chat_id:sender,message_id:messageId,caption:media.caption,reply_markup:media.reply_markup});
-    else if(!callback.message?.photo?.length)
-     await telegramWidgetApi(env,'editMessageText',{chat_id:sender,message_id:messageId,text:fallback.text,reply_markup:fallback.reply_markup});
+    else if(!callback.message?.photo?.length){
+     const rich=Date.now()>=richMessagesBlockedUntil?telegramRichCard(state):null;
+     if(rich){
+      try{
+       await telegramWidgetApi(env,'editMessageText',{chat_id:sender,message_id:messageId,rich_message:rich.rich_message});
+      }catch(error){
+       richMessagesBlockedUntil=Date.now()+10*60*1000;
+       await telegramWidgetApi(env,'editMessageText',{chat_id:sender,message_id:messageId,text:fallback.text,reply_markup:fallback.reply_markup});
+      }
+     }else await telegramWidgetApi(env,'editMessageText',{chat_id:sender,message_id:messageId,text:fallback.text,reply_markup:fallback.reply_markup});
+    }
     else throw Error('MEDIA_EDIT_UNAVAILABLE');
    }catch(error){
     if(!String(error?.message||'').includes('not modified'))await sendPremiumChatCard(env,state);
