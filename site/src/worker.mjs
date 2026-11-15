@@ -642,7 +642,7 @@ function telegramRichCard(body){
    return ['<tg-button type="callback_data" style="'+style+'" data="'+richEscape(button.callback_data)+'">'+name+'</tg-button>'];
   }
   const url=button.web_app?.url||button.url;
-  if(url&&/^https:\/\/[^\s"<>]+$/.test(url))return ['<tg-button type="'+(button.web_app?'web_app':'url')+'" style="'+(button.web_app?'primary':'link')+'" url="'+richEscape(url)+'">'+name+'</tg-button>'];
+  if(url&&/^https:\/\/[^\s"<>]+$/.test(url))return ['<tg-button type="'+(button.web_app?'web_app':'url')+'" style="'+(button.web_app?'primary':'success')+'" url="'+richEscape(url)+'">'+name+'</tg-button>'];
   return [];
  });
  const buttonRows=[];for(let i=0;i<buttons.length;i+=2)buttonRows.push('<tg-button-row align="center">'+buttons.slice(i,i+2).join('')+'</tg-button-row>');
