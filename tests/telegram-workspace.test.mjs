@@ -11,7 +11,7 @@ function fixture(role='user'){
  const sql=[],preferences=new Map();
  const env={TELEGRAM_BOT_TOKEN:'test:token',TELEGRAM_WEBHOOK_SECRET:'workspace-test-secret',DB:{prepare(query){let args=[];sql.push({query,get args(){return args}});return {bind(...a){args=a;return this},async first(){
   if(query.includes('FROM site_users WHERE telegram_id'))return {...user,role};
-  if(query.includes('FROM site_bot_preferences'))return {language_code:preferences.get(args[0])||'en'};
+  if(query.includes('FROM site_bot_preferences'))return preferences.has(args[0])?{language_code:preferences.get(args[0])}:null;
   if(query.includes('FROM site_licenses sl JOIN ea_licenses'))return {status:'active',expires_at:null};
   if(query.includes('COUNT(*) AS total'))return {total:12,active:10,suspended:2};return null;
  },async all(){
@@ -24,6 +24,8 @@ function fixture(role='user'){
 }
 const helpers={plans:STAR_PLANS,price:starPrice,terms:LICENSE_TERMS,licenseRecord:async()=>({status:'active',expires_at:null})};
 test('chat home menu Rich Messages keep grid actions and a compact language strip',async()=>{
+ // Isolate module-level provider cooldowns from other Bot API fallback tests.
+ const {default:isolatedWorker}=await import('../site/src/worker.mjs?rich-chat-menu-regression');
  const f=fixture(),original=globalThis.fetch,calls=[];
  globalThis.fetch=async(url,init)=>{
   const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
@@ -33,7 +35,7 @@ test('chat home menu Rich Messages keep grid actions and a compact language stri
   return Response.json({ok:true,result:{message_id:98}});
  };
  try{
-  const response=await worker.fetch(request({update_id:943,message:{from:{id:123},chat:{id:123,type:'private'},text:'/menu'}}),f.env);
+  const response=await isolatedWorker.fetch(request({update_id:943,message:{from:{id:123},chat:{id:123,type:'private'},text:'/menu'}}),f.env);
   assert.equal(response.status,200);
   const rich=calls.find(c=>c.method==='sendRichMessage')?.body?.rich_message?.html;
   assert.ok(rich);
