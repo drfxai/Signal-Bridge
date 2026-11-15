@@ -594,19 +594,30 @@ function telegramWidgetTextFallback(body){
   ...(state.x||[]).slice(0,2).map(plain)
  ];
  const text=lines.filter(Boolean).join('\n').slice(0,3900)||'Open DrFX Mini App to continue.';
- const options=(state.b||[]).slice(0,9).flatMap(b=>{
+ const options=(state.b||[]).slice(0,10).flatMap(b=>{
   const name=plain(b[0]).slice(0,55),action=String(b[1]||''),url=String(b[3]||'');
   if(!name)return [];
   if(action==='link'&&/^https:\/\/[^\s]+$/.test(url))return [[{text:name,url}]];
   if(/^ui:page:lang:(en|fa|tr|ru|hi)$/.test(action))return [[{text:name,callback_data:action.replace('ui:page:lang:','lang:')}]];
-  if(action==='ui:page:home')return [[{text:name,callback_data:'workspace:home'}]];
-  if(action==='ui:page:channels')return [[{text:name,callback_data:'workspace:channels'}]];
+  const nativePage=/^ui:page:([a-z0-9:-]{1,45})$/.exec(action);
+  if(nativePage&&workspaceQueryPage(action)){
+   const page=nativePage[1];
+   // Sensitive actions require an authenticated Mini App workflow instead of exposing codes in callback payloads.
+   if(/^(?:bridgecode|scalperkeys|tvhook|login|reset|resetconfirm|scalper-trial)$/.test(page))
+    return [[{text:name,web_app:{url:API_ORIGIN+'/telegram'}}]];
+   return [[{text:name,callback_data:'native:'+page}]];
+  }
   return [];
  });
+ if(state.p!=='home'&&!options.some(row=>row[0]?.callback_data==='native:home'))
+  options.push([{text:'‹ Main Menu',callback_data:'native:home'}]);
  options.push([{text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}}]);
  return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:options}};
 }
+let nativeWidgetBlockedUntil=0;
 async function telegramWidgetApi(env,method,body){
+ if(method==='sendWidget'&&Date.now()<nativeWidgetBlockedUntil)
+  return telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback(body));
  const retry=body?.__compact_retry===true;
  const outgoing=retry?Object.fromEntries(Object.entries(body).filter(([key])=>key!=='__compact_retry')):body;
  const response=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{
@@ -619,6 +630,11 @@ async function telegramWidgetApi(env,method,body){
    // Never log a token, request body, widget data, chat ID or activation code.
    const reason=String(payload.description||'UNKNOWN').replace(/[0-9]{5,}:[A-Za-z0-9_-]{20,}/g,'[redacted]').slice(0,110);
    console.warn('Telegram sendWidget rejected: HTTP '+response.status+' '+reason);
+   if(reason.includes('INPUT_MEDIA_WIDGET_NOT_ALLOWED')){
+    // Telegram currently disallows native HTML widgets for general bots; avoid double-failing API calls.
+    nativeWidgetBlockedUntil=Date.now()+60*60*1000;
+    if(!retry)return telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback(body));
+   }
    if(!retry){
     try{
      return await telegramWidgetApi(env,'sendWidget',{...body,html:COMPACT_WORKSPACE_WIDGET_HTML,__compact_retry:true});
@@ -943,6 +959,45 @@ async function botLanguageCallback(update,env){
  await botWelcome(env,chatId,user,lang);
  return json({ok:true});
 }
+// Telegram inline keyboards remain interactive even when the provider disables HTML widgets.
+async function nativeMenuCallback(callback,env,req){
+ const raw=String(callback?.data||'');
+ if(!raw.startsWith('native:'))return null;
+ const page=raw.slice(7);
+ const isAllowed=/^(?:home|account|licenses|shop|setup|help|webhooks|channels|language|app|link|terms(?::[0-9])?|support|history(?::[0-9]{1,2})?|signal:[0-9]{1,2}|orders(?::[0-9]{1,2})?|users(?::[0-9]{1,3})?|admin|adminhelp|onboarding|access|more|free|bridge-install|scalper-install|channel-install|forward-install)$/.test(page);
+ if(!isAllowed||!workspaceQueryPage('ui:page:'+page)){
+  await botAnswerCallback(env,callback?.id);
+  return json({ok:true,ignored:'UNKNOWN_NATIVE_PAGE'});
+ }
+ const sender=String(callback?.from?.id||''),chat=callback?.message?.chat;
+ if(!sender||chat?.type!=='private'||String(chat.id)!==sender)
+  return json({ok:true,ignored:'CALLBACK_NOT_PRIVATE'});
+ await botAnswerCallback(env,callback.id);
+ const user=await env.DB.prepare('SELECT * FROM site_users WHERE telegram_id=?').bind(sender).first();
+ if(!user||user.status!=='active')return json({ok:true,ignored:'NO_ACTIVE_MEMBER'});
+ if((page==='admin'||page==='adminhelp'||page.startsWith('users'))&&
+   (user.role!=='admin'||!verifiedOwnerAdmin(env,user))){
+  await telegramWidgetApi(env,'sendMessage',{chat_id:sender,text:'Admin access required.',protect_content:true});
+  return json({ok:true,ignored:'FORBIDDEN'});
+ }
+ if(!await limited(req,env,'bot:native:'+sender,30))
+  return json({ok:true,ignored:'RATE_LIMITED'});
+ try{
+  const language=await userBotLocale(env,sender);
+  const membership=await channelMembership(telegramWidgetApi,env,sender);
+  const effectivePage=page==='home'&&membership!=='member'?'onboarding':page;
+  const helpers=workspaceHelpers(language,membership);
+  const view=onboardingView(effectivePage,language,membership)||
+    localizeWorkspace(await workspaceView(env,helpers,user,effectivePage),language);
+  await telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback({
+   chat_id:sender,caption:'DrFXAi · Signal Bridge',chat_data:widgetViewData(view)
+  }));
+ }catch(error){
+  console.warn('Telegram native menu navigation failed: '+String(error?.name||'UNKNOWN').slice(0,50));
+  await telegramWidgetApi(env,'sendMessage',{chat_id:sender,text:'Menu unavailable. Open the DrFX Mini App using the button below.',protect_content:true,reply_markup:{inline_keyboard:[[{text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}}]]}});
+ }
+ return json({ok:true});
+}
 async function workspaceNavigationCallback(callback,env,req){
  const destination=callback.data;
  if(!Object.values(BOT_NAVIGATION).includes(destination))return null;
@@ -968,7 +1023,7 @@ async function telegramWebhook(req,env,ctx){
  if(data.message?.successful_payment)return json(await starSuccessfulPayment(data.message,env,commerceHelpers()));
  if(data.widget_query)return signalBridgeWidgetQuery(data.widget_query,env,req);
  if(data.my_chat_member)return onBotMembership(data,env,channelHelpers(env,req));
- if(data.callback_query){const navigation=await workspaceNavigationCallback(data.callback_query,env,req);if(navigation)return navigation;if(await acceptStarQuote(data.callback_query,env,commerceHelpers()))return json({ok:true});const handled=await channelCallback(data,env,channelHelpers(env,req));if(handled)return handled;return botLanguageCallback(data,env);}
+ if(data.callback_query){const native=await nativeMenuCallback(data.callback_query,env,req);if(native)return native;const navigation=await workspaceNavigationCallback(data.callback_query,env,req);if(navigation)return navigation;if(await acceptStarQuote(data.callback_query,env,commerceHelpers()))return json({ok:true});const handled=await channelCallback(data,env,channelHelpers(env,req));if(handled)return handled;return botLanguageCallback(data,env);}
  const routed=await routeTelegramSignal(data,env);if(routed)return routed;
  const msg=data.message;
  if(!msg||msg.chat?.type!=='private'||!msg.from?.id)return json({ok:true,ignored:'NO_PRIVATE_MESSAGE'});
