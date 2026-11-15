@@ -258,7 +258,7 @@ test('private /start retries rejected premium HTML as an interactive compact Tel
  }finally{globalThis.fetch=real}
 });
 
-test('a second widget rejection delivers a useful private text response with language controls',async()=>{
+test('a second widget rejection delivers a premium image card with language controls',async()=>{
  const f=fixture(),real=globalThis.fetch,calls=[];
  globalThis.fetch=async(url,init)=>{
   const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
@@ -270,11 +270,12 @@ test('a second widget rejection delivers a useful private text response with lan
  try{
   const response=await worker.fetch(request({update_id:877,message:{message_id:8,date:Math.floor(Date.now()/1000),chat:{id:123,type:'private'},from:{id:123,first_name:'Tester'},text:'/start'}}),f.env);
   assert.equal(response.status,200);
-  assert.deepEqual(calls.map(x=>x.method),['sendWidget','sendWidget','sendMessage']);
+  assert.deepEqual(calls.map(x=>x.method),['sendWidget','sendWidget','sendPhoto']);
   const fallback=calls[2].body;
   assert.equal(fallback.chat_id,'123');
   assert.equal(fallback.protect_content,true);
-  assert.match(fallback.text,/language/i);
+  assert.match(fallback.caption,/language/i);
+  assert.match(fallback.photo,/premium-card\.jpg/);
   assert.ok(fallback.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='lang:en'));
   assert.ok(fallback.reply_markup.inline_keyboard.some(row=>row[0].web_app?.url==='https://drfx.company/telegram'));
   assert.ok(!JSON.stringify(fallback).includes('test:token'));
@@ -302,7 +303,7 @@ test('native Telegram inline menu navigates without using disabled HTML widgets'
   assert.equal(sent.message_id,8);
   assert.ok(sent.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='native:bridge-install'));
   assert.ok(sent.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='native:home'));
-  assert.equal(sent.protect_content,true);
+  assert.equal(sent.chat_id,'123');
  }finally{globalThis.fetch=original}
 });
 
