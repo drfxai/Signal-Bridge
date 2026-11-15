@@ -579,12 +579,56 @@ async function botSend(env,chatId,text,keyboard,section){
  return sendBotNotice(env,{raw:telegramWidgetApi,language:await userBotLocale(env,chatId)},chatId,text,body.reply_markup,section);
 }
 
+// Small, fully interactive widget for clients/providers that reject the premium HTML.
+// The initial chat_data remains tenant-scoped; never embed codes or private API tokens in HTML.
+const COMPACT_WORKSPACE_WIDGET_HTML=String.raw`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;background:#0c1724;color:#f0f5fa;font:14px system-ui,sans-serif}.wrap{padding:14px;border:1px solid #b58e4a;border-radius:16px;background:#101f30}h3{margin:0 0 7px;color:#f0d597}p{margin:3px 0 8px;color:#c6d0da}.row{padding:8px 0;border-bottom:1px solid #344456;overflow-wrap:anywhere}.row b{display:block;color:#ffe0a6}button{display:block;width:100%;margin-top:7px;padding:10px 12px;background:#193148;border:1px solid #54768d;border-radius:10px;color:white;font:600 13px system-ui}.error{color:#e6b87d}</style></head><body><div class="wrap"><h3 id="title"></h3><p id="subtitle"></p><div id="rows"></div><div id="actions"></div><p id="status"></p></div><script>(function(){var T=window.TelegramWidget,s={},d=document;function el(id){return d.getElementById(id)}function load(){try{s=JSON.parse(T&&T.chatData||'{}')}catch(x){s={}}}function paint(){el('title').textContent=s.t||'Signal Bridge';el('subtitle').textContent=s.s||'';el('rows').textContent='';(s.r||[]).slice(0,6).forEach(function(r){var x=d.createElement('div'),b=d.createElement('b');x.className='row';x.textContent=r[0]+' ';b.textContent=r[1];x.appendChild(b);el('rows').appendChild(x)});el('actions').textContent='';(s.b||[]).slice(0,10).forEach(function(b){var x=d.createElement('button');x.textContent=b[0];x.onclick=function(){if(!T)return;if(b[3]){try{b[3].indexOf('https://t.me/')===0?T.openTelegramLink(b[3]):T.openLink(b[3])}catch(e){}return}T.request(b[1]).then(function(r){try{var a=JSON.parse(r.result||'{}');if(a.view){s=a.view;paint()}else el('status').textContent=a.message||''}catch(e){el('status').textContent='Request received'}},function(){el('status').textContent='Please use the Mini App'})};el('actions').appendChild(x)})}load();paint();if(T){T.onEvent('chatDataChanged',function(){load();paint()});T.ready()}})();</script></body></html>`;
+function telegramWidgetTextFallback(body){
+ let state={};
+ try{state=JSON.parse(body.chat_data||'{}')}catch{}
+ const plain=v=>String(v||'').replace(/<[^>]*>/g,'').trim();
+ const sensitive=/<code[\s>]/i.test(body.caption||'');
+ const lines=sensitive?[plain(body.caption)]:[
+  plain(state.t||body.caption||'DrFXAi Signal Bridge'),
+  plain(state.s),
+  ...(state.r||[]).slice(0,6).map(row=>plain(row[0])+': '+plain(row[1])),
+  ...(state.x||[]).slice(0,2).map(plain)
+ ];
+ const text=lines.filter(Boolean).join('\n').slice(0,3900)||'Open DrFX Mini App to continue.';
+ const options=(state.b||[]).slice(0,9).flatMap(b=>{
+  const name=plain(b[0]).slice(0,55),action=String(b[1]||''),url=String(b[3]||'');
+  if(!name)return [];
+  if(action==='link'&&/^https:\/\/[^\s]+$/.test(url))return [[{text:name,url}]];
+  if(/^ui:page:lang:(en|fa|tr|ru|hi)$/.test(action))return [[{text:name,callback_data:action.replace('ui:page:lang:','lang:')}]];
+  if(action==='ui:page:home')return [[{text:name,callback_data:'workspace:home'}]];
+  if(action==='ui:page:channels')return [[{text:name,callback_data:'workspace:channels'}]];
+  return [];
+ });
+ options.push([{text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}}]);
+ return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:options}};
+}
 async function telegramWidgetApi(env,method,body){
+ const retry=body?.__compact_retry===true;
+ const outgoing=retry?Object.fromEntries(Object.entries(body).filter(([key])=>key!=='__compact_retry')):body;
  const response=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{
-  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(8000)
+  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(outgoing),signal:AbortSignal.timeout(8000)
  });
  const payload=await response.json().catch(()=>({ok:false}));
- if(!response.ok||payload.ok!==true)throw Error('Telegram widget API failed: '+method);
+ if(!response.ok||payload.ok!==true){
+  if(method==='sendWidget'){
+   // The provider's status and sanitized description are essential for diagnostics.
+   // Never log a token, request body, widget data, chat ID or activation code.
+   const reason=String(payload.description||'UNKNOWN').replace(/[0-9]{5,}:[A-Za-z0-9_-]{20,}/g,'[redacted]').slice(0,110);
+   console.warn('Telegram sendWidget rejected: HTTP '+response.status+' '+reason);
+   if(!retry){
+    try{
+     return await telegramWidgetApi(env,'sendWidget',{...body,html:COMPACT_WORKSPACE_WIDGET_HTML,__compact_retry:true});
+    }catch{
+     return telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback(body));
+    }
+   }
+  }
+  throw Error('Telegram widget API failed: '+method);
+ }
  return payload.result;
 }
 
