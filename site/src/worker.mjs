@@ -654,7 +654,7 @@ function telegramRichCard(body){
   ...(subtitle?['<p>'+subtitle+'</p>']:[]),
   rows,'<hr/>',...buttonRows
  ].filter(Boolean).join('\n');
- return {chat_id:body.chat_id,rich_message:{html},protect_content:true};
+ return {chat_id:body.chat_id,rich_message:{html,is_rtl:state.l==='fa'},protect_content:true};
 }
 async function sendPremiumChatCard(env,body){
  const media=premiumChatPhoto(body);
