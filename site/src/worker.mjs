@@ -644,7 +644,7 @@ function telegramWidgetTextFallback(body){
   if(action==='link'&&/^https:\/\/[^\s]+$/.test(url))return [[{text:name,...(url===API_ORIGIN+'/telegram'?{web_app:{url}}:{url})}]];
   if(/^ui:page:lang:(en|fa|tr|ru|hi)$/.test(action))return [[{text:name,callback_data:action.replace('ui:page:lang:','lang:')}]];
   const nativePage=/^ui:page:([a-z0-9:-]{1,45})$/.exec(action);
-  if(nativePage&&workspaceQueryPage(action)){
+  if(nativePage&&(nativePage[1]==='downloads'||workspaceQueryPage(action))){
    const page=nativePage[1];
    // Sensitive actions require an authenticated Mini App workflow instead of exposing codes in callback payloads.
    if(/^(?:bridgecode|scalperkeys|tvhook|login|reset|resetconfirm|scalper-trial)$/.test(page))
@@ -847,8 +847,12 @@ async function sendLicenseShop(env,user){
 async function handleWorkspaceCommand(command,text,env,user,language){
  if(!user)return false;
  if(text.trim().split(/\s+/).length>1)return false;
- const pages={'/start':'home','/menu':'home','/help':'help','/setup':'setup','/language':'language','/lang':'language','/app':'app','/buy':'shop','/licenses':'licenses','/widget':'home','/me':'account','/link':'link','/terms':'terms','/orders':'orders:0','/paysupport':'support','/scalperwidget':'licenses','/admin':'admin','/users':'users:0','/detail':'adminhelp','/grant':'adminhelp','/scalperkey':'adminhelp','/suspend':'adminhelp','/resume':'adminhelp','/revoke':'adminhelp'};
+ const pages={'/start':'language','/menu':'home','/help':'help','/setup':'setup','/language':'language','/lang':'language','/app':'app','/buy':'shop','/licenses':'licenses','/widget':'home','/me':'account','/link':'link','/terms':'terms','/orders':'orders:0','/paysupport':'support','/scalperwidget':'licenses','/admin':'admin','/users':'users:0','/detail':'adminhelp','/grant':'adminhelp','/scalperkey':'adminhelp','/suspend':'adminhelp','/resume':'adminhelp','/revoke':'adminhelp'};
  let page=pages[command];if(!page)return false;
+ if(command==='/start'){
+  const selected=await env.DB.prepare('SELECT language_code FROM site_bot_preferences WHERE telegram_id=?').bind(user.telegram_id).first();
+  if(selected?.language_code)page='home';
+ }
  let membership;
  if(page==='home'){
   membership=await channelMembership(telegramWidgetApi,env,user.telegram_id);
