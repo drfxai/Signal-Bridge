@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
 import {deflateSync} from 'node:zlib';
 import worker from '../site/src/worker.mjs';
 import {BOT_WORKSPACE_WIDGET_HTML,workspaceView,widgetViewData,unpackWorkspaceView,workspaceQueryPage,signalRecords,sendBotNotice} from '../site/src/telegram-workspace.mjs';
@@ -23,30 +24,18 @@ function fixture(role='user'){
  return {env,sql,preferences};
 }
 const helpers={plans:STAR_PLANS,price:starPrice,terms:LICENSE_TERMS,licenseRecord:async()=>({status:'active',expires_at:null})};
-test('chat home menu Rich Messages keep grid actions and a compact language strip',async()=>{
- // Isolate module-level provider cooldowns from other Bot API fallback tests.
- const {default:isolatedWorker}=await import('../site/src/worker.mjs?rich-chat-menu-regression');
- const f=fixture(),original=globalThis.fetch,calls=[];
- globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
-  calls.push({method,body});
-  if(method==='getChatMember')return Response.json({ok:true,result:{status:'member'}});
-  if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
-  return Response.json({ok:true,result:{message_id:98}});
- };
- try{
-  const response=await isolatedWorker.fetch(request({update_id:943,message:{from:{id:123},chat:{id:123,type:'private'},text:'/menu'}}),f.env);
-  assert.equal(response.status,200);
-  const rich=calls.find(c=>c.method==='sendRichMessage')?.body?.rich_message?.html;
-  assert.ok(rich);
-  assert.match(rich,/📊 Dashboard/);
-  assert.match(rich,/📥 Download EA/);
-  assert.match(rich,/tg-button-row align="center"/);
-  assert.match(rich,/data="native:downloads"/);
-  assert.match(rich,/data="lang:hi"/);
-  assert.match(rich,/https:\/\/drfx\.company\/telegram/);
- }finally{globalThis.fetch=original}
-});
+const banner=readFileSync(new URL('../site/public/media/signal-bridge/premium-card.jpg',import.meta.url));
+function mockBanner(env){
+ env.ASSETS={async fetch(request){
+  assert.equal(new URL(request.url).pathname,'/media/signal-bridge/premium-card.jpg');
+  return new Response(banner,{headers:{'content-type':'image/jpeg'}});
+ }};
+}
+function requestBody(init){
+ if(!(init?.body instanceof FormData))return JSON.parse(init?.body||'{}');
+ const fields=Object.fromEntries(init.body);
+ return {...fields,reply_markup:JSON.parse(fields.reply_markup),protect_content:fields.protect_content==='true'};
+}
 
 test('workspace HTML and every populated page fit native Telegram limits',async()=>{
  assert.ok(Buffer.byteLength(BOT_WORKSPACE_WIDGET_HTML)<32768);
@@ -266,7 +255,7 @@ test('all localized terms pages fit Telegram widget limits and can be opened',as
 test('private /start retries rejected premium HTML as an interactive compact Telegram widget',async()=>{
  const f=fixture(),real=globalThis.fetch,calls=[];
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
   if(method==='sendWidget'&&calls.filter(x=>x.method==='sendWidget').length===1)
    return Response.json({ok:false,error_code:400,description:'Bad Request: premium widget rejected'},{status:400});
@@ -283,10 +272,10 @@ test('private /start retries rejected premium HTML as an interactive compact Tel
  }finally{globalThis.fetch=real}
 });
 
-test('rejected widgets fall back to Telegram Rich Messages with in-message controls',async()=>{
+test('rejected widgets fall back to protected text controls without an asset binding',async()=>{
  const f=fixture(),real=globalThis.fetch,calls=[];
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
   if(method==='sendWidget')
    return Response.json({ok:false,error_code:400,description:'Bad Request: widgets unavailable'},{status:400});
@@ -295,16 +284,14 @@ test('rejected widgets fall back to Telegram Rich Messages with in-message contr
  try{
   const response=await worker.fetch(request({update_id:877,message:{message_id:8,date:Math.floor(Date.now()/1000),chat:{id:123,type:'private'},from:{id:123,first_name:'Tester'},text:'/start'}}),f.env);
   assert.equal(response.status,200);
-  assert.deepEqual(calls.map(x=>x.method),['sendWidget','sendWidget','sendRichMessage']);
+  assert.deepEqual(calls.map(x=>x.method),['sendWidget','sendWidget','sendMessage']);
   const fallback=calls[2].body;
   assert.equal(fallback.chat_id,'123');
   assert.equal(fallback.protect_content,true);
-  assert.match(fallback.rich_message.html,/<h2>◆ DrFXAi/);
-  assert.match(fallback.rich_message.html,/premium-card\.jpg/);
-  assert.match(fallback.rich_message.html,/type="callback_data"/);
-  assert.match(fallback.rich_message.html,/data="lang:en"/);
-  assert.match(fallback.rich_message.html,/type="web_app"/);
-  assert.match(fallback.rich_message.html,/https:\/\/drfx\.company\/telegram/);
+  assert.match(fallback.text,/Choose language/);
+  const buttons=fallback.reply_markup.inline_keyboard.flat();
+  assert.ok(buttons.some(button=>button.callback_data==='lang:en'));
+  assert.ok(buttons.some(button=>button.web_app?.url==='https://drfx.company/telegram'));
   assert.ok(!JSON.stringify(fallback).includes('test:token'));
  }finally{globalThis.fetch=real}
 });
@@ -314,7 +301,7 @@ test('native Telegram inline menu navigates without using disabled HTML widgets'
  const prepare=f.env.DB.prepare.bind(f.env.DB);
  f.env.DB.prepare=sql=>sql.includes('SELECT requests FROM site_rate_limits')?{bind(){return this},async first(){return {requests:1}}}:prepare(sql);
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
   return Response.json({ok:true,result:method==='getChatMember'?{status:'member'}:true});
  };
@@ -346,10 +333,11 @@ test('native Telegram menu denies forged group navigation before any private rea
  }finally{globalThis.fetch=original}
 });
 
-test('Telegram widget-disable error immediately switches to rich messages and avoids repeat widget requests',async()=>{
+test('Telegram widget-disable error immediately switches to photo menus and avoids repeat widget requests',async()=>{
  const f=fixture(),original=globalThis.fetch,calls=[];
+ mockBanner(f.env);
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
   if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
   return Response.json({ok:true,result:{message_id:19}});
@@ -359,43 +347,47 @@ test('Telegram widget-disable error immediately switches to rich messages and av
    const res=await worker.fetch(request({update_id,message:{text:'/start',from:{id:123},chat:{id:123,type:'private'}}}),f.env);
    assert.equal(res.status,200);
   }
-  assert.deepEqual(calls.map(c=>c.method),['sendWidget','sendRichMessage','sendRichMessage']);
-  for(const c of calls.filter(c=>c.method==='sendRichMessage')){
-   assert.ok(c.body.rich_message.html.includes('premium-card.jpg'));
-   assert.match(c.body.rich_message.html,/data="lang:en"/);
-   assert.equal(c.body.protect_content,true);
+  assert.deepEqual(calls.map(c=>c.method),['sendWidget','sendPhoto','sendPhoto']);
+  for(const {body} of calls.filter(c=>c.method==='sendPhoto')){
+   assert.equal(body.photo.type,'image/jpeg');
+   assert.deepEqual(banner.subarray(-2),Buffer.from([0xff,0xd9]));
+   assert.deepEqual(Buffer.from(await body.photo.arrayBuffer()),banner);
+   assert.ok(body.reply_markup.inline_keyboard.flat().some(button=>button.callback_data==='lang:en'));
+   assert.equal(body.protect_content,true);
   }
  }finally{globalThis.fetch=original}
 });
 
-test('a native rich message stays interactive and edits itself on callback',async()=>{
+test('a text menu stays interactive and a repeated tap adds no duplicate message',async()=>{
  const f=fixture(),original=globalThis.fetch,calls=[];
  const prepare=f.env.DB.prepare.bind(f.env.DB);
  f.env.DB.prepare=sql=>sql.includes('SELECT requests FROM site_rate_limits')?{bind(){return this},async first(){return {requests:1}}}:prepare(sql);
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
+  if(method==='editMessageText')return Response.json({ok:false,description:'Bad Request: message is not modified: same content'},{status:400});
   return Response.json({ok:true,result:method==='getChatMember'?{status:'member'}:true});
+
  };
  try{
-  const callback={id:'rich-nav-1',from:{id:123},message:{chat:{id:123,type:'private'},message_id:87,rich_message:{blocks:[]}},data:'native:setup'};
+  const callback={id:'rich-nav-1',from:{id:123},message:{chat:{id:123,type:'private'},message_id:87},data:'native:setup'};
   const response=await worker.fetch(request({update_id:893,callback_query:callback}),f.env);
   assert.equal(response.status,200);
   const edit=calls.find(c=>c.method==='editMessageText')?.body;
   assert.equal(edit.message_id,87);
-  assert.match(edit.rich_message.html,/Install &amp; Activate/);
-  assert.match(edit.rich_message.html,/type="callback_data"/);
-  assert.ok(!calls.some(c=>c.method==='sendPhoto'));
+  assert.match(edit.text,/Install & Activate/);
+  assert.ok(edit.reply_markup.inline_keyboard.flat().some(button=>button.callback_data==='native:bridge-install'));
+  assert.ok(!calls.some(c=>['sendPhoto','sendMessage'].includes(c.method)));
  }finally{globalThis.fetch=original}
 });
 
 test('premium image card shows in chat and preserves buttons without HTML widget support',async()=>{
  const f=fixture(),original=globalThis.fetch,calls=[];
+ mockBanner(f.env);
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
   if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
-  if(method==='sendRichMessage')return Response.json({ok:false,error_code:400,description:'Bad Request: rich message temporarily unavailable'},{status:400});
   return Response.json({ok:true,result:{message_id:77}});
  };
  try{
@@ -403,7 +395,7 @@ test('premium image card shows in chat and preserves buttons without HTML widget
   assert.equal(response.status,200);
   const photo=calls.find(c=>c.method==='sendPhoto')?.body;
   assert.ok(photo,'the bot should send a branded visual card in chat');
-  assert.match(photo.caption,/SIGNAL BRIDGE/);
+  assert.match(photo.caption,/Membership check unavailable/);
   assert.ok(photo.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='native:home'||row[0].callback_data==='native:onboarding'));
   assert.ok(photo.reply_markup.inline_keyboard.some(row=>row[0].web_app?.url==='https://drfx.company/telegram'));
   assert.equal(photo.protect_content,true);
@@ -412,8 +404,9 @@ test('premium image card shows in chat and preserves buttons without HTML widget
 
 test('photo download failures return to reliable protected text menu',async()=>{
  const f=fixture(),original=globalThis.fetch,calls=[];
+ mockBanner(f.env);
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
   if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
   if(method==='sendPhoto')return Response.json({ok:false,error_code:400,description:'Bad Request: failed to get HTTP URL content'},{status:400});
@@ -428,14 +421,14 @@ test('photo download failures return to reliable protected text menu',async()=>{
  }finally{globalThis.fetch=original}
 });
 
-test('redesigned bot-only home renders a two-column 8-action keyboard plus free trial, app and five languages',async()=>{
+test('redesigned bot-only home renders a two-column 8-action keyboard plus free trial, app and a language picker',async()=>{
  const f=fixture(),original=globalThis.fetch,calls=[];
+ mockBanner(f.env);
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
   if(method==='getChatMember')return Response.json({ok:true,result:{status:'member'}});
   if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
-  if(method==='sendRichMessage')return Response.json({ok:false,error_code:400,description:'Rich unavailable'},{status:400});
   return Response.json({ok:true,result:{message_id:90}});
  };
  try{
@@ -448,14 +441,17 @@ test('redesigned bot-only home renders a two-column 8-action keyboard plus free 
   assert.deepEqual(rows.slice(0,4).map(row=>row.length),[2,2,2,2]);
   assert.equal(rows[4].length,1,'free trial uses full row');
   assert.equal(rows[5].length,1,'Mini App uses full row');
-  assert.equal(rows[6].length,5,'language flags appear in one row');
+  assert.equal(rows[6][0].callback_data,'native:language');
+  assert.equal(rows[4][0].style,'success');
+  assert.equal(rows[5][0].style,'primary');
   const all=rows.flat();
   assert.ok(all.some(b=>b.callback_data==='native:downloads'));
   assert.ok(all.some(b=>b.callback_data==='native:free'));
   assert.ok(all.some(b=>b.callback_data==='native:account'));
   assert.ok(all.some(b=>b.url==='https://t.me/DrFXGOD'));
   assert.ok(all.some(b=>b.web_app?.url==='https://drfx.company/telegram'));
-  assert.deepEqual(rows[6].map(b=>b.callback_data),['lang:en','lang:fa','lang:tr','lang:ru','lang:hi']);
+  assert.ok(all.some(b=>b.callback_data==='native:licenses'));
+  assert.ok(all.some(b=>b.callback_data==='native:shop'));
   assert.equal(photo.body.protect_content,true);
  }finally{globalThis.fetch=original}
 });
@@ -465,7 +461,7 @@ test('download center inside bot chat provides both existing official EA downloa
  const prepare=f.env.DB.prepare.bind(f.env.DB);
  f.env.DB.prepare=sql=>sql.includes('SELECT requests FROM site_rate_limits')?{bind(){return this},async first(){return {requests:1}}}:prepare(sql);
  globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  const method=String(url).split('/').at(-1),body=requestBody(init);
   calls.push({method,body});
   return Response.json({ok:true,result:method==='getChatMember'?{status:'member'}:{message_id:92}});
  };

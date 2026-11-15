@@ -585,11 +585,11 @@ const COMPACT_WORKSPACE_WIDGET_HTML=String.raw`<!doctype html><html><head><meta 
 
 // Chat-only presentation: this never changes the Telegram Mini App or website.
 const CHAT_MENU_COPY=Object.freeze({
- en:['Signal Bridge · Control Center','TradingView + Telegram → MT5','📊 Dashboard','🔑 Get License','⚙️ Setup & Connect','🎟️ My Licenses','📥 Download EA','📚 Help & Guides','🎧 Support','👥 Community','🎁 Start Free Trial','🚀 Open Mini App','🛡️ Admin Console','Download Center','Choose an Expert Advisor','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Language'],
- fa:['سیگنال بریج · مرکز کنترل','تریدینگ‌ویو + تلگرام ← MT5','📊 داشبورد','🔑 دریافت لایسنس','⚙️ اتصال و تنظیمات','🎟️ لایسنس‌های من','📥 دانلود اکسپرت','📚 راهنما و آموزش','🎧 پشتیبانی','👥 کانال DrFXAi','🎁 شروع آزمایش رایگان','🚀 بازکردن مینی‌اپ','🛡️ پنل مدیریت','مرکز دانلود','اکسپرت مورد نظر را انتخاب کنید','📥 اکسپرت سیگنال بریج','📥 اکسپرت اسکلپر پرو','🌐 زبان'],
- tr:['Signal Bridge · Kontrol Merkezi','TradingView + Telegram → MT5','📊 Panel','🔑 Lisans Al','⚙️ Kurulum ve Bağlantı','🎟️ Lisanslarım','📥 EA İndir','📚 Rehberler','🎧 Destek','👥 Topluluk','🎁 Ücretsiz Deneme','🚀 Mini App Aç','🛡️ Yönetici Paneli','İndirme Merkezi','Bir EA seçin','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Dil'],
- ru:['Signal Bridge · Центр управления','TradingView + Telegram → MT5','📊 Панель','🔑 Получить лицензию','⚙️ Подключение','🎟️ Мои лицензии','📥 Скачать EA','📚 Инструкции','🎧 Поддержка','👥 Сообщество','🎁 Пробный доступ','🚀 Открыть Mini App','🛡️ Панель админа','Загрузки','Выберите советник','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Язык'],
- hi:['Signal Bridge · कंट्रोल सेंटर','TradingView + Telegram → MT5','📊 डैशबोर्ड','🔑 लाइसेंस लें','⚙️ सेटअप और कनेक्ट','🎟️ मेरे लाइसेंस','📥 EA डाउनलोड','📚 सहायता व गाइड','🎧 सहायता','👥 समुदाय','🎁 मुफ़्त ट्रायल','🚀 मिनी ऐप खोलें','🛡️ एडमिन पैनल','डाउनलोड सेंटर','EA चुनें','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 भाषा']
+ en:['Signal Bridge · Control Center','TradingView + Telegram → MT5','📊 Dashboard','🔑 Get License','⚙️ Setup & Connect','🎟️ Plans','📥 Download EA','📚 Help & Guides','🎧 Support','👥 Community','🎁 Start Free Trial','🚀 Open Mini App','🛡️ Admin Console','Download Center','Choose an Expert Advisor','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Language'],
+ fa:['سیگنال بریج · مرکز کنترل','تریدینگ‌ویو + تلگرام ← MT5','📊 داشبورد','🔑 دریافت لایسنس','⚙️ اتصال و تنظیمات','🎟️ پلن‌ها','📥 دانلود اکسپرت','📚 راهنما و آموزش','🎧 پشتیبانی','👥 کانال DrFXAi','🎁 شروع آزمایش رایگان','🚀 بازکردن مینی‌اپ','🛡️ پنل مدیریت','مرکز دانلود','اکسپرت مورد نظر را انتخاب کنید','📥 اکسپرت سیگنال بریج','📥 اکسپرت اسکلپر پرو','🌐 زبان'],
+ tr:['Signal Bridge · Kontrol Merkezi','TradingView + Telegram → MT5','📊 Panel','🔑 Lisans Al','⚙️ Kurulum ve Bağlantı','🎟️ Planlar','📥 EA İndir','📚 Rehberler','🎧 Destek','👥 Topluluk','🎁 Ücretsiz Deneme','🚀 Mini App Aç','🛡️ Yönetici Paneli','İndirme Merkezi','Bir EA seçin','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Dil'],
+ ru:['Signal Bridge · Центр управления','TradingView + Telegram → MT5','📊 Панель','🔑 Получить лицензию','⚙️ Подключение','🎟️ Тарифы','📥 Скачать EA','📚 Инструкции','🎧 Поддержка','👥 Сообщество','🎁 Пробный доступ','🚀 Открыть Mini App','🛡️ Панель админа','Загрузки','Выберите советник','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Язык'],
+ hi:['Signal Bridge · कंट्रोल सेंटर','TradingView + Telegram → MT5','📊 डैशबोर्ड','🔑 लाइसेंस लें','⚙️ सेटअप और कनेक्ट','🎟️ प्लान','📥 EA डाउनलोड','📚 सहायता व गाइड','🎧 सहायता','👥 समुदाय','🎁 मुफ़्त ट्रायल','🚀 मिनी ऐप खोलें','🛡️ एडमिन पैनल','डाउनलोड सेंटर','EA चुनें','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 भाषा']
 });
 const CHAT_FLAGS=Object.freeze([['🇬🇧','en'],['🇮🇷','fa'],['🇹🇷','tr'],['🇷🇺','ru'],['🇮🇳','hi']]);
 function botChatMenuState(original){
@@ -599,12 +599,11 @@ function botChatMenuState(original){
   const admin=Array.isArray(state.b)&&state.b.some(b=>b[1]==='ui:page:admin');
   state.t=strings[0];state.s=strings[1];state.r=[];
   state.b=[
-   [strings[2],'ui:page:account','primary'],[strings[3],'ui:page:free','accent'],
-   [strings[4],'ui:page:setup'],[strings[5],'ui:page:licenses'],
+   [strings[2],'ui:page:account','primary'],[strings[3],'ui:page:licenses','accent'],
+   [strings[4],'ui:page:setup'],[strings[5],'ui:page:shop'],
    [strings[6],'ui:page:downloads'],[strings[7],'ui:page:help'],
    [strings[8],'link','','https://t.me/DrFXGOD'],[strings[9],'link','','https://t.me/DrFXAi'],
    [strings[10],'ui:page:free','primary'],[strings[11],'link','primary',API_ORIGIN+'/telegram'],
-   ...CHAT_FLAGS.map(([flag,code])=>[flag,'ui:page:lang:'+code,code===state.l?'primary':'']),
    ...(admin?[[strings[12],'ui:page:admin','accent']]:[])
   ];
  }else if(state.p==='language'||state.p==='onboarding'){
@@ -640,16 +639,18 @@ function telegramWidgetTextFallback(body){
  const text=lines.filter(Boolean).join('\n').slice(0,3900)||'Open DrFX Mini App to continue.';
  const options=(state.b||[]).slice(0,19).flatMap(b=>{
   const name=plain(b[0]).slice(0,55),action=String(b[1]||''),url=String(b[3]||'');
+  const style=action==='ui:page:free'?'success':b[2]==='primary'?'primary':undefined;
+  const label={text:name,...(style?{style}:{})};
   if(!name)return [];
-  if(action==='link'&&/^https:\/\/[^\s]+$/.test(url))return [[{text:name,...(url===API_ORIGIN+'/telegram'?{web_app:{url}}:{url})}]];
-  if(/^ui:page:lang:(en|fa|tr|ru|hi)$/.test(action))return [[{text:name,callback_data:action.replace('ui:page:lang:','lang:')}]];
+  if(action==='link'&&/^https:\/\/[^\s]+$/.test(url))return [[{...label,...(url===API_ORIGIN+'/telegram'?{web_app:{url}}:{url})}]];
+  if(/^ui:page:lang:(en|fa|tr|ru|hi)$/.test(action))return [[{...label,callback_data:action.replace('ui:page:lang:','lang:')}]];
   const nativePage=/^ui:page:([a-z0-9:-]{1,45})$/.exec(action);
   if(nativePage&&(nativePage[1]==='downloads'||workspaceQueryPage(action))){
    const page=nativePage[1];
    // Sensitive actions require an authenticated Mini App workflow instead of exposing codes in callback payloads.
    if(/^(?:bridgecode|scalperkeys|tvhook|login|reset|resetconfirm|scalper-trial)$/.test(page))
-    return [[{text:name,web_app:{url:API_ORIGIN+'/telegram'}}]];
-   return [[{text:name,callback_data:'native:'+page}]];
+    return [[{...label,web_app:{url:API_ORIGIN+'/telegram'}}]];
+   return [[{...label,callback_data:'native:'+page}]];
   }
   return [];
  });
@@ -660,9 +661,8 @@ function telegramWidgetTextFallback(body){
   // Wide call-to-action rows, then five compact language selectors.
   if(options[8])layout.push(options[8]);
   if(options[9])layout.push(options[9]);
-  const languages=options.slice(10,15).map(row=>row[0]).filter(Boolean);
-  if(languages.length)layout.push(languages);
-  if(options[15])layout.push(options[15]);
+  layout.push([{text:(CHAT_MENU_COPY[state.l]||CHAT_MENU_COPY.en)[17],callback_data:'native:language'}]);
+  if(options[10])layout.push(options[10]);
   return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:layout}};
  }
  if(!options.some(row=>row[0]?.callback_data==='native:home'))
@@ -673,76 +673,35 @@ function telegramWidgetTextFallback(body){
  if(languagePage){
   const flags=options.filter(row=>/^lang:(en|fa|tr|ru|hi)$/.test(row[0]?.callback_data||''));
   const other=options.filter(row=>!/^lang:(en|fa|tr|ru|hi)$/.test(row[0]?.callback_data||''));
-  return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:[...other,flags.map(row=>row[0])]}};
+  const rows=state.p==='language'?flags:flags.length?[flags.map(row=>row[0])]:[];
+  return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:[...rows,...other]}};
  }
  return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:options}};
 }
-const PREMIUM_CHAT_CARD_URL='https://raw.githubusercontent.com/drfxai/Signal-Bridge/8c4dcdff4ae5659b5af6abb78181b85dc16f4f5f/site/public/media/signal-bridge/premium-card.jpg';
-function premiumChatPhoto(body){
- const fallback=telegramWidgetTextFallback(body);
- let data={};try{data=JSON.parse(body.chat_data||'{}')}catch{}
- if(/<code[\s>]/i.test(body.caption||'')||!data.t||data.p==='notice')return null;
- return {chat_id:fallback.chat_id,photo:PREMIUM_CHAT_CARD_URL,
-  caption:('✦ DrFXAi · SIGNAL BRIDGE\n\n'+fallback.text).slice(0,930),
-  protect_content:true,reply_markup:fallback.reply_markup};
-}
-// Native Rich Messages (Bot API 10.3+) support headings, media and in-message buttons.
-// Unlike custom HTML widgets, these are structured Telegram message blocks.
-let richMessagesBlockedUntil=0;
-const richEscape=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-function telegramRichCard(body){
- const photo=premiumChatPhoto(body);
- if(!photo)return null;
- let state={};try{state=botChatMenuState(JSON.parse(body.chat_data||'{}'))}catch{}
- const title=richEscape(String(state.t||'Your private trading dashboard').slice(0,105));
- const subtitle=richEscape(String(state.s||'TradingView • Telegram • MetaTrader 5').slice(0,180));
- const rows=(state.r||[]).slice(0,5).map(row=>'<p><b>'+richEscape(String(row[0]).slice(0,52))+'</b> · '+richEscape(String(row[1]).slice(0,125))+'</p>').join('\n');
- const buttons=(photo.reply_markup?.inline_keyboard||[]).flat().slice(0,20).flatMap(button=>{
-  const name=richEscape(String(button.text||'').slice(0,55));
-  if(!name)return [];
-  if(button.callback_data&&/^[\x20-\x7E]{1,64}$/.test(button.callback_data)){
-   const style=/^(?:lang:|native:home|native:setup)/.test(button.callback_data)?'primary':'success';
-   return ['<tg-button type="callback_data" style="'+style+'" data="'+richEscape(button.callback_data)+'">'+name+'</tg-button>'];
-  }
-  const url=button.web_app?.url||button.url;
-  if(url&&/^https:\/\/[^\s"<>]+$/.test(url))return ['<tg-button type="'+(button.web_app?'web_app':'url')+'" style="'+(button.web_app?'primary':'success')+'" url="'+richEscape(url)+'">'+name+'</tg-button>'];
-  return [];
- });
- const buttonRows=[];
- if(state.p==='home'&&buttons.length>=15){
-  for(let i=0;i<8;i+=2)buttonRows.push('<tg-button-row align="center">'+buttons.slice(i,i+2).join('')+'</tg-button-row>');
-  buttonRows.push('<tg-button-row align="center">'+buttons[8]+'</tg-button-row>');
-  buttonRows.push('<tg-button-row align="center">'+buttons[9]+'</tg-button-row>');
-  buttonRows.push('<tg-button-row align="center">'+buttons.slice(10,15).join('')+'</tg-button-row>');
-  if(buttons[15])buttonRows.push('<tg-button-row align="center">'+buttons[15]+'</tg-button-row>');
- }else for(let i=0;i<buttons.length;i+=2)buttonRows.push('<tg-button-row align="center">'+buttons.slice(i,i+2).join('')+'</tg-button-row>');
- const html=[
-  '<h2>◆ DrFXAi · SIGNAL BRIDGE</h2>',
-  '<p>TradingView → Telegram → MT5</p>',
-  '<img src="'+richEscape(PREMIUM_CHAT_CARD_URL)+'"/>',
-  '<h3>'+title+'</h3>',
-  ...(subtitle?['<p>'+subtitle+'</p>']:[]),
-  rows,'<hr/>',...buttonRows
- ].filter(Boolean).join('\n');
- return {chat_id:body.chat_id,rich_message:{html,is_rtl:state.l==='fa'},protect_content:true};
+const CHAT_BANNER_PATH='/media/signal-bridge/premium-card.jpg';
+const CHAT_BANNER_PAGES=new Set(['home','language','onboarding']);
+function premiumChatCaption(text){
+ // Reserve enough room for Telegram's 1024-character caption limit, including Unicode.
+ return text.length<=1024?text:null;
 }
 async function sendPremiumChatCard(env,body){
- const media=premiumChatPhoto(body);
- if(media&&Date.now()>=richMessagesBlockedUntil){
-  const rich=telegramRichCard(body);
-  if(rich){
-   try{return await telegramWidgetApi(env,'sendRichMessage',rich)}
-   catch(error){
-    richMessagesBlockedUntil=Date.now()+10*60*1000;
-    console.warn('Telegram rich card fallback: '+String(error?.message||'UNSUPPORTED').slice(0,65));
-   }
-  }
+ const message=telegramWidgetTextFallback(body);
+ let page;try{page=JSON.parse(body.chat_data||'{}').p}catch{}
+ const caption=CHAT_BANNER_PAGES.has(page)?premiumChatCaption(message.text):null;
+ if(caption&&!/<code[\s>]/i.test(body.caption||'')&&env.ASSETS){
+  try{
+   const asset=await env.ASSETS.fetch(new Request(API_ORIGIN+CHAT_BANNER_PATH));
+   if(!asset.ok||!/^image\/jpeg(?:;|$)/i.test(asset.headers.get('content-type')||''))throw Error('Invalid chat banner asset');
+   const data=new FormData();
+   data.set('chat_id',String(message.chat_id));
+   data.set('photo',await asset.blob(),'signal-bridge.jpg');
+   data.set('caption',caption);
+   data.set('protect_content','true');
+   data.set('reply_markup',JSON.stringify(message.reply_markup));
+   return await telegramWidgetApi(env,'sendPhoto',data);
+  }catch{console.warn('Telegram chat banner unavailable; sending text menu');}
  }
- if(media){
-  try{return await telegramWidgetApi(env,'sendPhoto',media)}
-  catch(error){console.warn('Telegram premium media fallback: '+String(error?.message||'SEND_FAILED').slice(0,72));}
- }
- return telegramWidgetApi(env,'sendMessage',telegramWidgetTextFallback(body));
+ return telegramWidgetApi(env,'sendMessage',message);
 }
 let nativeWidgetBlockedUntil=0;
 async function telegramWidgetApi(env,method,body){
@@ -751,10 +710,14 @@ async function telegramWidgetApi(env,method,body){
  const retry=body?.__compact_retry===true;
  const outgoing=retry?Object.fromEntries(Object.entries(body).filter(([key])=>key!=='__compact_retry')):body;
  const response=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{
-  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(outgoing),signal:AbortSignal.timeout(8000)
+  method:'POST',
+  ...(outgoing instanceof FormData?{body:outgoing}:{headers:{'content-type':'application/json'},body:JSON.stringify(outgoing)}),
+  signal:AbortSignal.timeout(8000)
  });
  const payload=await response.json().catch(()=>({ok:false}));
  if(!response.ok||payload.ok!==true){
+  if(response.status===400&&['editMessageText','editMessageCaption'].includes(method)&&
+   /^Bad Request: message is not modified(?:[:.]|$)/i.test(String(payload.description||'')))return;
   if(method==='sendWidget'){
    // The provider's status and sanitized description are essential for diagnostics.
    // Never log a token, request body, widget data, chat ID or activation code.
@@ -1125,27 +1088,16 @@ async function nativeMenuCallback(callback,env,req){
    onboardingView(effectivePage,language,membership)||
     localizeWorkspace(await workspaceView(env,helpers,user,effectivePage),language);
   const state={chat_id:sender,caption:'DrFXAi · Signal Bridge',chat_data:widgetViewData(view)};
-  const media=premiumChatPhoto(state),fallback=telegramWidgetTextFallback(state);
+  const fallback=telegramWidgetTextFallback(state),caption=premiumChatCaption(fallback.text);
   const messageId=callback?.message?.message_id;
   if(Number.isSafeInteger(messageId)){
+   const target={chat_id:sender,message_id:messageId,reply_markup:fallback.reply_markup};
    try{
-    if(callback.message?.photo?.length&&media)
-     await telegramWidgetApi(env,'editMessageCaption',{chat_id:sender,message_id:messageId,caption:media.caption,reply_markup:media.reply_markup});
-    else if(!callback.message?.photo?.length){
-     const rich=Date.now()>=richMessagesBlockedUntil?telegramRichCard(state):null;
-     if(rich){
-      try{
-       await telegramWidgetApi(env,'editMessageText',{chat_id:sender,message_id:messageId,rich_message:rich.rich_message});
-      }catch(error){
-       richMessagesBlockedUntil=Date.now()+10*60*1000;
-       await telegramWidgetApi(env,'editMessageText',{chat_id:sender,message_id:messageId,text:fallback.text,reply_markup:fallback.reply_markup});
-      }
-     }else await telegramWidgetApi(env,'editMessageText',{chat_id:sender,message_id:messageId,text:fallback.text,reply_markup:fallback.reply_markup});
-    }
-    else throw Error('MEDIA_EDIT_UNAVAILABLE');
-   }catch(error){
-    if(!String(error?.message||'').includes('not modified'))await sendPremiumChatCard(env,state);
-   }
+    if(callback.message?.photo?.length){
+     if(!caption)throw Error('Caption too long');
+     await telegramWidgetApi(env,'editMessageCaption',{...target,caption});
+    }else await telegramWidgetApi(env,'editMessageText',{...target,text:fallback.text});
+   }catch{await sendPremiumChatCard(env,state);}
   }else await sendPremiumChatCard(env,state);
  }catch(error){
   console.warn('Telegram native menu navigation failed: '+String(error?.name||'UNKNOWN').slice(0,50));
