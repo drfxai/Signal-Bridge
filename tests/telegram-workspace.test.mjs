@@ -23,6 +23,29 @@ function fixture(role='user'){
  return {env,sql,preferences};
 }
 const helpers={plans:STAR_PLANS,price:starPrice,terms:LICENSE_TERMS,licenseRecord:async()=>({status:'active',expires_at:null})};
+test('chat home menu Rich Messages keep grid actions and a compact language strip',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  if(method==='getChatMember')return Response.json({ok:true,result:{status:'member'}});
+  if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
+  return Response.json({ok:true,result:{message_id:98}});
+ };
+ try{
+  const response=await worker.fetch(request({update_id:943,message:{from:{id:123},chat:{id:123,type:'private'},text:'/menu'}}),f.env);
+  assert.equal(response.status,200);
+  const rich=calls.find(c=>c.method==='sendRichMessage')?.body?.rich_message?.html;
+  assert.ok(rich);
+  assert.match(rich,/📊 Dashboard/);
+  assert.match(rich,/📥 Download EA/);
+  assert.match(rich,/tg-button-row align="center"/);
+  assert.match(rich,/data="native:downloads"/);
+  assert.match(rich,/data="lang:hi"/);
+  assert.match(rich,/https:\/\/drfx\.company\/telegram/);
+ }finally{globalThis.fetch=original}
+});
+
 test('workspace HTML and every populated page fit native Telegram limits',async()=>{
  assert.ok(Buffer.byteLength(BOT_WORKSPACE_WIDGET_HTML)<32768);
  assert.ok(deflateSync(Buffer.from(BOT_WORKSPACE_WIDGET_HTML),{level:9}).length<4096);
@@ -414,7 +437,7 @@ test('redesigned bot-only home renders a two-column 8-action keyboard plus free 
   return Response.json({ok:true,result:{message_id:90}});
  };
  try{
-  const response=await worker.fetch(request({update_id:941,message:{from:{id:123},chat:{id:123,type:'private'},text:'/start'}}),f.env);
+  const response=await worker.fetch(request({update_id:941,message:{from:{id:123},chat:{id:123,type:'private'},text:'/menu'}}),f.env);
   assert.equal(response.status,200);
   const photo=calls.find(c=>c.method==='sendPhoto');
   assert.ok(photo,'bot must send a chat message with a photo, not a Mini App render');
@@ -457,25 +480,4 @@ test('download center inside bot chat provides both existing official EA downloa
  }finally{globalThis.fetch=original}
 });
 
-test('chat home menu Rich Messages keep grid actions and a compact language strip',async()=>{
- const f=fixture(),original=globalThis.fetch,calls=[];
- globalThis.fetch=async(url,init)=>{
-  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
-  calls.push({method,body});
-  if(method==='getChatMember')return Response.json({ok:true,result:{status:'member'}});
-  if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
-  return Response.json({ok:true,result:{message_id:98}});
- };
- try{
-  const response=await worker.fetch(request({update_id:943,message:{from:{id:123},chat:{id:123,type:'private'},text:'/menu'}}),f.env);
-  assert.equal(response.status,200);
-  const rich=calls.find(c=>c.method==='sendRichMessage')?.body?.rich_message?.html;
-  assert.ok(rich);
-  assert.match(rich,/📊 Dashboard/);
-  assert.match(rich,/📥 Download EA/);
-  assert.match(rich,/tg-button-row align="center"/);
-  assert.match(rich,/data="native:downloads"/);
-  assert.match(rich,/data="lang:hi"/);
-  assert.match(rich,/https:\/\/drfx\.company\/telegram/);
- }finally{globalThis.fetch=original}
-});
+
