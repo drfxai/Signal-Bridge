@@ -291,14 +291,15 @@ test('native Telegram inline menu navigates without using disabled HTML widgets'
   return Response.json({ok:true,result:method==='getChatMember'?{status:'member'}:true});
  };
  try{
-  const callback={id:'native-nav-1',from:{id:123},message:{chat:{id:123,type:'private'},message_id:8},data:'native:setup'};
+  const callback={id:'native-nav-1',from:{id:123},message:{chat:{id:123,type:'private'},message_id:8,photo:[{file_id:'old-photo'}]},data:'native:setup'};
   const response=await worker.fetch(request({update_id:881,callback_query:callback}),f.env);
   assert.equal(response.status,200);
   assert.ok(calls.some(c=>c.method==='answerCallbackQuery'));
   assert.ok(calls.some(c=>c.method==='getChatMember'));
   assert.ok(!calls.some(c=>c.method==='sendWidget'));
-  const sent=calls.find(c=>c.method==='sendMessage')?.body;
-  assert.match(sent.text,/Install & Activate/);
+  const sent=calls.find(c=>c.method==='editMessageCaption')?.body;
+  assert.match(sent.caption,/Install & Activate/);
+  assert.equal(sent.message_id,8);
   assert.ok(sent.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='native:bridge-install'));
   assert.ok(sent.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='native:home'));
   assert.equal(sent.protect_content,true);
@@ -330,10 +331,49 @@ test('Telegram provider widget-disable error immediately switches to message wit
    const res=await worker.fetch(request({update_id,message:{text:'/start',from:{id:123},chat:{id:123,type:'private'}}}),f.env);
    assert.equal(res.status,200);
   }
-  assert.deepEqual(calls.map(c=>c.method),['sendWidget','sendMessage','sendMessage']);
-  for(const c of calls.filter(c=>c.method==='sendMessage')){
+  assert.deepEqual(calls.map(c=>c.method),['sendWidget','sendPhoto','sendPhoto']);
+  for(const c of calls.filter(c=>c.method==='sendPhoto')){
+   assert.ok(c.body.photo.includes('premium-card.jpg'));
    assert.ok(c.body.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='lang:en'));
    assert.equal(c.body.protect_content,true);
   }
+ }finally{globalThis.fetch=original}
+});
+
+test('premium image card shows in chat and preserves buttons without HTML widget support',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
+  return Response.json({ok:true,result:{message_id:77}});
+ };
+ try{
+  const response=await worker.fetch(request({update_id:911,message:{text:'/menu',from:{id:123},chat:{id:123,type:'private'}}}),f.env);
+  assert.equal(response.status,200);
+  const photo=calls.find(c=>c.method==='sendPhoto')?.body;
+  assert.ok(photo,'the bot should send a branded visual card in chat');
+  assert.match(photo.caption,/SIGNAL BRIDGE/);
+  assert.ok(photo.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='native:home'||row[0].callback_data==='native:onboarding'));
+  assert.ok(photo.reply_markup.inline_keyboard.some(row=>row[0].web_app?.url==='https://drfx.company/telegram'));
+  assert.equal(photo.protect_content,true);
+ }finally{globalThis.fetch=original}
+});
+
+test('photo download failures return to reliable protected text menu',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
+  if(method==='sendPhoto')return Response.json({ok:false,error_code:400,description:'Bad Request: failed to get HTTP URL content'},{status:400});
+  return Response.json({ok:true,result:{message_id:78}});
+ };
+ try{
+  const response=await worker.fetch(request({update_id:912,message:{text:'/start',from:{id:123},chat:{id:123,type:'private'}}}),f.env);
+  assert.equal(response.status,200);
+  assert.ok(calls.some(c=>c.method==='sendPhoto'));
+  assert.ok(calls.some(c=>c.method==='sendMessage'));
+  assert.ok(calls.find(c=>c.method==='sendMessage').body.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='lang:en'));
  }finally{globalThis.fetch=original}
 });
