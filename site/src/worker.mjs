@@ -582,9 +582,53 @@ async function botSend(env,chatId,text,keyboard,section){
 // Small, fully interactive widget for clients/providers that reject the premium HTML.
 // The initial chat_data remains tenant-scoped; never embed codes or private API tokens in HTML.
 const COMPACT_WORKSPACE_WIDGET_HTML=String.raw`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;background:#0c1724;color:#f0f5fa;font:14px system-ui,sans-serif}.wrap{padding:14px;border:1px solid #b58e4a;border-radius:16px;background:#101f30}h3{margin:0 0 7px;color:#f0d597}p{margin:3px 0 8px;color:#c6d0da}.row{padding:8px 0;border-bottom:1px solid #344456;overflow-wrap:anywhere}.row b{display:block;color:#ffe0a6}button{display:block;width:100%;margin-top:7px;padding:10px 12px;background:#193148;border:1px solid #54768d;border-radius:10px;color:white;font:600 13px system-ui}.error{color:#e6b87d}</style></head><body><div class="wrap"><h3 id="title"></h3><p id="subtitle"></p><div id="rows"></div><div id="actions"></div><p id="status"></p></div><script>(function(){var T=window.TelegramWidget,s={},d=document;function el(id){return d.getElementById(id)}function load(){try{s=JSON.parse(T&&T.chatData||'{}')}catch(x){s={}}}function paint(){el('title').textContent=s.t||'Signal Bridge';el('subtitle').textContent=s.s||'';el('rows').textContent='';(s.r||[]).slice(0,6).forEach(function(r){var x=d.createElement('div'),b=d.createElement('b');x.className='row';x.textContent=r[0]+' ';b.textContent=r[1];x.appendChild(b);el('rows').appendChild(x)});el('actions').textContent='';(s.b||[]).slice(0,10).forEach(function(b){var x=d.createElement('button');x.textContent=b[0];x.onclick=function(){if(!T)return;if(b[3]){try{b[3].indexOf('https://t.me/')===0?T.openTelegramLink(b[3]):T.openLink(b[3])}catch(e){}return}T.request(b[1]).then(function(r){try{var a=JSON.parse(r.result||'{}');if(a.view){s=a.view;paint()}else el('status').textContent=a.message||''}catch(e){el('status').textContent='Request received'}},function(){el('status').textContent='Please use the Mini App'})};el('actions').appendChild(x)})}load();paint();if(T){T.onEvent('chatDataChanged',function(){load();paint()});T.ready()}})();</script></body></html>`;
+
+// Chat-only presentation: this never changes the Telegram Mini App or website.
+const CHAT_MENU_COPY=Object.freeze({
+ en:['Signal Bridge · Control Center','TradingView + Telegram → MT5','📊 Dashboard','🔑 Get License','⚙️ Setup & Connect','🎟️ My Licenses','📥 Download EA','📚 Help & Guides','🎧 Support','👥 Community','🎁 Start Free Trial','🚀 Open Mini App','🛡️ Admin Console','Download Center','Choose an Expert Advisor','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Language'],
+ fa:['سیگنال بریج · مرکز کنترل','تریدینگ‌ویو + تلگرام ← MT5','📊 داشبورد','🔑 دریافت لایسنس','⚙️ اتصال و تنظیمات','🎟️ لایسنس‌های من','📥 دانلود اکسپرت','📚 راهنما و آموزش','🎧 پشتیبانی','👥 کانال DrFXAi','🎁 شروع آزمایش رایگان','🚀 بازکردن مینی‌اپ','🛡️ پنل مدیریت','مرکز دانلود','اکسپرت مورد نظر را انتخاب کنید','📥 اکسپرت سیگنال بریج','📥 اکسپرت اسکلپر پرو','🌐 زبان'],
+ tr:['Signal Bridge · Kontrol Merkezi','TradingView + Telegram → MT5','📊 Panel','🔑 Lisans Al','⚙️ Kurulum ve Bağlantı','🎟️ Lisanslarım','📥 EA İndir','📚 Rehberler','🎧 Destek','👥 Topluluk','🎁 Ücretsiz Deneme','🚀 Mini App Aç','🛡️ Yönetici Paneli','İndirme Merkezi','Bir EA seçin','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Dil'],
+ ru:['Signal Bridge · Центр управления','TradingView + Telegram → MT5','📊 Панель','🔑 Получить лицензию','⚙️ Подключение','🎟️ Мои лицензии','📥 Скачать EA','📚 Инструкции','🎧 Поддержка','👥 Сообщество','🎁 Пробный доступ','🚀 Открыть Mini App','🛡️ Панель админа','Загрузки','Выберите советник','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 Язык'],
+ hi:['Signal Bridge · कंट्रोल सेंटर','TradingView + Telegram → MT5','📊 डैशबोर्ड','🔑 लाइसेंस लें','⚙️ सेटअप और कनेक्ट','🎟️ मेरे लाइसेंस','📥 EA डाउनलोड','📚 सहायता व गाइड','🎧 सहायता','👥 समुदाय','🎁 मुफ़्त ट्रायल','🚀 मिनी ऐप खोलें','🛡️ एडमिन पैनल','डाउनलोड सेंटर','EA चुनें','📥 Signal Bridge EA','📥 Scalper Pro EA','🌐 भाषा']
+});
+const CHAT_FLAGS=Object.freeze([['🇬🇧','en'],['🇮🇷','fa'],['🇹🇷','tr'],['🇷🇺','ru'],['🇮🇳','hi']]);
+function botChatMenuState(original){
+ const state={...original};
+ const strings=CHAT_MENU_COPY[state.l]||CHAT_MENU_COPY.en;
+ if(state.p==='home'){
+  const admin=Array.isArray(state.b)&&state.b.some(b=>b[1]==='ui:page:admin');
+  state.t=strings[0];state.s=strings[1];state.r=[];
+  state.b=[
+   [strings[2],'ui:page:account','primary'],[strings[3],'ui:page:free','accent'],
+   [strings[4],'ui:page:setup'],[strings[5],'ui:page:licenses'],
+   [strings[6],'ui:page:downloads'],[strings[7],'ui:page:help'],
+   [strings[8],'link','','https://t.me/DrFXGOD'],[strings[9],'link','','https://t.me/DrFXAi'],
+   [strings[10],'ui:page:free','primary'],[strings[11],'link','primary',API_ORIGIN+'/telegram'],
+   ...CHAT_FLAGS.map(([flag,code])=>[flag,'ui:page:lang:'+code,code===state.l?'primary':'']),
+   ...(admin?[[strings[12],'ui:page:admin','accent']]:[])
+  ];
+ }else if(state.p==='language'||state.p==='onboarding'){
+  // Keep channel membership gating and provide a language switch without redirecting to the website.
+  const existing=Array.isArray(state.b)?state.b:[];
+  const buttons=CHAT_FLAGS.filter(([,code])=>!existing.some(b=>b[1]==='ui:page:lang:'+code))
+   .map(([flag,code])=>[flag,'ui:page:lang:'+code,code===state.l?'primary':'']);
+  state.b=[...existing,...buttons];
+ }
+ return state;
+}
+function botDownloadView(language){
+ const words=CHAT_MENU_COPY[language]||CHAT_MENU_COPY.en;
+ const downloads=eaDownloadCatalog();
+ return {page:'downloads',language,title:words[13],subtitle:words[14],badge:'DrFXAi',rows:[],buttons:[
+  {label:words[15],action:'link',url:downloads.signalbridge.url},
+  {label:words[16],action:'link',url:downloads.scalper.url},
+  {label:language==='fa'?'‹ منوی اصلی':'‹ Main Menu',action:'ui:page:home'}
+ ]};
+}
+
 function telegramWidgetTextFallback(body){
  let state={};
- try{state=JSON.parse(body.chat_data||'{}')}catch{}
+ try{state=botChatMenuState(JSON.parse(body.chat_data||'{}'))}catch{}
  const plain=v=>String(v||'').replace(/<[^>]*>/g,'').trim();
  const sensitive=/<code[\s>]/i.test(body.caption||'');
  const lines=sensitive?[plain(body.caption)]:[
@@ -594,13 +638,13 @@ function telegramWidgetTextFallback(body){
   ...(state.x||[]).slice(0,2).map(plain)
  ];
  const text=lines.filter(Boolean).join('\n').slice(0,3900)||'Open DrFX Mini App to continue.';
- const options=(state.b||[]).slice(0,10).flatMap(b=>{
+ const options=(state.b||[]).slice(0,19).flatMap(b=>{
   const name=plain(b[0]).slice(0,55),action=String(b[1]||''),url=String(b[3]||'');
   if(!name)return [];
-  if(action==='link'&&/^https:\/\/[^\s]+$/.test(url))return [[{text:name,url}]];
+  if(action==='link'&&/^https:\/\/[^\s]+$/.test(url))return [[{text:name,...(url===API_ORIGIN+'/telegram'?{web_app:{url}}:{url})}]];
   if(/^ui:page:lang:(en|fa|tr|ru|hi)$/.test(action))return [[{text:name,callback_data:action.replace('ui:page:lang:','lang:')}]];
   const nativePage=/^ui:page:([a-z0-9:-]{1,45})$/.exec(action);
-  if(nativePage&&workspaceQueryPage(action)){
+  if(nativePage&&(nativePage[1]==='downloads'||workspaceQueryPage(action))){
    const page=nativePage[1];
    // Sensitive actions require an authenticated Mini App workflow instead of exposing codes in callback payloads.
    if(/^(?:bridgecode|scalperkeys|tvhook|login|reset|resetconfirm|scalper-trial)$/.test(page))
@@ -609,9 +653,28 @@ function telegramWidgetTextFallback(body){
   }
   return [];
  });
- if(state.p!=='home'&&!options.some(row=>row[0]?.callback_data==='native:home'))
+ if(state.p==='home'){
+  const cells=options.slice(0,8).map(row=>row[0]);
+  const layout=[];
+  for(let i=0;i<cells.length;i+=2)layout.push(cells.slice(i,i+2));
+  // Wide call-to-action rows, then five compact language selectors.
+  if(options[8])layout.push(options[8]);
+  if(options[9])layout.push(options[9]);
+  const languages=options.slice(10,15).map(row=>row[0]).filter(Boolean);
+  if(languages.length)layout.push(languages);
+  if(options[15])layout.push(options[15]);
+  return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:layout}};
+ }
+ if(!options.some(row=>row[0]?.callback_data==='native:home'))
   options.push([{text:'‹ Main Menu',callback_data:'native:home'}]);
- options.push([{text:'Open DrFX Mini App',web_app:{url:API_ORIGIN+'/telegram'}}]);
+ if(!options.some(row=>row[0]?.web_app?.url===API_ORIGIN+'/telegram'))
+  options.push([{text:'🚀 Open Mini App',web_app:{url:API_ORIGIN+'/telegram'}}]);
+ const languagePage=state.p==='language'||state.p==='onboarding';
+ if(languagePage){
+  const flags=options.filter(row=>/^lang:(en|fa|tr|ru|hi)$/.test(row[0]?.callback_data||''));
+  const other=options.filter(row=>!/^lang:(en|fa|tr|ru|hi)$/.test(row[0]?.callback_data||''));
+  return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:[...other,flags.map(row=>row[0])]}};
+ }
  return {chat_id:body.chat_id,text,protect_content:true,reply_markup:{inline_keyboard:options}};
 }
 const PREMIUM_CHAT_CARD_URL='https://raw.githubusercontent.com/drfxai/Signal-Bridge/8c4dcdff4ae5659b5af6abb78181b85dc16f4f5f/site/public/media/signal-bridge/premium-card.jpg';
@@ -630,11 +693,11 @@ const richEscape=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&l
 function telegramRichCard(body){
  const photo=premiumChatPhoto(body);
  if(!photo)return null;
- let state={};try{state=JSON.parse(body.chat_data||'{}')}catch{}
+ let state={};try{state=botChatMenuState(JSON.parse(body.chat_data||'{}'))}catch{}
  const title=richEscape(String(state.t||'Your private trading dashboard').slice(0,105));
  const subtitle=richEscape(String(state.s||'TradingView • Telegram • MetaTrader 5').slice(0,180));
  const rows=(state.r||[]).slice(0,5).map(row=>'<p><b>'+richEscape(String(row[0]).slice(0,52))+'</b> · '+richEscape(String(row[1]).slice(0,125))+'</p>').join('\n');
- const buttons=(photo.reply_markup?.inline_keyboard||[]).flat().slice(0,12).flatMap(button=>{
+ const buttons=(photo.reply_markup?.inline_keyboard||[]).flat().slice(0,20).flatMap(button=>{
   const name=richEscape(String(button.text||'').slice(0,55));
   if(!name)return [];
   if(button.callback_data&&/^[\x20-\x7E]{1,64}$/.test(button.callback_data)){
@@ -645,7 +708,14 @@ function telegramRichCard(body){
   if(url&&/^https:\/\/[^\s"<>]+$/.test(url))return ['<tg-button type="'+(button.web_app?'web_app':'url')+'" style="'+(button.web_app?'primary':'success')+'" url="'+richEscape(url)+'">'+name+'</tg-button>'];
   return [];
  });
- const buttonRows=[];for(let i=0;i<buttons.length;i+=2)buttonRows.push('<tg-button-row align="center">'+buttons.slice(i,i+2).join('')+'</tg-button-row>');
+ const buttonRows=[];
+ if(state.p==='home'&&buttons.length>=15){
+  for(let i=0;i<8;i+=2)buttonRows.push('<tg-button-row align="center">'+buttons.slice(i,i+2).join('')+'</tg-button-row>');
+  buttonRows.push('<tg-button-row align="center">'+buttons[8]+'</tg-button-row>');
+  buttonRows.push('<tg-button-row align="center">'+buttons[9]+'</tg-button-row>');
+  buttonRows.push('<tg-button-row align="center">'+buttons.slice(10,15).join('')+'</tg-button-row>');
+  if(buttons[15])buttonRows.push('<tg-button-row align="center">'+buttons[15]+'</tg-button-row>');
+ }else for(let i=0;i<buttons.length;i+=2)buttonRows.push('<tg-button-row align="center">'+buttons.slice(i,i+2).join('')+'</tg-button-row>');
  const html=[
   '<h2>◆ DrFXAi · SIGNAL BRIDGE</h2>',
   '<p>TradingView → Telegram → MT5</p>',
@@ -779,6 +849,10 @@ async function handleWorkspaceCommand(command,text,env,user,language){
  if(text.trim().split(/\s+/).length>1)return false;
  const pages={'/start':'language','/menu':'home','/help':'help','/setup':'setup','/language':'language','/lang':'language','/app':'app','/buy':'shop','/licenses':'licenses','/widget':'home','/me':'account','/link':'link','/terms':'terms','/orders':'orders:0','/paysupport':'support','/scalperwidget':'licenses','/admin':'admin','/users':'users:0','/detail':'adminhelp','/grant':'adminhelp','/scalperkey':'adminhelp','/suspend':'adminhelp','/resume':'adminhelp','/revoke':'adminhelp'};
  let page=pages[command];if(!page)return false;
+ if(command==='/start'){
+  const selected=await env.DB.prepare('SELECT language_code FROM site_bot_preferences WHERE telegram_id=?').bind(user.telegram_id).first();
+  if(selected?.language_code)page='home';
+ }
  let membership;
  if(page==='home'){
   membership=await channelMembership(telegramWidgetApi,env,user.telegram_id);
@@ -1024,8 +1098,8 @@ async function nativeMenuCallback(callback,env,req){
  const raw=String(callback?.data||'');
  if(!raw.startsWith('native:'))return null;
  const page=raw.slice(7);
- const isAllowed=/^(?:home|account|licenses|shop|setup|help|webhooks|channels|language|app|link|terms(?::[0-9])?|support|history(?::[0-9]{1,2})?|signal:[0-9]{1,2}|orders(?::[0-9]{1,2})?|users(?::[0-9]{1,3})?|admin|adminhelp|onboarding|access|more|free|bridge-install|scalper-install|channel-install|forward-install)$/.test(page);
- if(!isAllowed||!workspaceQueryPage('ui:page:'+page)){
+ const isAllowed=/^(?:downloads|home|account|licenses|shop|setup|help|webhooks|channels|language|app|link|terms(?::[0-9])?|support|history(?::[0-9]{1,2})?|signal:[0-9]{1,2}|orders(?::[0-9]{1,2})?|users(?::[0-9]{1,3})?|admin|adminhelp|onboarding|access|more|free|bridge-install|scalper-install|channel-install|forward-install)$/.test(page);
+ if(!isAllowed||(page!=='downloads'&&!workspaceQueryPage('ui:page:'+page))){
   await botAnswerCallback(env,callback?.id);
   return json({ok:true,ignored:'UNKNOWN_NATIVE_PAGE'});
  }
@@ -1047,7 +1121,8 @@ async function nativeMenuCallback(callback,env,req){
   const membership=await channelMembership(telegramWidgetApi,env,sender);
   const effectivePage=page==='home'&&membership!=='member'?'onboarding':page;
   const helpers=workspaceHelpers(language,membership);
-  const view=onboardingView(effectivePage,language,membership)||
+  const view=effectivePage==='downloads'?botDownloadView(language):
+   onboardingView(effectivePage,language,membership)||
     localizeWorkspace(await workspaceView(env,helpers,user,effectivePage),language);
   const state={chat_id:sender,caption:'DrFXAi · Signal Bridge',chat_data:widgetViewData(view)};
   const media=premiumChatPhoto(state),fallback=telegramWidgetTextFallback(state);

@@ -11,7 +11,7 @@ function fixture(role='user'){
  const sql=[],preferences=new Map();
  const env={TELEGRAM_BOT_TOKEN:'test:token',TELEGRAM_WEBHOOK_SECRET:'workspace-test-secret',DB:{prepare(query){let args=[];sql.push({query,get args(){return args}});return {bind(...a){args=a;return this},async first(){
   if(query.includes('FROM site_users WHERE telegram_id'))return {...user,role};
-  if(query.includes('FROM site_bot_preferences'))return {language_code:preferences.get(args[0])||'en'};
+  if(query.includes('FROM site_bot_preferences'))return preferences.has(args[0])?{language_code:preferences.get(args[0])}:null;
   if(query.includes('FROM site_licenses sl JOIN ea_licenses'))return {status:'active',expires_at:null};
   if(query.includes('COUNT(*) AS total'))return {total:12,active:10,suspended:2};return null;
  },async all(){
@@ -23,6 +23,31 @@ function fixture(role='user'){
  return {env,sql,preferences};
 }
 const helpers={plans:STAR_PLANS,price:starPrice,terms:LICENSE_TERMS,licenseRecord:async()=>({status:'active',expires_at:null})};
+test('chat home menu Rich Messages keep grid actions and a compact language strip',async()=>{
+ // Isolate module-level provider cooldowns from other Bot API fallback tests.
+ const {default:isolatedWorker}=await import('../site/src/worker.mjs?rich-chat-menu-regression');
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  if(method==='getChatMember')return Response.json({ok:true,result:{status:'member'}});
+  if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
+  return Response.json({ok:true,result:{message_id:98}});
+ };
+ try{
+  const response=await isolatedWorker.fetch(request({update_id:943,message:{from:{id:123},chat:{id:123,type:'private'},text:'/menu'}}),f.env);
+  assert.equal(response.status,200);
+  const rich=calls.find(c=>c.method==='sendRichMessage')?.body?.rich_message?.html;
+  assert.ok(rich);
+  assert.match(rich,/📊 Dashboard/);
+  assert.match(rich,/📥 Download EA/);
+  assert.match(rich,/tg-button-row align="center"/);
+  assert.match(rich,/data="native:downloads"/);
+  assert.match(rich,/data="lang:hi"/);
+  assert.match(rich,/https:\/\/drfx\.company\/telegram/);
+ }finally{globalThis.fetch=original}
+});
+
 test('workspace HTML and every populated page fit native Telegram limits',async()=>{
  assert.ok(Buffer.byteLength(BOT_WORKSPACE_WIDGET_HTML)<32768);
  assert.ok(deflateSync(Buffer.from(BOT_WORKSPACE_WIDGET_HTML),{level:9}).length<4096);
@@ -402,3 +427,59 @@ test('photo download failures return to reliable protected text menu',async()=>{
   assert.ok(calls.find(c=>c.method==='sendMessage').body.reply_markup.inline_keyboard.some(row=>row[0].callback_data==='lang:en'));
  }finally{globalThis.fetch=original}
 });
+
+test('redesigned bot-only home renders a two-column 8-action keyboard plus free trial, app and five languages',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  if(method==='getChatMember')return Response.json({ok:true,result:{status:'member'}});
+  if(method==='sendWidget')return Response.json({ok:false,error_code:400,description:'Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED'},{status:400});
+  if(method==='sendRichMessage')return Response.json({ok:false,error_code:400,description:'Rich unavailable'},{status:400});
+  return Response.json({ok:true,result:{message_id:90}});
+ };
+ try{
+  const response=await worker.fetch(request({update_id:941,message:{from:{id:123},chat:{id:123,type:'private'},text:'/menu'}}),f.env);
+  assert.equal(response.status,200);
+  const photo=calls.find(c=>c.method==='sendPhoto');
+  assert.ok(photo,'bot must send a chat message with a photo, not a Mini App render');
+  const rows=photo.body.reply_markup.inline_keyboard;
+  assert.equal(rows.length,7);
+  assert.deepEqual(rows.slice(0,4).map(row=>row.length),[2,2,2,2]);
+  assert.equal(rows[4].length,1,'free trial uses full row');
+  assert.equal(rows[5].length,1,'Mini App uses full row');
+  assert.equal(rows[6].length,5,'language flags appear in one row');
+  const all=rows.flat();
+  assert.ok(all.some(b=>b.callback_data==='native:downloads'));
+  assert.ok(all.some(b=>b.callback_data==='native:free'));
+  assert.ok(all.some(b=>b.callback_data==='native:account'));
+  assert.ok(all.some(b=>b.url==='https://t.me/DrFXGOD'));
+  assert.ok(all.some(b=>b.web_app?.url==='https://drfx.company/telegram'));
+  assert.deepEqual(rows[6].map(b=>b.callback_data),['lang:en','lang:fa','lang:tr','lang:ru','lang:hi']);
+  assert.equal(photo.body.protect_content,true);
+ }finally{globalThis.fetch=original}
+});
+
+test('download center inside bot chat provides both existing official EA downloads',async()=>{
+ const f=fixture(),original=globalThis.fetch,calls=[];
+ const prepare=f.env.DB.prepare.bind(f.env.DB);
+ f.env.DB.prepare=sql=>sql.includes('SELECT requests FROM site_rate_limits')?{bind(){return this},async first(){return {requests:1}}}:prepare(sql);
+ globalThis.fetch=async(url,init)=>{
+  const method=String(url).split('/').at(-1),body=JSON.parse(init?.body||'{}');
+  calls.push({method,body});
+  return Response.json({ok:true,result:method==='getChatMember'?{status:'member'}:{message_id:92}});
+ };
+ try{
+  const response=await worker.fetch(request({update_id:942,callback_query:{id:'download-callback',from:{id:123},message:{chat:{id:123,type:'private'},message_id:90,photo:[{file_id:'photo90'}]},data:'native:downloads'}}),f.env);
+  assert.equal(response.status,200);
+  const edit=calls.find(c=>c.method==='editMessageCaption');
+  assert.ok(edit);
+  assert.match(edit.body.caption,/Download Center/);
+  const all=edit.body.reply_markup.inline_keyboard.flat();
+  assert.ok(all.some(b=>b.url?.includes('drfx.company')&&/Signal Bridge/i.test(b.text)));
+  assert.ok(all.some(b=>b.url?.includes('drfx.company')&&/Scalper Pro/i.test(b.text)));
+  assert.ok(all.some(b=>b.callback_data==='native:home'));
+ }finally{globalThis.fetch=original}
+});
+
+
