@@ -1,7 +1,7 @@
 # SignalBridge MT5 EA
 
 The current development source is [`DrFX_SignalBridge_EA.mq5`](DrFX_SignalBridge_EA.mq5),
-**EA v0.29.1**. Older EA snapshots have been removed from the working tree;
+**EA v0.30.1**. Older EA snapshots have been removed from the working tree;
 Git history retains their previous contents.
 
 ## Setup
@@ -35,29 +35,25 @@ Actual broker E2E/timing certification is separate from compilation.
 
 See [DEMO/LIVE test controls and the new compact panel](../docs/EA_V027_LUXURY_TESTS.md).
 
-### Broker symbol settings (EA 0.27.2)
+### EA setup
 
-In EA Properties → Inputs → **Broker Symbol Settings**, set:
+In EA Properties → Inputs → **Start Here**, complete these inputs in order:
 
-| Input | Example | Applies to |
+| Input | Default | Applies to |
 | --- | --- | --- |
-| `InpGoldSymbol` | `XAUUSD.p` | Incoming XAUUSD signals and the gold position test |
-| `InpTestSymbol` | blank | Optional test-only override; normally leave blank |
-| `InpSymbolSuffix` | `.p` | Other incoming symbols, e.g. EURUSD → EURUSD.p |
-| `InpSymbolPrefix` | blank | Optional broker prefix for other symbols |
+| License | Blank | Private activation code from your personal Setup page |
+| Broker symbol | `XAUUSD` | XAUUSD signals and the default connection test. Copy your exact broker symbol from Market Watch, for example `XAUUSD.p`. |
+| Lot size | `0.01` | Connection test. Trading signals carry their volume or risk sizing. |
 
-Copy the exact case-sensitive symbol from Market Watch. An explicitly configured
-but unavailable gold symbol is rejected; the EA does not silently trade a different
-contract. Existing positions, spread limits and account opt-in checks still apply.
+The optional test-symbol override and prefix/suffix settings are for advanced setups.
 
-### EA 0.28.0 — ready-to-test defaults and daily drawdown
+### Optional daily loss limit
 
-Connection-test inputs are enabled by default. `InpTestSymbol=XAUUSD` and
-`InpDefaultLots=0.01` can be changed to another broker instrument and valid volume.
-For this broker use `InpTestSymbol=XAUUSD.p` (or preserve InpGoldSymbol mapping).
-`InpDailyDrawdownPercent=10` closes **all account positions** and cancels pending
-orders at the equity-loss limit. HIT stays red until you explicitly confirm restart
-in the EA or personal portal, after all positions/orders have closed.
+`InpEnableDailyDrawdown` is **off** by default. If enabled, the default
+`InpDailyDrawdownPercent` is 10%. A hit closes all account positions, cancels
+pending orders, and requires a manual restart once positions and orders are closed.
+An existing HIT is ignored while the feature is off and is retained if protection
+is re-enabled.
 See [calculation, counters and limits](../docs/EA_V028_DAILY_DRAWDOWN.md).
 
 ### Approved command center — 0.29.0

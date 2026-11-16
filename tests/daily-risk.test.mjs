@@ -14,3 +14,13 @@ test('account-wide risk latch persists before liquidation and checks before any 
  const reset=ea.slice(ea.indexOf('bool ResetDailyRisk('),ea.indexOf('void CountSignal('));assert.match(reset,/expectedHit!=g_hitId\|\|PositionsTotal\(\)>0\|\|OrdersTotal\(\)>0/);assert.ok(reset.indexOf('g_riskBase=AccountInfoDouble')<reset.indexOf('g_riskHit=false'));
  const cmd=ea.slice(ea.indexOf('void HandleCommand('),ea.indexOf('void ProcessLine('));assert.ok(cmd.indexOf('if(g_riskHit)')<cmd.indexOf('HandleTimedTest('));assert.ok(cmd.indexOf('if(g_riskHit)')<cmd.indexOf('HandleOpen('));
 });
+test('default-off protection bypasses a persisted HIT and leaves daily statistics available',()=>{
+ assert.match(ea,/input bool InpEnableDailyDrawdown=false;/);
+ const init=ea.slice(ea.indexOf('void RiskInit()'),ea.indexOf('double DailyDrawdownValue('));
+ assert.ok(init.indexOf('g_riskHit=false;')<init.indexOf('if(!InpEnableDailyDrawdown)return;'));
+ assert.ok(init.indexOf('if(!InpEnableDailyDrawdown)return;')<init.indexOf('GlobalVariableCheck('));
+ const check=ea.slice(ea.indexOf('void RiskCheck()'),ea.indexOf('bool ResetDailyRisk('));
+ assert.match(check,/if\(!InpEnableDailyDrawdown\)\{RefreshDayStats\(\);return;\}/);
+ assert.ok(check.indexOf('if(!InpEnableDailyDrawdown)')<check.indexOf('GlobalVariableCheck('));
+ assert.match(ea,/InpEnableDailyDrawdown\?\(g_riskHit\?"HIT":"READY"\):"OFF"/);
+});

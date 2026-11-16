@@ -99,11 +99,16 @@ export class AgentHub{
    const account={login:safe(p[1],64),server:safe(p[2],120),mode:safe(p[3],32),balance:Number.isFinite(Number(p[4]))?Number(p[4]):null,equity:Number.isFinite(Number(p[5]))?Number(p[5]):null,positions:Number.isFinite(Number(p[6]))?Number(p[6]):null,cloud_rtt_ms:Number.isFinite(Number(p[7]))?Math.max(0,Math.min(60000,Number(p[7]))):null};
    if(p.length>=19){
     const numeric=i=>p[i]!==''&&Number.isFinite(Number(p[i]))?Number(p[i]):null;
-    account.risk={state:['HIT','READY'].includes(p[9])?p[9]:'UNKNOWN',drawdown_pct:numeric(10),limit_pct:numeric(11),daily_profit:numeric(12),signals:numeric(13),targets:numeric(14),stops:numeric(15),hit_id:safe(p[18],32)};
+    account.risk={state:['HIT','READY','OFF'].includes(p[9])?p[9]:'UNKNOWN',drawdown_pct:numeric(10),limit_pct:numeric(11),daily_profit:numeric(12),signals:numeric(13),targets:numeric(14),stops:numeric(15),hit_id:safe(p[18],32)};
     account.test_symbol=safe(p[16],32);account.test_lots=numeric(17);
    }
    if(p.length>=30){const num=i=>Number.isFinite(Number(p[i]))?Number(p[i]):null;account.report={signals:num(19),tp1:num(20),tp2:num(21),tp3:num(22),stops:num(23),profit:num(24),loss:num(25),net:num(26),floating:num(27),since:num(28),reset_id:safe(p[29],64),series:p[30]?p[30].split(',').map(Number).filter(Number.isFinite).slice(0,14):[]};}
    if(p[31]){const v=p[31].split(';');if(v.length>=10&&['BUY','SELL'].includes(v[1]))account.active_position={symbol:safe(v[0],32),side:v[1],lots:Number(v[2]),entry:Number(v[3]),current:Number(v[4]),sl:Number(v[5]),tp:Number(v[6]),tag:safe(v[7],12),profit:Number(v[8]),be_confirmed:v[9]==='2'};}
+   const tradePermission=p[32],symbolMode=p[34];
+   if(['ALLOWED','TERMINAL_DISABLED','EA_DISABLED','ACCOUNT_DISABLED'].includes(tradePermission)&&
+      ['FULL','BUY_ONLY','SELL_ONLY','CLOSE_ONLY','DISABLED','NOT_FOUND'].includes(symbolMode)){
+    account.connection_checks={trade_permission:tradePermission,broker_symbol:safe(p[33],32),symbol_mode:symbolMode};
+   }
    if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
    a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1','exit-policy-v1','reports-v1','deal-history-v1'].includes(c));

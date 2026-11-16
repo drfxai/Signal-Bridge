@@ -304,3 +304,34 @@ test('Telegram re-verification preserves explicitly enabled routes only for the 
   assert.equal(settings.telegram_to_mt5,false);
  }finally{f.db.close()}
 });
+
+test('Check Connection reports live Algo Trading and broker symbol checks without dispatch',async()=>{
+ const f=fixture();
+ try{
+  const hub=new AgentHub({getWebSockets:()=>[]},f.env);
+  const a={role:'ea',agentId:'ea_a',tenantId:'usr_a',licenseId:'lic_a',licenseHash:digest('license'),
+   expectedLogin:'123',expectedServer:'Demo',terminalOnline:true,account:f.snapshot.account};
+  const ws={send(){},serializeAttachment(current){
+   Object.assign(f.snapshot,{account:current.account,last_seen_at:current.lastSeenAt});
+  }};
+  const fields=['HB','123','Demo','DEMO',1000,1000,0,10,'','OFF',0,0,0,0,0,0,'GOLD',0.01,0];
+  while(fields.length<32)fields.push('');
+  const check=async()=>(await (await f.request('/api/connection/check')).json()).diagnostic;
+  await hub.handleEaMessage(ws,[...fields,'TERMINAL_DISABLED','XAUUSD.p','NOT_FOUND'].join('|'),a);
+  let d=await check();
+  assert.equal(d.terminal_online,true);
+  assert.equal(d.telemetry.test_symbol,'GOLD');
+  assert.deepEqual(d.telemetry.connection_checks,{trade_permission:'TERMINAL_DISABLED',broker_symbol:'XAUUSD.p',symbol_mode:'NOT_FOUND'});
+  const anotherUser=await (await f.request('/api/connection/check',undefined,f.other)).json();
+  assert.equal(anotherUser.diagnostic.telemetry,undefined);
+  f.snapshot.last_seen_at=new Date(Date.now()-100000).toISOString();
+  d=await check();
+  assert.equal(d.terminal_online,false);
+  assert.equal(d.telemetry,null);
+  await hub.handleEaMessage(ws,fields.join('|'),a);
+  d=await check();
+  assert.equal(d.terminal_online,true);
+  assert.equal(d.telemetry.connection_checks,undefined);
+  assert.equal(f.calls.length,0);
+ }finally{f.db.close();}
+});

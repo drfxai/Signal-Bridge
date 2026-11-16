@@ -5,18 +5,20 @@
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
 #property strict
-#property version   "0.300"
-#property description "SignalBridge EA v0.30.0: broker deal-history reporting and account-bound connection tests."
+#property version   "0.301"
+#property description "SignalBridge EA v0.30.1: simplified setup and optional daily loss limit."
 #property description "Signals remain DEMO-only. Explicitly confirmed, opt-in account-bound LIVE tests are supported."
 #property description "Enter your private activation code in the first EA input. No compilation required for EX5 users."
 
 #include <Trade\Trade.mqh>
 
-input group "=== START HERE | 1 LICENSE / 2 BROKER SYMBOL ==="
+input group "=== START HERE ==="
 input string InpActivationCode=""; // 1. LICENSE | Copy from your personal Setup page
-input string InpGoldSymbol="XAUUSD"; // 2. BROKER SYMBOL | e.g. XAUUSD.p or GOLD (Market Watch)
+input string InpGoldSymbol="XAUUSD"; // 2. BROKER SYMBOL | e.g. XAUUSD.p; varies by broker
 
-input group "=== 02 | SignalBridge Cloud ==="
+input double InpDefaultLots=0.01; // 3. LOT SIZE | Connection test; signals use their own sizing
+
+input group "=== Advanced | SignalBridge Cloud ==="
 input string InpCloudHost="signalbridge.drfx.online";
 input int InpCloudPort=443;
 input string InpCloudPath="/v1/ea/ws";
@@ -42,11 +44,11 @@ input int InpMaxSpreadPoints=80;
 input int InpSlippagePoints=20;
 input group "=== Broker Symbol Settings | XAUUSD.p / GOLD ==="
 input string InpTestSymbol="XAUUSD"; // Test instrument; change to EURUSD, GBPUSD or exact broker symbol
-input double InpDefaultLots=0.01; // Default test lots; explicit signal volume is preserved
 input string InpSymbolPrefix=""; // Prefix for other signal symbols, e.g. m
 input string InpSymbolSuffix=""; // Suffix for other signal symbols, e.g. .p
 
-input group "=== Daily Account Drawdown | closes ALL account positions ==="
+input group "=== Optional | Daily Account Drawdown ==="
+input bool InpEnableDailyDrawdown=false; // If enabled, a hit closes all account positions and orders
 input double InpDailyDrawdownPercent=10.0; // Equity loss limit; manual restart required after HIT
 
 enum ENUM_SB_EXIT { SB_EXIT_OFF=0,SB_EXIT_BE=1,SB_EXIT_CLOSE=2,SB_EXIT_PARTIAL=3 };
@@ -157,7 +159,7 @@ void DisconnectCloud(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_sock
 bool WsHandshake(){
  uchar nonce[];ArrayResize(nonce,16);for(int i=0;i<16;i++)nonce[i]=(uchar)(MathRand()&255);
  string key=Base64(nonce,16);
- string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.29.1\r\n\r\n";
+ string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.30.1\r\n\r\n";
  if(!TlsSendString(req))return false;
  uchar pending[];ulong until=GetTickCount64()+5000;
  while(GetTickCount64()<until&&!IsStopped()){
@@ -208,6 +210,10 @@ void RefreshDayStats(){
 }
 void RiskInit(){
  g_riskPrefix="SBR_"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"_"+StringFormat("%08X%08X",RiskHash(AccountInfoString(ACCOUNT_SERVER)),RiskHash("server:"+AccountInfoString(ACCOUNT_SERVER)))+"_";
+ g_riskHit=false;
+ g_hitId=0;
+ g_riskDD=0;
+ if(!InpEnableDailyDrawdown)return;
  g_riskDay=GlobalVariableCheck(RiskKey("day"))?(long)GlobalVariableGet(RiskKey("day")):BrokerDay();
  g_riskBase=GlobalVariableCheck(RiskKey("base"))?GlobalVariableGet(RiskKey("base")):AccountInfoDouble(ACCOUNT_EQUITY);
  g_riskFlow=GlobalVariableCheck(RiskKey("flow"))?GlobalVariableGet(RiskKey("flow")):DayCashFlow();
@@ -218,6 +224,7 @@ double DailyDrawdownValue(double base,double equity,double netCashFlow){double a
 bool DailyRiskLatch(bool hit,double base,double drawdown,double limit){return hit||base<=0||drawdown>=limit;}
 void RiskCheck(){
  if(g_riskPrefix=="")return;
+ if(!InpEnableDailyDrawdown){RefreshDayStats();return;}
  // Reload the shared account latch so every chart in this terminal respects HIT.
  if(GlobalVariableCheck(RiskKey("hit"))){g_riskHit=GlobalVariableGet(RiskKey("hit"))==1;g_riskBase=GlobalVariableGet(RiskKey("base"));g_riskFlow=GlobalVariableGet(RiskKey("flow"));g_riskDay=(long)GlobalVariableGet(RiskKey("day"));g_hitId=GlobalVariableGet(RiskKey("hitid"));}
  if(!g_riskHit&&g_riskDay!=BrokerDay()){g_riskDay=BrokerDay();g_riskBase=AccountInfoDouble(ACCOUNT_EQUITY);g_riskFlow=DayCashFlow();g_dayFlow=g_riskFlow;g_statsTick=0;SaveRisk();}
@@ -232,6 +239,7 @@ void RiskCheck(){
  for(int i=PositionsTotal()-1;i>=0;i--){ulong t=PositionGetTicket(i);if(t==0||!PositionSelectByTicket(t))continue;trade.SetTypeFillingBySymbol(PositionGetString(POSITION_SYMBOL));if(!trade.PositionClose(t))Print("SignalBridge DD position close retry: ",trade.ResultRetcodeDescription());}
 }
 bool ResetDailyRisk(double expectedHit){
+ if(!InpEnableDailyDrawdown)return false;
  RiskCheck();if(!g_riskHit||expectedHit!=g_hitId||PositionsTotal()>0||OrdersTotal()>0||AccountInfoDouble(ACCOUNT_EQUITY)<=0)return false;
  g_riskBase=AccountInfoDouble(ACCOUNT_EQUITY);g_riskDay=BrokerDay();g_riskFlow=DayCashFlow();g_dayFlow=g_riskFlow;g_statsTick=0;g_riskHit=false;g_riskDD=0;SaveRisk();g_lastExecution="DAILY DRAWDOWN RESET - ready for new signals";SendHeartbeat();return true;
 }
@@ -241,7 +249,7 @@ void CountSignal(string id){
 }
 void RecordManagedExit(string event){ulong d=trade.ResultDeal();if(d==0)return;double kind=(event=="SL"?2:(event=="TP1"||event=="TP2"||event=="TP3")?1:0);if(kind>0){GlobalVariableSet(RiskKey("deal"+N64((long)d)),kind);GlobalVariablesFlush();g_statsTick=0;}}
 string TestSymbol(){string reason="",sym=ResolveTestSymbol(reason);return sym==""?InpTestSymbol:sym;}
-string RiskTelemetry(){return "|"+(g_riskHit?"HIT":"READY")+"|"+F2(g_riskDD)+"|"+F2(InpDailyDrawdownPercent)+"|"+F2(g_dailyProfit)+"|"+N64(g_signalCount)+"|"+IntegerToString(g_targets)+"|"+IntegerToString(g_stops)+"|"+Safe(TestSymbol())+"|"+DoubleToString(InpDefaultLots,4)+"|"+DoubleToString(g_hitId,0);}
+string RiskTelemetry(){return "|"+(InpEnableDailyDrawdown?(g_riskHit?"HIT":"READY"):"OFF")+"|"+F2(g_riskDD)+"|"+F2(InpEnableDailyDrawdown?InpDailyDrawdownPercent:0)+"|"+F2(g_dailyProfit)+"|"+N64(g_signalCount)+"|"+IntegerToString(g_targets)+"|"+IntegerToString(g_stops)+"|"+Safe(TestSymbol())+"|"+DoubleToString(InpDefaultLots,4)+"|"+DoubleToString(g_hitId,0);}
 // Snapshot exit rules before submission; broker-side TP backs up the first full exit.
 bool g_policyDirty=false;string g_policy1="BE",g_policy2="CLOSE",g_policy3="OFF",g_reportResetId="";double g_policyPartial=50;int g_policyBuffer=0;long g_reportViewSince=0,g_reportResetFloor=0,g_reportSince=0;ulong g_reportTick=0;double g_reportBars[14];long g_reportSignals=0,g_reportTP1=0,g_reportTP2=0,g_reportTP3=0,g_reportStops=0;double g_reportProfit=0,g_reportLoss=0;ulong g_policyTick=0;
 string PK(string tag,string field){return RiskKey(tag+field);}
@@ -326,8 +334,28 @@ string TestCapabilities(){
  if(AccountMode()=="LIVE"&&InpEnableLiveConnectionTest)return "live-test-v2,test-config-v1,risk-v1,exit-policy-v1,reports-v1"+deal;
  return "risk-v1,test-config-v1"+deal;
 }
-void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry());g_lastHb=GetTickCount64();}
-void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry()))g_lastHb=GetTickCount64();FlushTargetEvents();}
+// Report the actual XAUUSD signal mapping, independently of the test symbol.
+string ConnectionTelemetry(){
+ string permission="ALLOWED";
+ if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))permission="TERMINAL_DISABLED";
+ else if(!MQLInfoInteger(MQL_TRADE_ALLOWED))permission="EA_DISABLED";
+ else if(!AccountInfoInteger(ACCOUNT_TRADE_ALLOWED)||!AccountInfoInteger(ACCOUNT_TRADE_EXPERT))permission="ACCOUNT_DISABLED";
+
+ string symbol=ResolveSymbol("XAUUSD");
+ string mode="NOT_FOUND";
+ if(symbol!=""){
+  switch((ENUM_SYMBOL_TRADE_MODE)SymbolInfoInteger(symbol,SYMBOL_TRADE_MODE)){
+   case SYMBOL_TRADE_MODE_FULL: mode="FULL"; break;
+   case SYMBOL_TRADE_MODE_LONGONLY: mode="BUY_ONLY"; break;
+   case SYMBOL_TRADE_MODE_SHORTONLY: mode="SELL_ONLY"; break;
+   case SYMBOL_TRADE_MODE_CLOSEONLY: mode="CLOSE_ONLY"; break;
+   default: mode="DISABLED"; break;
+  }
+ }
+ return "|"+permission+"|"+Safe(symbol==""?InpGoldSymbol:symbol)+"|"+mode;
+}
+void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry()+ConnectionTelemetry());g_lastHb=GetTickCount64();}
+void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry()+ConnectionTelemetry()))g_lastHb=GetTickCount64();FlushTargetEvents();}
 void EnsureCloud(){
  if(CloudConnected())return;ulong now=GetTickCount64();int retry=InpReconnectMs;if(retry<250)retry=250;if(retry>10000)retry=10000;if(now-g_lastConnectTry<(ulong)retry)return;g_lastConnectTry=now;DisconnectCloud();
  if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";return;}
@@ -1045,7 +1073,8 @@ void DrawFooter(int x,int y,int w)
   {
    int bw=(w-10)/2;
    Btn("report_reset",x,y,bw,40,"Reset report",P_CYAN,false,true,"reset");
-   if(g_riskHit)Btn("risk_reset",x+bw+10,y,bw,40,"Restart after DD hit",P_RED,true,true,"shield");
+   if(!InpEnableDailyDrawdown)Btn("risk_reset",x+bw+10,y,bw,40,"Daily loss limit off",P_MUTED,false,false,"shield");
+   else if(g_riskHit)Btn("risk_reset",x+bw+10,y,bw,40,"Restart after DD hit",P_RED,true,true,"shield");
    else Btn("risk_reset",x+bw+10,y,bw,40,"Daily DD "+F2(g_riskDD)+"% / "+F2(InpDailyDrawdownPercent)+"%",P_GREEN,false,false,"shield");
   }
 
@@ -1119,6 +1148,16 @@ void DrawTrades(int W,double t)
 void DrawRisk(int W,double t)
   {
    int x=12,y=128,w=W-24;color c=g_riskHit?P_RED:(g_dDD>InpDailyDrawdownPercent*0.7?P_GOLD2:P_GREEN);
+   if(!InpEnableDailyDrawdown)
+     {
+      Card(x,y,w,186);
+      Kicker("DAILY DRAWDOWN",x+18,y+25);
+      Chip("Off",x+18,y+50,P_MUTED,false);
+      g_sf.Text("Enable the daily loss limit in EA Inputs.",x+18,y+95,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_MUTED),TA_LEFT|TA_VCENTER);
+      DrawBars(x,y+196,w,128);
+      DrawFooter(x,y+334,w);
+      return;
+     }
    Card(x,y,w,186,g_riskHit?0.6+0.4*MathSin(t*4):0,g_riskHit?P_RED:clrNONE);
    double cx=x+92,cy=y+100,r=60,frac=SbClamp(g_dDD/MathMax(0.01,InpDailyDrawdownPercent),0,1);
    g_sf.Arc(cx,cy,r,11,225,270,SbA(P_LINE));if(frac>0)g_sf.Arc(cx,cy,r,11,225,270*frac,SbA(c));
@@ -1154,9 +1193,12 @@ void DrawCompact(int W,double t)
    int x=16,y=76,w=W-32;
    Kicker("EQUITY",x,y);g_sf.Text(Money(g_dEq),x,y+24,SB_FONT_N,FS_VAL,FW_BOLD,SbA(P_TEXT),TA_LEFT|TA_VCENTER);
    Kicker("NET",x+w/2,y);g_sf.Text(Signed(g_dNet),x+w/2,y+24,SB_FONT_N,FS_VAL,FW_BOLD,SbA(g_dNet>=0?P_GREEN:P_RED),TA_LEFT|TA_VCENTER);
-   double frac=SbClamp(g_dDD/MathMax(0.01,InpDailyDrawdownPercent),0,1);color c=g_riskHit?P_RED:P_GREEN;
-   g_sf.FillRR(x,y+44,w,8,4,SbA(P_LINE));if(frac>0)g_sf.FillRR(x,y+44,MathMax(8,w*frac),8,4,SbA(c));
-   g_sf.Text("DD "+F2(g_dDD)+"% / "+F2(InpDailyDrawdownPercent)+"%"+(g_riskHit?"  HIT":""),x,y+64,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(c),TA_LEFT|TA_VCENTER);
+   if(InpEnableDailyDrawdown)
+     {
+      double frac=SbClamp(g_dDD/MathMax(0.01,InpDailyDrawdownPercent),0,1);color c=g_riskHit?P_RED:P_GREEN;
+      g_sf.FillRR(x,y+44,w,8,4,SbA(P_LINE));if(frac>0)g_sf.FillRR(x,y+44,MathMax(8,w*frac),8,4,SbA(c));
+      g_sf.Text("DD "+F2(g_dDD)+"% / "+F2(InpDailyDrawdownPercent)+"%"+(g_riskHit?"  HIT":""),x,y+64,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(c),TA_LEFT|TA_VCENTER);
+     }
    int key=SourceKey(g_lastSource);Icon(SourceIcon(key),x+w-8,y+64,14,SourceColor(key));
    g_sf.Text("Signals "+N64(g_reportSignals)+"  ·  TP "+N64(g_reportTP1+g_reportTP2+g_reportTP3)+"  ·  SL "+N64(g_reportStops),x+w-20,y+64,SB_FONT_R,FS_SMALL,FW_NORMAL,SbA(P_CYAN),TA_RIGHT|TA_VCENTER);
   }
@@ -1220,7 +1262,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    if(id==CHARTEVENT_CHART_CHANGE&&g_sbReady)PanelPlace((int)g_hCur);
   }
 
-int OnInit(){if(InpPartialPercent<=0||InpPartialPercent>=100||InpBreakEvenBufferPoints<0||(InpTP1Action!=SB_EXIT_CLOSE&&InpTP2Action!=SB_EXIT_CLOSE&&InpTP3Action!=SB_EXIT_CLOSE)||InpDefaultLots<=0||InpDefaultLots>InpMaxLot||InpDailyDrawdownPercent<=0||InpDailyDrawdownPercent>100||InpTestSymbol==""){Print("SignalBridge: invalid lot, symbol or daily drawdown input");return INIT_PARAMETERS_INCORRECT;}RiskInit();DealCursorLoad();LoadPolicyDefaults();RiskCheck();RecoverClosedTargets();MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.29.1 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+int OnInit(){if(InpPartialPercent<=0||InpPartialPercent>=100||InpBreakEvenBufferPoints<0||(InpTP1Action!=SB_EXIT_CLOSE&&InpTP2Action!=SB_EXIT_CLOSE&&InpTP3Action!=SB_EXIT_CLOSE)||InpDefaultLots<=0||InpDefaultLots>InpMaxLot||(InpEnableDailyDrawdown&&(InpDailyDrawdownPercent<=0||InpDailyDrawdownPercent>100))||InpTestSymbol==""){Print("SignalBridge: invalid lot, symbol or daily drawdown input");return INIT_PARAMETERS_INCORRECT;}RiskInit();DealCursorLoad();LoadPolicyDefaults();RiskCheck();RecoverClosedTargets();MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.30.1 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
 void OnDeinit(const int reason){EventKillTimer();PanelDestroy();if(g_testLock!=INVALID_HANDLE){FileClose(g_testLock);g_testLock=INVALID_HANDLE;}DisconnectCloud();DeletePanel();ChartRedraw(0);}
 void OnTick(){RiskCheck();ProcessPositionTargets();CloseTimedTest();}
 void OnTimer(){
