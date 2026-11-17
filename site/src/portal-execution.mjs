@@ -66,7 +66,33 @@ function mount(labels,geometry){
  function order(d){return {symbol:d.telemetry?.test_symbol||'XAUUSD',lots:d.telemetry?.test_lots??0.01};}
  function renderRisk(d){const r=d.terminal_online?d.telemetry?.risk:null,hit=r?.state==='HIT';$('dailyRiskPanel').classList.toggle('hit',hit);const btn=$('resetDailyRisk');btn.disabled=!hit;btn.textContent=hit?(fa()?'درودان HIT — تأیید و شروع مجدد':'DRAWDOWN HIT — confirm restart'):r?.state==='OFF'?(fa()?'محدودیت افت روزانه خاموش است':'Daily loss limit off'):r?.state==='READY'?(fa()?'محافظت فعال':'READY · protected'):(fa()?'تأیید نشده':'Not verified');$('dailyDD').textContent=Number.isFinite(r?.drawdown_pct)&&Number.isFinite(r?.limit_pct)&&r.limit_pct>0?r.drawdown_pct.toFixed(2)+'% / '+r.limit_pct+'%':'—';for(const [id,k] of [['dailyProfit','daily_profit'],['dailySignals','signals'],['dailyTargets','targets'],['dailyStops','stops']])$(id).textContent=Number.isFinite(r?.[k])?(k==='daily_profit'?r[k].toFixed(2):String(r[k])):'—';if($('drawdownBar'))$('drawdownBar').style.width=r?.limit_pct>0?Math.min(100,Math.max(0,r.drawdown_pct/r.limit_pct*100))+'%':'0%';const ring=$('riskRing');if(ring){const valid=Number.isFinite(r?.drawdown_pct)&&Number.isFinite(r?.limit_pct)&&r.limit_pct>0;ring.style.setProperty('--risk',valid?Math.min(100,Math.max(0,r.drawdown_pct/r.limit_pct*100))+'%':'0%');ring.classList.toggle('verified',valid);ring.setAttribute('aria-label',valid?'Daily drawdown '+r.drawdown_pct+' percent of '+r.limit_pct+' percent limit':'Daily drawdown unverified');}const o=order(d);$('testOrderSummary').textContent=o.symbol+' · BUY '+o.lots;}
  function render(d){account=d;if(typeof CustomEvent==='function')window.dispatchEvent?.(new CustomEvent('signalbridge-connection',{detail:d}));renderWorkspaceHealth(d);const active=d.terminal_online?d.telemetry?.active_position:null;if($('activeSignalSummary'))$('activeSignalSummary').textContent=active?active.symbol+' · '+active.side+' · '+active.lots:translate('No active SignalBridge position');if($('activeSignalValues'))$('activeSignalValues').textContent=active?'Entry '+active.entry+' · Now '+active.current+' · SL '+active.sl+' · TP '+active.tp+' · P/L '+active.profit:'';$('activeBE')?.classList.toggle('confirmed',!!active?.be_confirmed);if($('exitPolicyStatus'))$('exitPolicyStatus').textContent=d.capabilities?.includes('exit-policy-v1')?'Default policy · applies to NEW positions':'Install EA 0.29.0 to apply these exit policies';renderRisk(d);renderReport(d.telemetry?.report,d);$('testOnline').textContent=translate(d.terminal_online?'EA CONNECTED':'EA OFFLINE');$('testLiveStrip').classList.toggle('sb-online',!!d.terminal_online);$('testAccount').textContent=d.mt5_mode||'UNKNOWN';const seconds=d.expires_at?Math.max(0,(Date.parse(d.expires_at.replace(' ','T')+'Z')-Date.now())/1000):null;$('testLicense').textContent=seconds===null?'UNVERIFIED':Math.floor(seconds/86400)+'d '+Math.floor(seconds%86400/3600)+'h';if($('workspaceLicenseSummary'))$('workspaceLicenseSummary').textContent='License '+$('testLicense').textContent;const eq=d.terminal_online?d.telemetry?.equity:null;const el=$('testEquity'),value=Number.isFinite(eq)?eq.toFixed(2):'—';if(el.textContent!==value){el.textContent=value;if(!matchMedia('(prefers-reduced-motion: reduce)').matches)el.animate([{opacity:.35},{opacity:1}],{duration:450});}}
- function check(manual=false){if(checkInFlight)return checkInFlight;checkInFlight=(async()=>{$('checkConnectionAction').disabled=true;try{const r=await api('/api/connection/check');render(r.diagnostic||{});if(manual)setTimeout(latestTestForUser,0);if(manual)say(r.diagnostic?.terminal_online?(fa()?'اتصال EA تأیید شد؛ هیچ معامله‌ای انجام نشد.':'EA connection verified. No trade placed.'):(r.diagnostic?.note||errors.EA_NOT_READY));return r.diagnostic;}catch(e){renderWorkspaceHealth(null);if(manual)say(errorText(e));throw e;}finally{checkInFlight=null;$('checkConnectionAction').disabled=false;}})();return checkInFlight;}
+ async function check(manual=false){
+  const button=$('checkConnectionAction');
+  if(manual)button.disabled=true;
+  if(!checkInFlight){
+   checkInFlight=(async()=>{
+    try{
+     const r=await api('/api/connection/check');
+     render(r.diagnostic||{});
+     return r.diagnostic;
+    }catch(e){
+     renderWorkspaceHealth(null);
+     throw e;
+    }finally{checkInFlight=null;}
+   })();
+  }
+  try{
+   const d=await checkInFlight;
+   if(manual){
+    setTimeout(latestTestForUser,0);
+    say(d?.terminal_online?(fa()?'اتصال EA تأیید شد؛ هیچ معامله‌ای انجام نشد.':'EA connection verified. No trade placed.'):(d?.note||errors.EA_NOT_READY));
+   }
+   return d;
+  }catch(e){
+   if(manual)say(errorText(e));
+   throw e;
+  }finally{if(manual)button.disabled=false;}
+ }
  function confirmTest(d){return new Promise(resolve=>{const live=d.mt5_mode==='LIVE',dialog=$('tradeTestConfirm');$('testConfirmTitle').textContent=translate(live?'Confirm LIVE trade test':'Confirm DEMO position test');$('testConfirmText').textContent=translate('Account:')+' '+d.mt5_account.login+' / '+d.mt5_account.server+'\n'+order(d).symbol+' BUY '+order(d).lots+' · '+translate('local close target 5 seconds.')+'\n'+translate(live?'Real order. Spread and fees apply. Keep MT5 running.':'Keep MT5 running for local closure.');$('liveConfirmLabel').hidden=!live;$('liveConfirmInput').value='';dialog.showModal();const finish=ok=>{dialog.close();$('confirmTradeTest').onclick=null;$('cancelTradeTest').onclick=null;dialog.oncancel=null;resolve(ok)};$('confirmTradeTest').onclick=()=>{if(live&&$('liveConfirmInput').value!=='LIVE'){$('liveConfirmInput').focus();return}finish(true)};$('cancelTradeTest').onclick=()=>finish(false);dialog.oncancel=e=>{e.preventDefault();finish(false)};});}
  async function poll(){if(!testId)return;try{const {test:t}=await api('/api/connection/test-status?id='+encodeURIComponent(testId));say('Test '+t.status+' · '+detail(t.detail||t.command_status||'Awaiting EA report'));testSymbolGuidance(t);progress(t.status);if(['CLOSED','REJECTED'].includes(t.status)||['REJECTED','BROKER_REJECTED','ACCOUNT_MISMATCH'].includes(t.command_status)){pending=false;testId=null;try{sessionStorage.removeItem(key)}catch{}$('startTimedTest').disabled=false;return}}catch(e){say(errorText(e))}setTimeout(poll,3000);}
  let memberSettings=null,memberLoading=false,reportLoading=false,lastReportAt=0,reportCommands=[];
@@ -187,9 +213,23 @@ function mount(labels,geometry){
  $('startTimedTest').onclick=async()=>{if(busy||pending)return;busy=true;$('startTimedTest').disabled=true;try{const d=await check();if(!d?.terminal_online)throw Error('EA_NOT_READY');if(d.telemetry?.risk?.state==='HIT')throw Error('DAILY_DRAWDOWN_HIT');const cap=d.mt5_mode==='LIVE'?'live-test-v2':'timed-test-v2';if(!d.capabilities?.includes(cap))throw Error('TEST_CAPABILITY_REQUIRED');if(!await confirmTest(d))return;const body={confirm:true,account_mode:d.mt5_mode,account_login:d.mt5_account.login,account_server:d.mt5_account.server,test_symbol:order(d).symbol,test_lots:order(d).lots,...(d.mt5_mode==='LIVE'?{confirm_live:'CONFIRM LIVE TEST'}:{})};symbolHint.hidden=true;const r=await api('/api/connection/test',body);testId=r.test_id;pending=true;try{sessionStorage.setItem(key,testId)}catch{}progress('ARMED');await poll();}catch(e){say(errorText(e))}finally{busy=false;$('startTimedTest').disabled=pending;}};
  if(testId){pending=true;$('startTimedTest').disabled=true;poll()}
  const visible=()=>document.visibilityState==='visible'&&$('connectionActions').getClientRects().length>0;
- const refresh=setInterval(()=>{if(visible()&&!busy)check().catch(()=>{})},5000);setTimeout(()=>{if(visible())check().catch(()=>{})},1200);window.addEventListener('pagehide',()=>clearInterval(refresh),{once:true});
- if(consoleRoot.querySelector){const ageTimer=setInterval(()=>{const label=$('workspaceSyncAge');if(!label)return;if(document.hidden){label.textContent=translate('Paused');return;}const age=workspaceLastSync?Math.floor((Date.now()-workspaceLastSync)/1000):null;label.textContent=age===null?translate('Syncing…'):age<1?translate('Updated now'):'Updated '+age+'s ago';if(age!==null&&age>20){consoleRoot.dataset.health='stale';$('workspaceHealth').textContent='Data is stale';}},1000);window.addEventListener('pagehide',()=>{clearInterval(ageTimer);for(const f of metricFrames.values())cancelAnimationFrame(f);},{once:true});}
- if(typeof IntersectionObserver!=='undefined'&&consoleRoot.querySelector){const workspaceObserver=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&!document.hidden){check().catch(()=>{});loadMemberSettings();loadReport();}},{threshold:.01});workspaceObserver.observe(consoleRoot);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&visible()){check().catch(()=>{});loadReport();}});window.addEventListener('pagehide',()=>workspaceObserver.disconnect(),{once:true});}
+ const refreshInterval=60000;
+ let lastRefresh=null,refreshTimer=setTimeout(refreshConnection,1200);
+ function refreshConnection(){
+  clearTimeout(refreshTimer);
+  const now=Date.now();
+  const remaining=lastRefresh===null?0:Math.max(0,refreshInterval-(now-lastRefresh));
+  if(visible()&&!busy&&remaining===0){
+   lastRefresh=now;
+   check().catch(()=>{});
+   refreshTimer=setTimeout(refreshConnection,refreshInterval);
+  }else{
+   refreshTimer=setTimeout(refreshConnection,remaining||refreshInterval);
+  }
+ }
+ window.addEventListener('pagehide',()=>clearTimeout(refreshTimer),{once:true});
+ if(consoleRoot.querySelector){const ageTimer=setInterval(()=>{const label=$('workspaceSyncAge');if(!label)return;if(document.hidden){label.textContent=translate('Paused');return;}const age=workspaceLastSync?Math.floor((Date.now()-workspaceLastSync)/1000):null;label.textContent=age===null?translate('Syncing…'):age<1?translate('Updated now'):'Updated '+age+'s ago';if(age!==null&&age>(refreshInterval/1000+30)){consoleRoot.dataset.health='stale';$('workspaceHealth').textContent='Data is stale';}},1000);window.addEventListener('pagehide',()=>{clearInterval(ageTimer);for(const f of metricFrames.values())cancelAnimationFrame(f);},{once:true});}
+ if(typeof IntersectionObserver!=='undefined'&&consoleRoot.querySelector){const workspaceObserver=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&!document.hidden){refreshConnection();loadMemberSettings();loadReport();}},{threshold:.01});workspaceObserver.observe(consoleRoot);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&visible()){refreshConnection();loadReport();}});window.addEventListener('pagehide',()=>workspaceObserver.disconnect(),{once:true});}
  if(fa()){$('checkConnectionAction').textContent='تست اتصال';$('startTimedTest').textContent='تست باز و بسته‌کردن پوزیشن';}
 }
 export const EXECUTION_JS='\n('+mount.toString()+')('+JSON.stringify(MEMBER_LABELS)+', '+performanceGeometry.toString()+');\n'+SETUP_JS+PROFILE_JS+ACCOUNT_JS+PREMIUM_JS+TOUR_JS+ANALYTICS_JS;
