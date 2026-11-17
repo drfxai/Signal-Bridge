@@ -1,5 +1,5 @@
 # SignalBridge — MetaTrader 5 Direct Execution
-Current documented EA: v0.29.1 · 2026-10-31
+Current documented EA: v0.30.3 · 2026-11-17
 
 ## Standard installation
 Install the compiled EX5 from the [current GitHub EA release](https://github.com/drfxai/Signal-Bridge/releases/tag/ea-latest). Copy it into `MQL5/Experts`, attach it to a chart, add `https://signalbridge.drfx.online` to MT5's allowed WebRequest URLs, then enter the private SignalBridge activation code.
