@@ -5,8 +5,8 @@
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
 #property strict
-#property version   "0.302"
-#property description "SignalBridge EA v0.30.2: simplified setup and optional daily loss limit."
+#property version   "0.303"
+#property description "SignalBridge EA v0.30.3: broker-verified gold aliases and SignalBridge execution fix."
 #property description "Signals remain DEMO-only. Explicitly confirmed, opt-in account-bound LIVE tests are supported."
 #property description "Enter your private activation code in the first EA input. No compilation required for EX5 users."
 
@@ -409,6 +409,21 @@ bool FinalReceiptAckClearsPending(string status){return status=="FILLED"||status
 bool HasPending(){for(int i=0;i<MAX_PENDING;i++)if(g_pendingId[i]!="")return true;return false;}
 
 string ResolveSymbol(string requested){if((requested=="XAUUSD"||requested==InpGoldSymbol)&&InpGoldSymbol!=""){if(SymbolSelect(InpGoldSymbol,true))return InpGoldSymbol;return "";}string s=InpSymbolPrefix+requested+InpSymbolSuffix;if(SymbolSelect(s,true))return s;if(SymbolSelect(requested,true))return requested;return "";}
+// A broker can expose an actual tradable XAU/USD contract under XAUUSD.p or GOLD,
+// while reporting empty or broker-specific currency metadata. Do not reject an
+// explicitly selected, recognizable gold alias solely on these two fields.
+// Never auto-map an arbitrary non-gold symbol through the exact-gold override.
+bool BrokerGoldSymbolValid(string requested){
+ if(!SymbolSelect(requested,true))return false;
+ string base=SymbolInfoString(requested,SYMBOL_CURRENCY_BASE);
+ string profit=SymbolInfoString(requested,SYMBOL_CURRENCY_PROFIT);
+ StringToUpper(base);StringToUpper(profit);
+ if(base=="XAU"&&profit=="USD")return true;
+ string name=requested;StringToUpper(name);
+ bool recognized=(StringFind(name,"XAUUSD")==0||StringFind(name,"GOLD")==0);
+ if(recognized)Print("SignalBridge: exact gold alias ",requested," accepted; broker currency metadata ",base,"/",profit);
+ return recognized;
+}
 // Resolve the gold test independently. Never guess between multiple contracts.
 string ResolveTestSymbol(string &reason){
  // Respect an explicit user choice. Never silently substitute another instrument.
@@ -512,8 +527,7 @@ void HandleOpen(string id,string mode,string side,string requested,string tag,st
  ulong existing=0;string ps="";double pv=0,po=0,psl=0,ptp=0;if(FindPosition(tag,existing,ps,pv,po,psl,ptp)){Receipt(id,"DUPLICATE",N64((long)existing),0,"position already exists");return;}ulong oldDeal=0;if(HistoryHasTag(tag,oldDeal)){Receipt(id,"DUPLICATE",N64((long)oldDeal),0,"broker history already contains this signal");return;}string unresolved=ResolvePending(tag);if(unresolved!=""){Receipt(id,"ERROR","",0,"unresolved prior broker submission; automatic replay blocked");return;}
  string sym="";
  if(exactGoldSymbol){
-  if(SymbolSelect(requested,true)&&SymbolInfoString(requested,SYMBOL_CURRENCY_BASE)=="XAU"&&
-     SymbolInfoString(requested,SYMBOL_CURRENCY_PROFIT)=="USD")sym=requested;
+  if(BrokerGoldSymbolValid(requested))sym=requested;
  }else sym=ResolveSymbol(requested);
  if(sym==""){Receipt(id,"REJECTED","",0,exactGoldSymbol?"GOLD_BROKER_SYMBOL_INVALID: check the exact XAU/USD symbol in Market Watch":"symbol not found");return;}bool buy=(side=="BUY");MqlTick tick;if(!SymbolInfoTick(sym,tick)){Receipt(id,"REJECTED","",0,"no broker quote");return;}double current=buy?tick.ask:tick.bid;double targetLevels[3];targetLevels[0]=tp1;targetLevels[1]=tp2;targetLevels[2]=tp3;double previous=current;for(int targetIndex=0;targetIndex<3;targetIndex++){double target=targetLevels[targetIndex];if(target<=0)continue;if(buy?target<=previous:target>=previous){Receipt(id,"REJECTED","",0,"target order invalid or target crossed before entry");return;}previous=target;}if(referencePrice>0&&MathAbs(current-referencePrice)/referencePrice*100.0>InpMaxPriceDeviationPct){Receipt(id,"REJECTED","",0,"price deviation too large");return;}
  long marginMode=AccountInfoInteger(ACCOUNT_MARGIN_MODE);
@@ -1269,7 +1283,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    if(id==CHARTEVENT_CHART_CHANGE&&g_sbReady)PanelPlace((int)g_hCur);
   }
 
-int OnInit(){if(InpPartialPercent<=0||InpPartialPercent>=100||InpBreakEvenBufferPoints<0||(InpTP1Action!=SB_EXIT_CLOSE&&InpTP2Action!=SB_EXIT_CLOSE&&InpTP3Action!=SB_EXIT_CLOSE)||InpDefaultLots<=0||InpDefaultLots>InpMaxLot||(InpEnableDailyDrawdown&&(InpDailyDrawdownPercent<=0||InpDailyDrawdownPercent>100))||InpTestSymbol==""){Print("SignalBridge: invalid lot, symbol or daily drawdown input");return INIT_PARAMETERS_INCORRECT;}RiskInit();DealCursorLoad();LoadPolicyDefaults();RiskCheck();RecoverClosedTargets();MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.30.2 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+int OnInit(){if(InpPartialPercent<=0||InpPartialPercent>=100||InpBreakEvenBufferPoints<0||(InpTP1Action!=SB_EXIT_CLOSE&&InpTP2Action!=SB_EXIT_CLOSE&&InpTP3Action!=SB_EXIT_CLOSE)||InpDefaultLots<=0||InpDefaultLots>InpMaxLot||(InpEnableDailyDrawdown&&(InpDailyDrawdownPercent<=0||InpDailyDrawdownPercent>100))||InpTestSymbol==""){Print("SignalBridge: invalid lot, symbol or daily drawdown input");return INIT_PARAMETERS_INCORRECT;}RiskInit();DealCursorLoad();LoadPolicyDefaults();RiskCheck();RecoverClosedTargets();MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.30.3 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
 void OnDeinit(const int reason){EventKillTimer();PanelDestroy();if(g_testLock!=INVALID_HANDLE){FileClose(g_testLock);g_testLock=INVALID_HANDLE;}DisconnectCloud();DeletePanel();ChartRedraw(0);}
 void OnTick(){RiskCheck();ProcessPositionTargets();CloseTimedTest();}
 void OnTimer(){
