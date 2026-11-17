@@ -1,4 +1,4 @@
-import {memberPolicy} from './member-policy.mjs';
+import {memberExecutionSettings} from './member-policy.mjs';
 const POSITIVE=v=>typeof v==='number'&&Number.isFinite(v)&&v>0;
 const SYMBOL=/^[A-Z0-9][A-Z0-9._-]{0,31}$/;
 const MODES=new Set(['dry_run','demo_execute','test_execute']);
@@ -34,11 +34,14 @@ export function validateTestSignal(body,nowMs=Date.now()){
 
 export function makeCommand({tenantId,agentId,sourceType,sourceRef,signal,mode,commandId=crypto.randomUUID()}){
  return {protocol:'signalbridge-command/1',command_id:commandId,tenant_id:tenantId,agent_id:agentId,
-  source:{type:sourceType,ref:sourceRef||null,strategy:signal.metadata?.strategy||null},
+  source:{type:sourceType,ref:sourceRef||null,strategy:signal.metadata?.strategy||null,
+   ...(signal.metadata?.timeframe?{timeframe:signal.metadata.timeframe}:{}),
+   ...(signal.metadata?.engines?.length?{engines:signal.metadata.engines}:{})},
   correlation_id:String(signal.correlation_id||signal.external_signal_id||commandId),
   correlation_tag:correlationTag(signal.correlation_id||signal.external_signal_id||commandId),
   execution_mode:mode==='test_execute'&&signal.action!=='TEST'?'dry_run':normalizeExecutionMode(mode),action:signal.action,test_account:signal.test_account||null,
-  exit_policy:signal.exit_policy||null,management_event:signal.management_event||null,side:signal.side||null,symbol:signal.symbol||null,order:signal.order||null,
+  exit_policy:signal.exit_policy||null,management_event:signal.management_event||null,side:signal.side||null,symbol:signal.broker_symbol||signal.symbol||null,order:signal.order||null,
+  ...(signal.broker_symbol?{broker_symbol:signal.broker_symbol}:{}),
   occurred_at:signal.occurred_at||new Date().toISOString(),expires_at:signal.expires_at||null};
 }
 
@@ -80,7 +83,12 @@ export async function createAndDispatch(env,{tenantId,agentId,sourceType,sourceR
   return {command_id:prior.id,status:prior.status,delivered:0,reason:null,duplicate:true};
  }
 
- const configured=signal.action==='OPEN'?{...signal,exit_policy:await memberPolicy(env,tenantId)}:signal;
+ let configured=signal;
+ if(signal.action==='OPEN'){
+  const {policy,brokerSymbol}=await memberExecutionSettings(env,tenantId);
+  configured={...signal,exit_policy:policy};
+  if(signal.symbol==='XAUUSD'&&brokerSymbol)configured.broker_symbol=brokerSymbol;
+ }
  const command=makeCommand({tenantId,agentId,sourceType,sourceRef,signal:configured,mode,commandId}),payload=JSON.stringify(command);
  const inserted=await env.DB.prepare(`INSERT INTO commands
   (id,tenant_id,signal_id,source_type,source_ref,agent_id,execution_mode,payload_json,status,created_at,updated_at)

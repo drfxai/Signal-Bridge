@@ -169,7 +169,7 @@ ${CHM_HOME_HTML}${SXM_HOME_HTML} <div class="grid">
  <div class="mini-status-grid"><div><small data-tr="licenseStatus">EA LICENSE</small><strong id="miniConnectionLicense">Not checked</strong></div><div><small data-tr="lastHandshake">LAST HANDSHAKE</small><strong id="miniConnectionLast">Not checked</strong></div></div>
  <span id="miniTestConnection" hidden></span>
  <p class="mini-note" id="miniConnectionInfo" role="status">Reads the last EA handshake. It does not place a market order.</p>
- <h3 data-tr="personalWebhook">My TradingView Webhook</h3><p class="mini-note">Private endpoint for your TradingView alerts, initially Dry Run. Do not share this URL.</p>
+ <h3 data-tr="personalWebhook">My TradingView Webhook</h3><p class="mini-note">Private URL for your TradingView alerts.</p>
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook" data-tr="createWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" data-tr="copyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" data-tr="rotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
@@ -392,7 +392,7 @@ function displayMiniWebhook(w){
  $('miniCreateWebhook').disabled=available;
  $('miniCopyWebhook').disabled=!available;
  $('miniRotateWebhook').disabled=!available;
- set('miniWebhookInfo',available?'Dry Run · '+Number(w.received||0)+' alerts received. Keep this URL private.':'Create a personal TradingView webhook to start in Dry Run.');
+ set('miniWebhookInfo',available?ui('Alerts received','هشدارهای دریافت‌شده')+': '+Number(w.received||0):ui('Create a personal TradingView webhook.','وب‌هوک شخصی تریدینگ‌ویو را بسازید.'));
 }
 $('miniTestConnection').addEventListener('click',refreshMiniConnection);
 $('miniCreateWebhook').addEventListener('click',async()=>{try{const r=await api('/api/webhook/create',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',localeError(e))}});

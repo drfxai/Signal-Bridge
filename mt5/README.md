@@ -1,7 +1,7 @@
 # SignalBridge MT5 EA
 
 The current development source is [`DrFX_SignalBridge_EA.mq5`](DrFX_SignalBridge_EA.mq5),
-**EA v0.30.1**. Older EA snapshots have been removed from the working tree;
+**EA v0.30.2**. Older EA snapshots have been removed from the working tree;
 Git history retains their previous contents.
 
 ## Setup
@@ -46,6 +46,22 @@ In EA Properties → Inputs → **Start Here**, complete these inputs in order:
 | Lot size | `0.01` | Connection test. Trading signals carry their volume or risk sizing. |
 
 The optional test-symbol override and prefix/suffix settings are for advanced setups.
+
+### Broker symbol and MT5 comments
+
+In the client portal or Telegram Mini App, open **Setup → MetaTrader 5 → Broker gold symbol**.
+Save the exact Market Watch name, such as `XAUUSD.p`. The value applies to new
+`XAUUSD` entries from TradingView and Telegram in EA 0.30.2 or later. Leave it
+blank to use the EA symbol input. The connection test uses its separate EA input.
+
+The EA keeps the SignalBridge order ID at the start of the MT5 comment. When the
+alert supplies `timeframe` and `engines`, a comment can end in `T5s:Scalper`
+or `T3m:Sc+LIT+ICT`. `T` means TradingView, `G` means Telegram, and
+`Sc` means Scalper. The MT5 comment is limited to 31 characters, so long engine
+lists may end with a count such as `+5`. Orders without metadata keep the source
+label. For TradingView JSON, send `"metadata":{"timeframe":"5S","engines":["Scalper"]}`.
+The tagged GOD MODE format accepts these fields directly. Plain Telegram messages
+can include `TF: 3` and `Engines: Scalper, LIT, ICT` on their own lines.
 
 ### Optional daily loss limit
 

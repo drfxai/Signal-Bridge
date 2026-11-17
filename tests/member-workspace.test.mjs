@@ -35,8 +35,10 @@ test('reference signal routes default ON but execution requires separate explici
  assert.match(SETUP_JS,/routeSettings\?\.tv_to_mt5!==false/);
  assert.match(SETUP_JS,/toggleRoute\('tv_to_mt5'\)/);
  assert.match(SETUP_JS,/if\(key==='tv_to_mt5'\)/);
- assert.match(SETUP_JS,/Enable DEMO execution/);
- assert.match(SETUP_JS,/confirm\('Enable DEMO execution/);
+ assert.match(SETUP_JS,/Enable demo trading/);
+ assert.doesNotMatch(SETUP_HTML,/Dry Run/i);
+ assert.doesNotMatch(SETUP_JS,/Return to Dry Run/);
+ assert.match(SETUP_JS,/confirm\(say\('Enable automatic trading on your connected demo account/);
  assert.ok(controls.includes('tv_to_mt5:r?.tv_to_mt5!==0'));
  assert.ok(controls.includes('tv_to_mt5=excluded.tv_to_mt5'));
  assert.match(migration,/DEFAULT 1 CHECK\(tv_to_mt5 IN \(0,1\)\)/);
