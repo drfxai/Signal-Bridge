@@ -40,13 +40,3 @@ jobs:
           console.log(JSON.stringify(manifest));
           console.log('CLOUDFLARE_MANIFEST_END');
           JS
-      - name: Export one public missing asset for direct Cloudflare upload
-        shell: bash
-        run: |
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          const encoded=fs.readFileSync('site/public/media/signal-bridge/premium-card.jpg').toString('base64');
-          console.log('CF_ASSET_EXPORT_START');
-          for(let i=0;i<encoded.length;i+=4000)console.log('CF_ASSET_CHUNK:'+encoded.slice(i,i+4000));
-          console.log('CF_ASSET_EXPORT_END');
-          JS
