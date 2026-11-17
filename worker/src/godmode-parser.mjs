@@ -1,3 +1,4 @@
+import {signalMetadata} from './signal-metadata.mjs';
 const TAG=/\[\[DRFX\]\]([\s\S]*?)\[\[\/DRFX\]\]/;
 const MANAGEMENT_EXPIRES='9999-12-31T23:59:59.999Z';
 const num=v=>{if(v==null||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null};
@@ -19,7 +20,7 @@ export function parseGodModeAlert(text,nowMs=Date.now()){
   return {ok:true,signal:{external_signal_id:'gm-'+fnv(correlation+':'+ev),correlation_id:correlation,action:'MANAGE',management_event:ev,
    symbol:/^[A-Z0-9][A-Z0-9._-]{0,31}$/.test(symbol)?symbol:null,
    occurred_at:new Date(nowMs).toISOString(),expires_at:MANAGEMENT_EXPIRES,
-   metadata:{strategy:'GOD MODE'}}};
+   metadata:signalMetadata({strategy:'GOD MODE',timeframe:p.timeframe??p.tf,engines:p.engines??p.engine??p.voters})}};
  }
  const side=dir(p.direction||p.dir||p.side),sl=num(p.sl),tp1=num(p.tp1),tp2=num(p.tp2),tp3=num(p.tp3);
  const occurred=signalTime??nowMs;if(occurred>nowMs+30_000)return {ok:false,reason:'FUTURE_GODMODE_ENTRY'};if(nowMs-occurred>300_000)return {ok:false,reason:'STALE_GODMODE_ENTRY'};
@@ -32,5 +33,5 @@ export function parseGodModeAlert(text,nowMs=Date.now()){
  if(!(risk>0&&risk<=10))return {ok:false,reason:'INVALID_RISK'};
  return {ok:true,signal:{schema_version:'1.0',external_signal_id:correlation,correlation_id:correlation,source_type:'tradingview',action:'OPEN',side,symbol,
   order:{type:'MARKET',volume:{mode:'RISK_PERCENT',value:risk},stop_loss:sl,take_profits:tps,...(ref>0?{reference_price:ref}:{})},
-  occurred_at:new Date(occurred).toISOString(),expires_at:new Date(occurred+300_000).toISOString(),metadata:{strategy:'GOD MODE'}}};
+  occurred_at:new Date(occurred).toISOString(),expires_at:new Date(occurred+300_000).toISOString(),metadata:signalMetadata({strategy:'GOD MODE',timeframe:p.timeframe??p.tf,engines:p.engines??p.engine??p.voters})}};
 }

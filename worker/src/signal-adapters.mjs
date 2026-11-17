@@ -1,3 +1,4 @@
+import {signalMetadata} from './signal-metadata.mjs';
 import {parseTelegramTrade} from './telegram-parser.mjs';
 import {parseGodModeAlert} from './godmode-parser.mjs';
 import {validateTradingView} from './validate.mjs';
@@ -7,10 +8,18 @@ export function parseSignalMessage(text,now=Date.now(),options={}){
  const raw=text.trim();
  if(raw.includes('[[DRFX]]'))return parseGodModeAlert(raw,now);
  if(raw.startsWith('{')){
-  try{const b=JSON.parse(raw);if(b.schema_version)return {ok:true,signal:validateTradingView(b,now)};const allowed=['symbol','action','side','entry','sl','tp','tp1','tp2','tp3','lot','volume','id','external_signal_id'];if(!b||Array.isArray(b)||Object.keys(b).some(k=>!allowed.includes(k)))return {ok:false,reason:'INVALID_SIMPLE_JSON'};const tps=Array.isArray(b.tp)?b.tp:[b.tp1,b.tp2,b.tp3].filter(v=>v!=null);const lines=[b.side||b.action,b.symbol,...(b.entry!=null?['ENTRY: '+b.entry]:[]),'SL: '+b.sl,...tps.map((v,i)=>'TP'+(i+1)+': '+v),...(b.lot!=null||b.volume!=null?['LOT: '+(b.lot??b.volume)]:[])];const parsed=parseTelegramTrade(lines.join('\n'),now,options);const id=b.external_signal_id??b.id;if(id!==undefined){if(typeof id!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$/.test(id))return {ok:false,reason:'INVALID_SIGNAL_ID'};if(parsed.ok)parsed.signal.external_signal_id=id;}return parsed}
+  try{const b=JSON.parse(raw);if(b.schema_version)return {ok:true,signal:validateTradingView(b,now)};const allowed=['symbol','action','side','entry','sl','tp','tp1','tp2','tp3','lot','volume','id','external_signal_id','timeframe','tf','engines','engine'];if(!b||Array.isArray(b)||Object.keys(b).some(k=>!allowed.includes(k)))return {ok:false,reason:'INVALID_SIMPLE_JSON'};const tps=Array.isArray(b.tp)?b.tp:[b.tp1,b.tp2,b.tp3].filter(v=>v!=null);const lines=[b.side||b.action,b.symbol,...(b.entry!=null?['ENTRY: '+b.entry]:[]),'SL: '+b.sl,...tps.map((v,i)=>'TP'+(i+1)+': '+v),...(b.lot!=null||b.volume!=null?['LOT: '+(b.lot??b.volume)]:[])];const parsed=parseTelegramTrade(lines.join('\n'),now,options);const id=b.external_signal_id??b.id;if(id!==undefined){if(typeof id!=='string'||!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$/.test(id))return {ok:false,reason:'INVALID_SIGNAL_ID'};if(parsed.ok)parsed.signal.external_signal_id=id;}if(parsed.ok){const metadata=signalMetadata({timeframe:b.timeframe??b.tf,engines:b.engines??b.engine});if(Object.keys(metadata).length)parsed.signal.metadata=metadata;}return parsed}
   catch(e){return {ok:false,reason:e.code||'INVALID_INDICATOR_JSON'}}
  }
- return parseTelegramTrade(raw,now,options);
+ const fields={};
+ const orderText=raw.replace(/^(TF|TIMEFRAME|ENGINES?)\s*[:=]\s*(.+)$/gim,(_,label,value)=>{
+  fields[label.toUpperCase().startsWith('ENGINE')?'engines':'timeframe']=value;
+  return '';
+ });
+ const parsed=parseTelegramTrade(orderText,now,options);
+ const metadata=signalMetadata(fields);
+ if(parsed.ok&&Object.keys(metadata).length)parsed.signal.metadata=metadata;
+ return parsed;
 }
 export function telegramMessageFresh(msg,now=Date.now()){
  const times=[msg?.date,msg?.forward_origin?.date].filter(x=>x!==undefined);

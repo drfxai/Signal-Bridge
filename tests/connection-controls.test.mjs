@@ -335,3 +335,36 @@ test('Check Connection reports live Algo Trading and broker symbol checks withou
   assert.equal(f.calls.length,0);
  }finally{f.db.close();}
 });
+
+test('members save an exact, case-sensitive gold symbol and route only new gold entries through it',async()=>{
+ const f=fixture();
+ try{
+  const read=async(session)=>await (await f.request('/api/member/broker-symbol',undefined,session)).json();
+  assert.equal((await read()).symbol,null);
+  assert.equal((await f.request('/api/member/broker-symbol',{symbol:'XAUUSD|EURUSD'})).status,400);
+  assert.equal((await f.request('/api/member/broker-symbol',{symbol:' XAUUSD.p '})).status,200);
+  assert.equal((await read()).symbol,'XAUUSD.p');
+  assert.equal((await read(f.other)).symbol,null);
+  await f.request('/api/webhook/create',{});
+  await f.request('/api/webhook/mode',{mode:'demo_execute',confirm:true});
+  f.db.prepare("UPDATE member_signal_settings SET telegram_chat_id='-100123',telegram_verified=1,telegram_to_mt5=1 WHERE user_id='usr_a'").run();
+  const msg={chat:{id:-100123},from:{id:9},date:Math.floor(Date.now()/1000),text:'BUY GOLD\nSL: 2300\nTP1: 2350\nTF: 3\nEngines: Scalper, LIT, ICT'};
+  await routeTelegramSignal({update_id:1,message:{...msg,message_id:20}},f.env);
+  assert.equal(f.calls[0].symbol,'XAUUSD.p');
+  assert.equal(f.calls[0].broker_symbol,'XAUUSD.p');
+  assert.equal(f.calls[0].source.timeframe,'3m');
+  assert.deepEqual(f.calls[0].source.engines,['Scalper','LIT','ICT']);
+  const socket={deserializeAttachment:()=>({role:'ea',capabilities:['exit-policy-v1']}),send(){throw Error('Old EA must not receive an exact-symbol command')}};
+  const hub=new AgentHub({},f.env);
+  assert.equal(hub.sendCommand(socket,f.calls[0]),false);
+  const sent=[];
+  socket.deserializeAttachment=()=>({role:'ea',capabilities:['exit-policy-v1','broker-symbol-v1']});
+  socket.send=wire=>sent.push(wire);
+  assert.equal(hub.sendCommand(socket,f.calls[0]),true);
+  assert.deepEqual(sent[0].split('|').slice(26),['EXACT_SYMBOL','G3m:Sc+LIT+ICT']);
+  await routeTelegramSignal({update_id:2,message:{...msg,message_id:21,text:'TP1 HIT',reply_to_message:{message_id:20}}},f.env);
+  assert.equal(f.calls[1].broker_symbol,undefined);
+  await f.request('/api/member/broker-symbol',{symbol:''});
+  assert.equal((await read()).symbol,null);
+ }finally{f.db.close();}
+});

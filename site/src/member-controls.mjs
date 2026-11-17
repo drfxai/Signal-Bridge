@@ -1,8 +1,20 @@
-import {DEFAULT_POLICY,validatePolicy} from '../../worker/src/member-policy.mjs';
+import {BROKER_SYMBOL,DEFAULT_POLICY,validatePolicy} from '../../worker/src/member-policy.mjs';
 import {parseSignalMessage} from '../../worker/src/signal-adapters.mjs';
 const reply=(b,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{'content-type':'application/json','cache-control':'no-store'}});
 export async function memberSettings(env,user){await env.DB.prepare('INSERT INTO member_signal_settings(user_id,policy_json,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5,default_lots) VALUES (?,?,?,?,1,1,0.01) ON CONFLICT(user_id) DO NOTHING').bind(user.id,JSON.stringify(DEFAULT_POLICY),user.telegram_id||null,user.telegram_id?1:0).run();const r=await env.DB.prepare('SELECT * FROM member_signal_settings WHERE user_id=?').bind(user.id).first();return {policy:r?JSON.parse(r.policy_json):{...DEFAULT_POLICY},telegram_chat_id:r?.telegram_chat_id||user.telegram_id||'',telegram_verified:!!r?.telegram_verified,tv_to_mt5:r?.tv_to_mt5!==0,tv_to_telegram:!!r?.tv_to_telegram,telegram_to_mt5:!!r?.telegram_to_mt5,default_lots:r?.default_lots||0.01,report_since:r?.report_since||null};}
 export async function memberControls(path,b,env,user,diagnostic){
+ if(path==='/api/member/broker-symbol'){
+  if(b===undefined){
+   const row=await env.DB.prepare('SELECT broker_gold_symbol FROM member_signal_settings WHERE user_id=?').bind(user.id).first();
+   return reply({ok:true,symbol:row?.broker_gold_symbol??null});
+  }
+  if(typeof b?.symbol!=='string')return reply({error:'INVALID_BROKER_SYMBOL'},400);
+  const symbol=b.symbol.trim();
+  if(symbol&&!BROKER_SYMBOL.test(symbol))return reply({error:'INVALID_BROKER_SYMBOL'},400);
+  const result=await env.DB.prepare('INSERT INTO member_signal_settings(user_id,broker_gold_symbol,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5) VALUES (?,?,?,?,1,1) ON CONFLICT(user_id) DO UPDATE SET broker_gold_symbol=excluded.broker_gold_symbol,updated_at=CURRENT_TIMESTAMP').bind(user.id,symbol||null,user.telegram_id||null,user.telegram_id?1:0).run();
+  if(!result?.success)return reply({error:'SERVICE_UNAVAILABLE'},503);
+  return reply({ok:true,symbol:symbol||null});
+ }
  if(path==='/api/member/settings'&&b===undefined)return reply({ok:true,settings:await memberSettings(env,user)});
  if(path==='/api/member/settings'){
   if(typeof b.tv_to_telegram!=='boolean'||typeof b.telegram_to_mt5!=='boolean')return reply({error:'INVALID_ROUTE'},400);

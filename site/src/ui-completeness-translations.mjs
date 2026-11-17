@@ -427,5 +427,17 @@ export const UI_COMPLETENESS_PHRASES=[
  ["Gold broker symbol", "نماد طلای بروکر", "Aracı kurumun altın sembolü", "Символ золота у брокера", "ब्रोकर का गोल्ड सिंबल"],
  ["EA connection", "اتصال اکسپرت", "EA bağlantısı", "Подключение советника", "EA कनेक्शन"],
  ["Update the EA to verify", "برای بررسی، اکسپرت را به‌روز کنید", "Doğrulamak için EA’yı güncelleyin", "Обновите советник для проверки", "जाँच के लिए EA अपडेट करें"],
- ["Connect the EA to verify", "برای بررسی، اکسپرت را متصل کنید", "Doğrulamak için EA’yı bağlayın", "Подключите советник для проверки", "जाँच के लिए EA कनेक्ट करें"]
+ ["Connect the EA to verify", "برای بررسی، اکسپرت را متصل کنید", "Doğrulamak için EA’yı bağlayın", "Подключите советник для проверки", "जाँच के लिए EA कनेक्ट करें"],
+ ["Broker gold symbol", "نماد طلای بروکر", "Aracı kurumun altın sembolü", "Символ золота у брокера", "ब्रोकर का गोल्ड सिंबल"],
+ ["Save symbol", "ذخیرهٔ نماد", "Sembolü kaydet", "Сохранить символ", "सिंबल सहेजें"],
+ ["Use the exact name in MT5 Market Watch, for example XAUUSD.p. Leave blank to use the EA setting. Applies to new gold signals with the updated EA.", "نام دقیق نماد را از Market Watch متاتریدر وارد کنید، مثلاً XAUUSD.p. کادر خالی از تنظیم اکسپرت استفاده می‌کند. برای سیگنال‌های جدید طلا به نسخهٔ به‌روز اکسپرت نیاز است.", "MT5 Piyasa Gözlemindeki tam adı girin, örneğin XAUUSD.p. EA ayarını kullanmak için boş bırakın. Güncel EA ile yeni altın sinyalleri için geçerlidir.", "Введите точное название из окна «Обзор рынка» MT5, например XAUUSD.p. Оставьте поле пустым для настройки советника. Действует для новых сигналов по золоту в обновлённом советнике.", "MT5 Market Watch का सटीक नाम डालें, जैसे XAUUSD.p। EA की सेटिंग के लिए खाली छोड़ें। अपडेट किए गए EA में नए गोल्ड सिग्नलों पर लागू होता है।"],
+ ["Alerts received", "هشدارهای دریافت‌شده", "Alınan uyarılar", "Получено оповещений", "मिले अलर्ट"],
+ ["Create a personal TradingView webhook.", "وب‌هوک شخصی تریدینگ‌ویو را بسازید.", "Kişisel TradingView webhook adresi oluşturun.", "Создайте персональный вебхук TradingView.", "निजी TradingView वेबहुक बनाएँ।"],
+ ["Private URL for your TradingView alerts.", "نشانی خصوصی هشدارهای تریدینگ‌ویو.", "TradingView uyarılarınız için özel adres.", "Приватный адрес для оповещений TradingView.", "आपके TradingView अलर्ट का निजी URL।"],
+ ["Enable demo trading", "فعال‌کردن معاملهٔ دمو", "Demo işlemlerini etkinleştir", "Включить торговлю на демосчёте", "डेमो ट्रेडिंग चालू करें"],
+ ["Demo trading enabled", "معاملهٔ دمو فعال است", "Demo işlemleri etkin", "Торговля на демосчёте включена", "डेमो ट्रेडिंग चालू है"],
+ ["Enable automatic trading on your connected demo account?", "معاملهٔ خودکار روی حساب دموی متصل فعال شود؟", "Bağlı demo hesabında otomatik işlemler etkinleştirilsin mi?", "Включить автоматическую торговлю на подключённом демосчёте?", "जुड़े डेमो खाते पर ऑटो ट्रेडिंग चालू करें?"],
+ ["Gold symbol saved:", "نماد طلا ذخیره شد:", "Altın sembolü kaydedildi:", "Символ золота сохранён:", "गोल्ड सिंबल सहेजा गया:"],
+ ["Using the gold symbol from the EA.", "از نماد طلای اکسپرت استفاده می‌شود.", "EA'daki altın sembolü kullanılıyor.", "Используется символ золота из настроек советника.", "EA का गोल्ड सिंबल इस्तेमाल होगा।"],
+ ["Enter the exact Market Watch symbol, for example XAUUSD.p.", "نام دقیق نماد را وارد کنید، مثلاً XAUUSD.p.", "Piyasa Gözlemindeki tam sembolü girin, örneğin XAUUSD.p.", "Введите точный символ из «Обзора рынка», например XAUUSD.p.", "Market Watch का सटीक सिंबल डालें, जैसे XAUUSD.p।"]
 ];
