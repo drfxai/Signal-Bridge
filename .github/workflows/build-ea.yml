@@ -1,4 +1,4 @@
-name: Build MT5 EA v0.30.0 (broker history opt-in)
+name: Build MT5 EA v0.30.2 (simplified setup)
 on:
   push:
     branches: [main]
@@ -42,7 +42,7 @@ jobs:
           }
           if(-not $meta){throw "MetaEditor was not installed"}
           "METAEDITOR_PATH=$($meta.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-      - name: Compile v0.30.0 EA and validate EX5
+      - name: Compile v0.30.2 EA and validate EX5
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
@@ -78,14 +78,14 @@ jobs:
           $info=Get-Item $compiled
           if($info.Length -lt 4096){throw "EX5 unexpectedly small"}
           New-Item -ItemType Directory 'dist' -Force | Out-Null
-          Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.30.0_ANALYTICS_TESTS.ex5'
+          Copy-Item $compiled 'dist/DrFX_SignalBridge_EA_v0.30.2_SETUP.ex5'
           $hash=(Get-FileHash $compiled -Algorithm SHA256).Hash
-          @("SignalBridge EA v0.30.0 - CONTROLLED ANALYTICS TESTS","SHA256: $hash","Size: $($info.Length) bytes","Automatic signals DEMO-only; LIVE position test requires separate explicit opt-in.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
+          @("SignalBridge EA v0.30.2 - SIMPLIFIED SETUP","SHA256: $hash","Size: $($info.Length) bytes","Automatic signals DEMO-only; LIVE position test requires separate explicit opt-in.","License validation requires configured backend.") | Set-Content 'dist/README.txt'
           Write-Host "Binary built: $($info.Length) bytes; SHA256 $hash"
       - name: Upload actual EX5 for download
         uses: actions/upload-artifact@v4
         with:
-          name: DrFX_SignalBridge_EA_v0.30.0_ANALYTICS_TESTS_EX5
+          name: DrFX_SignalBridge_EA_v0.30.2_SETUP_EX5
           path: dist/
           if-no-files-found: error
           retention-days: 30
@@ -97,11 +97,11 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
-          Copy-Item 'dist/DrFX_SignalBridge_EA_v0.30.0_ANALYTICS_TESTS.ex5' 'dist/DrFX_SignalBridge_EA.ex5'
-          gh release view ea-latest --repo $env:GITHUB_REPOSITORY 2>$null
+          Copy-Item 'dist/DrFX_SignalBridge_EA_v0.30.2_SETUP.ex5' 'dist/DrFX_SignalBridge_EA.ex5'
+          gh release view ea-v0.30.2 --repo $env:GITHUB_REPOSITORY 2>$null
           if($LASTEXITCODE -ne 0){
-            gh release create ea-latest --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "SignalBridge EA — current compiled build" --notes "Compiled by MetaEditor from main. See README.txt for version and SHA256."
+            gh release create ea-v0.30.2 --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "SignalBridge EA 0.30.2" --notes "Compiled by MetaEditor from main. See README.txt for version and SHA256."
             if($LASTEXITCODE -ne 0){throw 'Release creation failed'}
           }
-          gh release upload ea-latest 'dist/DrFX_SignalBridge_EA.ex5' 'dist/README.txt' --clobber --repo $env:GITHUB_REPOSITORY
+          gh release upload ea-v0.30.2 'dist/DrFX_SignalBridge_EA.ex5' 'dist/README.txt' --clobber --repo $env:GITHUB_REPOSITORY
           if($LASTEXITCODE -ne 0){throw 'Release upload failed'}

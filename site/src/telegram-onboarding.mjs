@@ -117,6 +117,13 @@ export function onboardingView(page, language, membership) {
 }
 
 export function localizeWorkspace(view,language) {
+ if(['tr','ru','hi'].includes(language)){
+  // Translate fixed chrome without modifying broker values, IDs or user-supplied strings.
+  const t=value=>typeof value==='string'?widgetText(language,value):value;
+  return {...view,language,title:t(view.title),subtitle:t(view.subtitle),footer:t(view.footer),
+   rows:(view.rows||[]).map(r=>({...r,label:t(r.label),value:t(r.value)})),
+   buttons:(view.buttons||[]).map(b=>({...b,label:t(b.label)}))};
+ }
  if(language!=='fa')return view;
  const labels={'Scalper expiry':'انقضای اسکلپر پرو','Scalper key duration':'مدت کلید اسکلپر پرو','Check in the EA':'در پنل خود EA بررسی کن','No key issued':'هنوز کلیدی صادر نشده','Account':'حساب','Email':'ایمیل','Not linked':'متصل نشده','Telegram':'تلگرام','Connected':'متصل','annual':'سالانه','quarterly':'سه‌ماهه','Copy support command':'کپی متن درخواست پشتیبانی','Copy linking command':'کپی متن اتصال حساب','Copy command guide':'کپی راهنمای مدیریت','Registered members':'کاربران ثبت‌شده','Active accounts':'حساب‌های فعال','Suspended accounts':'حساب‌های تعلیق‌شده','Management Actions':'گزینه‌های مدیریت','Plan':'پلن','License':'لایسنس','Expiry · UTC':'انقضا (UTC)','Entry reference':'قیمت ورود','Stop Loss':'حد ضرر','Copy Signal':'کپی سیگنال','Refresh':'به‌روزرسانی','active':'فعال','trial':'آزمایشی','Starts on activation':'از زمان فعال‌سازی','No recorded signals yet.':'هنوز سیگنالی ثبت نشده است.','Remaining':'زمان باقی‌مانده','Expired':'منقضی','Revoked':'لغوشده','revoked':'لغوشده','Not started':'هنوز شروع نشده','suspended':'تعلیق‌شده','Market / not supplied':'بازار / تعیین نشده','Confirm Reset':'تأیید تغییر','Cancel':'انصراف','Signal History':'تاریخچه سیگنال‌ها','Signal Bridge':'سیگنال بریج','Scalper Pro':'اسکلپر پرو','License & activation':'لایسنس و فعال‌سازی','MT5 account-bound':'وابسته به حساب MT5'};
  const title=faLabels[view.page]||(view.page?.startsWith('history')?'تاریخچه سیگنال‌ها':view.page?.startsWith('orders')?'سفارش‌های من':view.title);

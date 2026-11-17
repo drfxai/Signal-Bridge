@@ -1,3 +1,4 @@
+import {signalMetadata,normalizeTimeframe,normalizeEngines} from './signal-metadata.mjs';
 // Fail-closed, deterministic TradingView ingress contract v1.
 // This validates message shape, NOT broker-side execution safety.
 const S = (value, max = 128) => typeof value === 'string' && value.length > 0 && value.length <= max;
@@ -33,13 +34,16 @@ export function validateTradingView(body, nowMs = Date.now()) {
   const occurred = parseIso(body.occurred_at), expires = parseIso(body.expires_at);
   if (!Number.isFinite(occurred) || !Number.isFinite(expires) || expires <= occurred || expires - occurred > 300_000) reject('INVALID_TIME_WINDOW');
   if (occurred > nowMs + 30_000 || expires <= nowMs || occurred < nowMs - 300_000) reject('EXPIRED_OR_FUTURE_SIGNAL');
-  if (body.metadata !== undefined && (!PLAIN(body.metadata) || !KEYS(body.metadata,['strategy']) || (body.metadata.strategy !== undefined && (!S(body.metadata.strategy, 120) || /[\u0000-\u001f]/.test(body.metadata.strategy))))) reject('INVALID_METADATA');
+  if (body.metadata !== undefined && (!PLAIN(body.metadata) || !KEYS(body.metadata,['strategy','timeframe','engines']) || (body.metadata.strategy !== undefined && (!S(body.metadata.strategy, 120) || /[\u0000-\u001f]/.test(body.metadata.strategy))))) reject('INVALID_METADATA');
+  if(body.metadata?.timeframe!==undefined&&!normalizeTimeframe(body.metadata.timeframe))reject('INVALID_METADATA');
+  if(body.metadata?.engines!==undefined&&!normalizeEngines(body.metadata.engines).length)reject('INVALID_METADATA');
+  const metadata=signalMetadata(body.metadata);
   return {
     schema_version:'1.0', external_signal_id:body.external_signal_id,
     source_type:'tradingview', action:'OPEN',side:body.side,symbol:body.symbol,
     order:{type:'MARKET',volume:{mode:order.volume.mode,value:order.volume.value},stop_loss:order.stop_loss,take_profits:[...order.take_profits],...(order.reference_price!==undefined?{reference_price:order.reference_price}:{})},
     occurred_at:new Date(occurred).toISOString(),expires_at:new Date(expires).toISOString(),
-    ...(body.metadata?.strategy ? {metadata:{strategy:body.metadata.strategy}} : {})
+    ...(Object.keys(metadata).length?{metadata}:{})
   };
 }
 

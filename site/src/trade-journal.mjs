@@ -22,7 +22,7 @@ export const TRADE_JOURNAL_CSS=String.raw`
 `;
 export const TRADE_JOURNAL_JS=String.raw`
 (()=>{const root=document.getElementById('tradeJournal');if(!root)return;
-const $=id=>document.getElementById(id),t=(en,fa)=>document.documentElement.lang==='fa'?fa:en;
+const $=id=>document.getElementById(id),t=(en,fa)=>document.documentElement.lang==='fa'?fa:(window.DrFXI18N?.translate?.(en)||en);
 let data=null,loaded=0,busy=false,loggedOut=false,serial=0;
 const esc=x=>String(x??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cash=x=>typeof x==='number'&&Number.isFinite(x)?x.toLocaleString(undefined,{maximumFractionDigits:2,minimumFractionDigits:2}):'—';

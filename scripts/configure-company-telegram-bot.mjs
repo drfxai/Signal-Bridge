@@ -26,7 +26,7 @@ try{
   drop_pending_updates:false,
   max_connections:10
  });
- await call('setChatMenuButton',{menu_button:{type:'default'}});
+ await call('setChatMenuButton',{menu_button:{type:'web_app',text:'Open DrFX Mini App',web_app:{url:'https://drfx.company/telegram'}}});
  await call('setMyCommands',{
   commands:BOT_COMMANDS_VISIBLE
  });

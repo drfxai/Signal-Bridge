@@ -1,8 +1,20 @@
-import {DEFAULT_POLICY,validatePolicy} from '../../worker/src/member-policy.mjs';
+import {BROKER_SYMBOL,DEFAULT_POLICY,validatePolicy} from '../../worker/src/member-policy.mjs';
 import {parseSignalMessage} from '../../worker/src/signal-adapters.mjs';
 const reply=(b,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{'content-type':'application/json','cache-control':'no-store'}});
 export async function memberSettings(env,user){await env.DB.prepare('INSERT INTO member_signal_settings(user_id,policy_json,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5,default_lots) VALUES (?,?,?,?,1,1,0.01) ON CONFLICT(user_id) DO NOTHING').bind(user.id,JSON.stringify(DEFAULT_POLICY),user.telegram_id||null,user.telegram_id?1:0).run();const r=await env.DB.prepare('SELECT * FROM member_signal_settings WHERE user_id=?').bind(user.id).first();return {policy:r?JSON.parse(r.policy_json):{...DEFAULT_POLICY},telegram_chat_id:r?.telegram_chat_id||user.telegram_id||'',telegram_verified:!!r?.telegram_verified,tv_to_mt5:r?.tv_to_mt5!==0,tv_to_telegram:!!r?.tv_to_telegram,telegram_to_mt5:!!r?.telegram_to_mt5,default_lots:r?.default_lots||0.01,report_since:r?.report_since||null};}
 export async function memberControls(path,b,env,user,diagnostic){
+ if(path==='/api/member/broker-symbol'){
+  if(b===undefined){
+   const row=await env.DB.prepare('SELECT broker_gold_symbol FROM member_signal_settings WHERE user_id=?').bind(user.id).first();
+   return reply({ok:true,symbol:row?.broker_gold_symbol??null});
+  }
+  if(typeof b?.symbol!=='string')return reply({error:'INVALID_BROKER_SYMBOL'},400);
+  const symbol=b.symbol.trim();
+  if(symbol&&!BROKER_SYMBOL.test(symbol))return reply({error:'INVALID_BROKER_SYMBOL'},400);
+  const result=await env.DB.prepare('INSERT INTO member_signal_settings(user_id,broker_gold_symbol,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5) VALUES (?,?,?,?,1,1) ON CONFLICT(user_id) DO UPDATE SET broker_gold_symbol=excluded.broker_gold_symbol,updated_at=CURRENT_TIMESTAMP').bind(user.id,symbol||null,user.telegram_id||null,user.telegram_id?1:0).run();
+  if(!result?.success)return reply({error:'SERVICE_UNAVAILABLE'},503);
+  return reply({ok:true,symbol:symbol||null});
+ }
  if(path==='/api/member/settings'&&b===undefined)return reply({ok:true,settings:await memberSettings(env,user)});
  if(path==='/api/member/settings'){
   if(typeof b.tv_to_telegram!=='boolean'||typeof b.telegram_to_mt5!=='boolean')return reply({error:'INVALID_ROUTE'},400);
@@ -22,7 +34,7 @@ export async function memberControls(path,b,env,user,diagnostic){
    const req=async(method,body)=>{const r=await fetch('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(8000)});const j=await r.json();if(!j.ok)throw Error('CHAT_ACCESS_DENIED');return j.result};
    try{const owner=await req('getChatMember',{chat_id:id,user_id:user.telegram_id}),me=await req('getMe',{}),bot=await req('getChatMember',{chat_id:id,user_id:me.id});if(!['creator','administrator'].includes(owner.status)||!['creator','administrator'].includes(bot.status)||(bot.can_post_messages===false))throw Error('ADMIN_RIGHTS_REQUIRED')}catch(e){return reply({error:e.message==='ADMIN_RIGHTS_REQUIRED'?e.message:'CHAT_ACCESS_DENIED'},409)}
   }
-  await env.DB.prepare("INSERT INTO member_signal_settings(user_id,telegram_chat_id,telegram_verified) VALUES (?,?,1) ON CONFLICT(user_id) DO UPDATE SET telegram_chat_id=excluded.telegram_chat_id,telegram_verified=1,tv_to_telegram=0,telegram_to_mt5=0,updated_at=CURRENT_TIMESTAMP").bind(user.id,id).run();return reply({ok:true,settings:await memberSettings(env,user)});
+  await env.DB.prepare("INSERT INTO member_signal_settings(user_id,telegram_chat_id,telegram_verified) VALUES (?,?,1) ON CONFLICT(user_id) DO UPDATE SET telegram_chat_id=excluded.telegram_chat_id,telegram_verified=1,tv_to_telegram=CASE WHEN member_signal_settings.telegram_verified=1 AND member_signal_settings.telegram_chat_id=excluded.telegram_chat_id THEN member_signal_settings.tv_to_telegram ELSE 0 END,telegram_to_mt5=CASE WHEN member_signal_settings.telegram_verified=1 AND member_signal_settings.telegram_chat_id=excluded.telegram_chat_id THEN member_signal_settings.telegram_to_mt5 ELSE 0 END,updated_at=CURRENT_TIMESTAMP").bind(user.id,id).run();return reply({ok:true,settings:await memberSettings(env,user)});
  }
  if(path==='/api/member/preview'){
   const s=await memberSettings(env,user);return reply({ok:true,parsed:parseSignalMessage(String(b.text||''),Date.now(),{defaultLots:s.default_lots})});

@@ -286,3 +286,85 @@ test('signal inspector exposes only the signed-in tenant trade fields, never raw
   const response=await f.request('/api/member/report'),data=await response.json();assert.equal(response.status,200);assert.equal(data.commands.length,1);assert.equal(data.commands[0].id,'inspect_a');assert.equal(data.commands[0].entry,2671.2);assert.equal(data.commands[0].sl,2667);assert.equal(data.commands[0].tp1,2675);assert.equal(data.commands[0].tp2,2679);assert.ok(data.commands[0].updated_at);assert.ok(!JSON.stringify(data).includes('MUST_NOT_APPEAR'));assert.ok(!JSON.stringify(data).includes('payload_json'));
  }finally{f.db.close()}
 });
+
+test('Telegram re-verification preserves explicitly enabled routes only for the same verified chat',async()=>{
+ const f=fixture();
+ try{
+  f.db.exec("UPDATE site_users SET telegram_id='123456789' WHERE id='usr_a'");
+  f.db.exec("INSERT INTO member_signal_settings(user_id,telegram_chat_id,telegram_verified,tv_to_telegram,telegram_to_mt5) VALUES ('usr_a','123456789',1,1,1)");
+  const same=await f.request('/api/member/telegram/verify',{chat_id:'123456789'});
+  assert.equal(same.status,200);
+  assert.deepEqual([(await same.json()).settings.tv_to_telegram,f.db.prepare("SELECT telegram_to_mt5 FROM member_signal_settings WHERE user_id='usr_a'").get().telegram_to_mt5],[true,1]);
+  f.db.exec("UPDATE member_signal_settings SET telegram_chat_id='-100987654321',telegram_verified=1,tv_to_telegram=1,telegram_to_mt5=1 WHERE user_id='usr_a'");
+  const changed=await f.request('/api/member/telegram/verify',{chat_id:'123456789'});
+  assert.equal(changed.status,200);
+  const settings=(await changed.json()).settings;
+  assert.equal(settings.telegram_verified,true);
+  assert.equal(settings.tv_to_telegram,false);
+  assert.equal(settings.telegram_to_mt5,false);
+ }finally{f.db.close()}
+});
+
+test('Check Connection reports live Algo Trading and broker symbol checks without dispatch',async()=>{
+ const f=fixture();
+ try{
+  const hub=new AgentHub({getWebSockets:()=>[]},f.env);
+  const a={role:'ea',agentId:'ea_a',tenantId:'usr_a',licenseId:'lic_a',licenseHash:digest('license'),
+   expectedLogin:'123',expectedServer:'Demo',terminalOnline:true,account:f.snapshot.account};
+  const ws={send(){},serializeAttachment(current){
+   Object.assign(f.snapshot,{account:current.account,last_seen_at:current.lastSeenAt});
+  }};
+  const fields=['HB','123','Demo','DEMO',1000,1000,0,10,'','OFF',0,0,0,0,0,0,'GOLD',0.01,0];
+  while(fields.length<32)fields.push('');
+  const check=async()=>(await (await f.request('/api/connection/check')).json()).diagnostic;
+  await hub.handleEaMessage(ws,[...fields,'TERMINAL_DISABLED','XAUUSD.p','NOT_FOUND'].join('|'),a);
+  let d=await check();
+  assert.equal(d.terminal_online,true);
+  assert.equal(d.telemetry.test_symbol,'GOLD');
+  assert.deepEqual(d.telemetry.connection_checks,{trade_permission:'TERMINAL_DISABLED',broker_symbol:'XAUUSD.p',symbol_mode:'NOT_FOUND'});
+  const anotherUser=await (await f.request('/api/connection/check',undefined,f.other)).json();
+  assert.equal(anotherUser.diagnostic.telemetry,undefined);
+  f.snapshot.last_seen_at=new Date(Date.now()-100000).toISOString();
+  d=await check();
+  assert.equal(d.terminal_online,false);
+  assert.equal(d.telemetry,null);
+  await hub.handleEaMessage(ws,fields.join('|'),a);
+  d=await check();
+  assert.equal(d.terminal_online,true);
+  assert.equal(d.telemetry.connection_checks,undefined);
+  assert.equal(f.calls.length,0);
+ }finally{f.db.close();}
+});
+
+test('members save an exact, case-sensitive gold symbol and route only new gold entries through it',async()=>{
+ const f=fixture();
+ try{
+  const read=async(session)=>await (await f.request('/api/member/broker-symbol',undefined,session)).json();
+  assert.equal((await read()).symbol,null);
+  assert.equal((await f.request('/api/member/broker-symbol',{symbol:'XAUUSD|EURUSD'})).status,400);
+  assert.equal((await f.request('/api/member/broker-symbol',{symbol:' XAUUSD.p '})).status,200);
+  assert.equal((await read()).symbol,'XAUUSD.p');
+  assert.equal((await read(f.other)).symbol,null);
+  await f.request('/api/webhook/create',{});
+  await f.request('/api/webhook/mode',{mode:'demo_execute',confirm:true});
+  f.db.prepare("UPDATE member_signal_settings SET telegram_chat_id='-100123',telegram_verified=1,telegram_to_mt5=1 WHERE user_id='usr_a'").run();
+  const msg={chat:{id:-100123},from:{id:9},date:Math.floor(Date.now()/1000),text:'BUY GOLD\nSL: 2300\nTP1: 2350\nTF: 3\nEngines: Scalper, LIT, ICT'};
+  await routeTelegramSignal({update_id:1,message:{...msg,message_id:20}},f.env);
+  assert.equal(f.calls[0].symbol,'XAUUSD.p');
+  assert.equal(f.calls[0].broker_symbol,'XAUUSD.p');
+  assert.equal(f.calls[0].source.timeframe,'3m');
+  assert.deepEqual(f.calls[0].source.engines,['Scalper','LIT','ICT']);
+  const socket={deserializeAttachment:()=>({role:'ea',capabilities:['exit-policy-v1']}),send(){throw Error('Old EA must not receive an exact-symbol command')}};
+  const hub=new AgentHub({},f.env);
+  assert.equal(hub.sendCommand(socket,f.calls[0]),false);
+  const sent=[];
+  socket.deserializeAttachment=()=>({role:'ea',capabilities:['exit-policy-v1','broker-symbol-v1']});
+  socket.send=wire=>sent.push(wire);
+  assert.equal(hub.sendCommand(socket,f.calls[0]),true);
+  assert.deepEqual(sent[0].split('|').slice(26),['EXACT_SYMBOL','G3m:Sc+LIT+ICT']);
+  await routeTelegramSignal({update_id:2,message:{...msg,message_id:21,text:'TP1 HIT',reply_to_message:{message_id:20}}},f.env);
+  assert.equal(f.calls[1].broker_symbol,undefined);
+  await f.request('/api/member/broker-symbol',{symbol:''});
+  assert.equal((await read()).symbol,null);
+ }finally{f.db.close();}
+});

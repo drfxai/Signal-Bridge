@@ -1,6 +1,6 @@
 // Public binaries contain no customer licenses. Entitlements are issued separately.
 export const EA_RELEASES=Object.freeze({
- signalbridge:Object.freeze({filename:'DrFX_SignalBridge_EA.ex5',version:'Current compiled build',bytes:307016,sha256:'43db78d1785c84aed0d53c75661c4093236a9393c03da2e8b8ed0ce870551ea5',source:'https://github.com/drfxai/Signal-Bridge/releases/download/ea-latest/DrFX_SignalBridge_EA.ex5'}),
+ signalbridge:Object.freeze({filename:'DrFX_SignalBridge_EA.ex5',version:'0.30.2',bytes:311542,sha256:'e2d0636ec582298727dec0d01688fa2484418092f3292c5e654e26d6c41bf00e',source:'https://github.com/drfxai/Signal-Bridge/releases/download/ea-v0.30.2/DrFX_SignalBridge_EA.ex5?verify=a950b7a'}),
  scalper:Object.freeze({filename:'DrFX_Scalper_Pro.ex5',version:'Current compiled build',bytes:207554,sha256:'a3f6ee91d469b6ba20eb07a59b43564f1dec54b0cceb6c67e62da3589a0ca815',source:'/downloads/DrFX_Scalper_Pro.ex5'})
 });
 export function eaDownloadCatalog(){return Object.fromEntries(Object.entries(EA_RELEASES).map(([product,r])=>[product,{version:r.version,url:'https://drfx.company/download/'+r.filename,format:'EX5',bytes:r.bytes,sha256:r.sha256}]))}

@@ -151,7 +151,7 @@ test('Mini App ships the Channels flow, nav entry and home card',()=>{
 
 test('EA labels positions and the panel with the signal source',()=>{
  const ea=readFileSync(new URL('../mt5/DrFX_SignalBridge_EA.mq5',import.meta.url),'utf8');
- assert.match(ea,/string OrderNote\(string tag\)\{return StringSubstr\("SB:"\+tag\+":"\+SourceName\(g_lastSource\),0,31\);\}/);
+ assert.match(ea,/string OrderNote\(string tag,string detail\)\{return StringSubstr\("SB:"\+tag\+":"\+\(detail==""\?SourceName\(g_lastSource\):detail\),0,31\);\}/);
  assert.match(ea,/trade\.Buy\(lots,sym,0\.0,sl,finalTp,note\)/);
  assert.match(ea,/if\(k==1\)return "TradingView";if\(k==2\)return "Telegram"/);
  assert.match(ea,/NoteSource\(PositionGetString\(POSITION_COMMENT\)\)/);

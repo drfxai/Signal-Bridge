@@ -71,6 +71,11 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 .mini-lang-options button{min-height:49px;font-weight:650;border-radius:10px}
 .mini-lang-options button[aria-pressed=true]{background:linear-gradient(110deg,#a8873d38,#233c3048);border-color:#ddb66870}
 @media(max-width:420px){.lang-toggle{height:40px;min-width:54px;padding:0 8px;gap:5px}.mini-lang-chevron{display:none}.mini-globe-icon{width:17px;height:17px}}
+/* Locale-aware mobile controls: allow longer labels to wrap without losing actions. */
+.mini-account-action{white-space:normal}
+.mini-account-action>span:first-child{min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.25}
+.mini-lang-options button>span{min-width:0;overflow-wrap:anywhere}
+html[lang=hi] .mini-lang-options button[data-mini-lang=hi]>span{font-family:'Noto Sans Devanagari','Nirmala UI',system-ui,sans-serif}
 ${SXM_CSS}
 ${CHM_CSS}
 ${RESPONSIVE_REFRESH}
@@ -110,11 +115,11 @@ nav.bottom button[aria-selected=true]{color:#66f3d7!important}
 @media(prefers-reduced-motion:reduce){.route-line:after{animation:none!important}}
 
 </style>
-<script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
+<script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261117-language-picker" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
- <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button type="button" id="langToggle" class="lang-toggle" title="Language" aria-label="Choose app language" aria-expanded="false" aria-haspopup="true" aria-controls="miniLangOptions"><svg class="mini-globe-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.5 4.5 5.5 4.5 9S15 18.5 12 21M12 3C9 5.5 7.5 8.5 7.5 12S9 18.5 12 21"/></svg><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div id="miniLangOptions" class="mini-lang-options" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">LANGUAGE / زبان</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
+ <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button type="button" id="langToggle" class="lang-toggle" title="Language" aria-label="Choose app language" aria-expanded="false" aria-haspopup="true" aria-controls="miniLangOptions"><svg class="mini-globe-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.5 4.5 5.5 4.5 9S15 18.5 12 21M12 3C9 5.5 7.5 8.5 7.5 12S9 18.5 12 21"/></svg><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div id="miniLangOptions" class="mini-lang-options" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">Language</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
 <div class="mini-account-actions" role="group" aria-label="Account access">
  <a id="miniAuthAction" href="https://drfx.company/?auth=1" rel="noopener noreferrer" class="mini-account-action mini-account-action--auth"><span>Sign In / Sign Up</span><span aria-hidden="true">↗</span></a>
@@ -164,11 +169,11 @@ ${CHM_HOME_HTML}${SXM_HOME_HTML} <div class="grid">
  <div class="mini-status-grid"><div><small data-tr="licenseStatus">EA LICENSE</small><strong id="miniConnectionLicense">Not checked</strong></div><div><small data-tr="lastHandshake">LAST HANDSHAKE</small><strong id="miniConnectionLast">Not checked</strong></div></div>
  <span id="miniTestConnection" hidden></span>
  <p class="mini-note" id="miniConnectionInfo" role="status">Reads the last EA handshake. It does not place a market order.</p>
- <h3 data-tr="personalWebhook">My TradingView Webhook</h3><p class="mini-note">Private endpoint for your TradingView alerts, initially Dry Run. Do not share this URL.</p>
+ <h3 data-tr="personalWebhook">My TradingView Webhook</h3><p class="mini-note">Private URL for your TradingView alerts.</p>
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook" data-tr="createWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" data-tr="copyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" data-tr="rotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
- ${EXECUTION_HTML.replace('<button data-sb-tab="settings">⚙ Settings</button></nav>','<button data-sb-tab="settings">⚙ Settings</button><button type="button" data-jump="scalper">◎ Scalper Pro</button><button type="button" data-jump="channels">📡 Channels</button></nav>').replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
+ ${EXECUTION_HTML.replace('<option value="ar">العربية</option>','').replace('<button data-sb-tab="settings">⚙ Settings</button></nav>','<button data-sb-tab="settings">⚙ Settings</button><button type="button" data-jump="scalper">◎ Scalper Pro</button><button type="button" data-jump="channels">📡 Channels</button></nav>').replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
@@ -230,8 +235,8 @@ export const MINI_JS=String.raw`(() => {
 
  // Shared language catalog, including native RTL layout.
  const dictionary=window.DrFXI18N?.text||{en:{}};
- const locales=window.DrFXI18N?.languages||['en','fa','tr','ru','hi'];
- const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
+ const locales=[...document.querySelectorAll('#miniLangOptions [data-mini-lang]')].map(button=>button.dataset.miniLang);
+ const english=new WeakMap([...document.querySelectorAll('[data-tr]')].map(el=>[el,el.textContent]));
  let locale='en';
  const englishLookup=Object.fromEntries(Object.entries(dictionary.en||{}).map(([key,value])=>[value,key]));
  const localeError=err=>window.DrFXI18N?.error?.(err,locale)??'Something went wrong. Try again.';
@@ -245,12 +250,19 @@ export const MINI_JS=String.raw`(() => {
   adminLanguage();
   document.documentElement.lang=locale;
   document.documentElement.dir=locale==='fa'?'rtl':'ltr';
-  window.DrFXI18N?.applyAttributes?.(locale);
   document.querySelectorAll('[data-tr]').forEach(el=>{
    const key=el.dataset.tr;
-   el.textContent=dictionary[locale]?.[key]||english[key];
+   const label=dictionary[locale]?.[key]??english.get(el);
+   if(label!==undefined&&el.textContent!==label)el.textContent=label;
+  });
+  document.querySelectorAll('[data-i18n-attr-aria-label],[data-i18n-attr-title],[data-i18n-attr-placeholder]').forEach(el=>{
+   for(const attr of ['aria-label','title','placeholder']){
+    const key=el.getAttribute('data-i18n-attr-'+attr);
+    if(key)el.setAttribute(attr,dictionary[locale]?.[key]||dictionary.en?.[key]||el.getAttribute(attr));
+   }
   });
   $('miniLangCurrent').textContent=locale.toUpperCase();
+  $('memberLanguage').value=locale;
   $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.miniLang===locale)));
   closeMiniLanguage();
   if(state.user){
@@ -380,7 +392,7 @@ function displayMiniWebhook(w){
  $('miniCreateWebhook').disabled=available;
  $('miniCopyWebhook').disabled=!available;
  $('miniRotateWebhook').disabled=!available;
- set('miniWebhookInfo',available?'Dry Run · '+Number(w.received||0)+' alerts received. Keep this URL private.':'Create a personal TradingView webhook to start in Dry Run.');
+ set('miniWebhookInfo',available?ui('Alerts received','هشدارهای دریافت‌شده')+': '+Number(w.received||0):ui('Create a personal TradingView webhook.','وب‌هوک شخصی تریدینگ‌ویو را بسازید.'));
 }
 $('miniTestConnection').addEventListener('click',refreshMiniConnection);
 $('miniCreateWebhook').addEventListener('click',async()=>{try{const r=await api('/api/webhook/create',{});displayMiniWebhook(r.webhook)}catch(e){set('miniWebhookInfo',localeError(e))}});

@@ -36,10 +36,10 @@ test('Telegram delivery history uses user/time index without temp sort',()=>{
  }finally{db.close()}
 });
 
-test('report history polling stays slower than connection-state updates',()=>{
+test('report history and connection-state updates use one-minute polling',()=>{
  const code=readFileSync('site/src/portal-execution.mjs','utf8');
  assert.match(code,/const memberRefresh=setInterval\([\s\S]*?\},60000\)/);
- assert.match(code,/const refresh=setInterval\([\s\S]*?\},5000\)/);
+ assert.match(code,/const refreshInterval=60000;/);
  assert.match(code,/Date\.now\(\)-lastReportAt<30000/);
  assert.match(code,/loadReport\(true\)/);
 });
