@@ -1,7 +1,7 @@
 # SignalBridge MT5 EA
 
 The current development source is [`DrFX_SignalBridge_EA.mq5`](DrFX_SignalBridge_EA.mq5),
-**EA v0.30.2**. Older EA snapshots have been removed from the working tree;
+**EA v0.30.3**. Older EA snapshots have been removed from the working tree;
 Git history retains their previous contents.
 
 ## Setup
