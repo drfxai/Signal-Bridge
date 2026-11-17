@@ -13,7 +13,7 @@ export function normalizeEngines(value){
  const list=typeof value==='string'?value.split(/[,+;|]/):value;
  if(!Array.isArray(list)||list.length>32)return [];
  return [...new Map(list.filter(v=>typeof v==='string').map(v=>v.trim())
-  .filter(v=>/^[A-Za-z0-9][A-Za-z0-9 _-]{0,23}$/.test(v))
+  .filter(v=>/^[A-Za-z0-9][A-Za-z0-9 _&-]{0,23}$/.test(v))
   .map(v=>[v.toLowerCase(),v])).values()];
 }
 
