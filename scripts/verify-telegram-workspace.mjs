@@ -5,6 +5,9 @@ import assert from 'node:assert/strict';
 import {BOT_WORKSPACE_WIDGET_HTML,workspaceView,widgetViewData} from '../site/src/telegram-workspace.mjs';
 import {SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData} from '../site/src/telegram-signal-widget.mjs';
 import {STAR_PLANS,starPrice,LICENSE_TERMS} from '../site/src/telegram-commerce.mjs';
+import {LOCALES} from '../site/src/i18n.mjs';
+import {SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData} from '../site/src/telegram-widgets.mjs';
+import {SCALPER_WIDGET_HTML,scalperWidgetData} from '../site/src/telegram-scalper-widget.mjs';
 import {localizeNativeWidget} from '../site/src/telegram-widget-i18n.mjs';
 const require=createRequire(import.meta.url),{chromium}=require('playwright');
 const sample={id:'s1',normalized_json:JSON.stringify({action:'OPEN',symbol:'XAUUSD',side:'BUY',order:{reference_price:4077,stop_loss:4065,take_profits:[4085,4090,4100]}}),received_at:'2026-11-11 10:00:00'};
@@ -32,17 +35,26 @@ try{
   await page.close();
  }
 
- // Native signal widget: exercise every locale at the narrowest phone width.
- for(const locale of ['en','fa','tr','ru','hi']){
-  const page=await browser.newPage({viewport:{width:320,height:700},deviceScaleFactor:1});
-  page.on('pageerror',e=>errors.push(locale+': '+String(e)));
-  const state=signalHistoryWidgetData(sample);
-  const stub='<script>window.TelegramWidget={chatData:'+JSON.stringify(state).replace(/</g,'\\u003c')+',onEvent(){},ready(){},request(){return Promise.resolve({result:"{}"})},copyText(){}};<\/script>';
-  await page.setContent(stub+localizeNativeWidget(SIGNAL_HISTORY_WIDGET_HTML,locale,'signal'));
-  const bounds=await page.locator('.shell').boundingBox();
-  assert.ok(bounds&&bounds.height<=560,'Signal widget too tall for '+locale);
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Signal widget horizontal overflow: '+locale);
-  await page.screenshot({path:'artifacts/telegram-workspace/signal-'+locale+'-320.png',fullPage:true});
+ const cards=[
+  ['signal',SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData(sample)],
+  ['bridge',SIGNAL_BRIDGE_WIDGET_HTML,bridgeWidgetData({plan:'trial',licenseStatus:'active',accountStatus:'active'})],
+  ['scalper',SCALPER_WIDGET_HTML,scalperWidgetData(null)]
+ ];
+ for(const width of [320,390,600]){
+  const page=await browser.newPage({viewport:{width,height:700},deviceScaleFactor:1});
+  page.on('pageerror',e=>errors.push(width+': '+String(e)));
+  for(const locale of LOCALES){
+   for(const [kind,html,data] of cards){
+    const stub='<script>window.TelegramWidget={chatData:'+JSON.stringify(data).replace(/</g,'\\u003c')+',onEvent(){},ready(){},request(){return Promise.resolve({result:"{}"})},copyText(){},openLink(){}};<\/script>';
+    await page.setContent(stub+localizeNativeWidget(html,locale,kind));
+    const label=kind+' '+locale+' at '+width+'px';
+    const bounds=await page.locator('.shell').boundingBox();
+    assert.ok(bounds,label+' widget hidden');
+    if(kind==='signal')assert.ok(bounds.height<=560,label+' exceeds Telegram height');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label+' horizontal overflow');
+    if(kind==='signal'&&width===320)await page.screenshot({path:'artifacts/telegram-workspace/signal-'+locale+'-320.png',fullPage:true});
+   }
+  }
   await page.close();
  }
  assert.deepEqual(errors,[]);console.log('Telegram workspace: all pages fit 320, 390 and 600px; no browser errors.');
