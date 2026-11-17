@@ -25,13 +25,19 @@ export function parseGodModeAlert(text,nowMs=Date.now()){
  const side=dir(p.direction||p.dir||p.side),sl=num(p.sl),tp1=num(p.tp1),tp2=num(p.tp2),tp3=num(p.tp3);
  const occurred=signalTime??nowMs;if(occurred>nowMs+30_000)return {ok:false,reason:'FUTURE_GODMODE_ENTRY'};if(nowMs-occurred>300_000)return {ok:false,reason:'STALE_GODMODE_ENTRY'};
  const tps=[tp1,tp2,tp3].filter(v=>v!=null&&v>0),ref=num(p.entry)!=null?num(p.entry):num(p.price);
- let risk=num(p.risk_pct!=null?p.risk_pct:p.riskPct);if(!(risk>0))risk=riskFromStrength(p.strength);
+ const hasLots=Object.prototype.hasOwnProperty.call(p,'lots')||Object.prototype.hasOwnProperty.call(p,'lot');
+ const hasRisk=Object.prototype.hasOwnProperty.call(p,'risk_pct')||Object.prototype.hasOwnProperty.call(p,'riskPct');
+ if(hasLots&&hasRisk)return {ok:false,reason:'AMBIGUOUS_SIZE'};
+ const fixedLots=hasLots?num(p.lots??p.lot):null;
+ let risk=hasRisk?num(p.risk_pct??p.riskPct):riskFromStrength(p.strength);
  if(!side)return {ok:false,reason:'NO_DIRECTION'};
  if(!/^[A-Z0-9][A-Z0-9._-]{0,31}$/.test(symbol))return {ok:false,reason:'INVALID_SYMBOL'};
  if(!(sl>0))return {ok:false,reason:'NO_STOP'};
  if(tps.length<1)return {ok:false,reason:'NO_TARGET'};
- if(!(risk>0&&risk<=10))return {ok:false,reason:'INVALID_RISK'};
+ if(hasLots&&!(fixedLots>0&&fixedLots<=100))return {ok:false,reason:'INVALID_LOTS'};
+ if(!hasLots&&!(risk>0&&risk<=10))return {ok:false,reason:'INVALID_RISK'};
+ const volume=hasLots?{mode:'FIXED_LOTS',value:fixedLots}:{mode:'RISK_PERCENT',value:risk};
  return {ok:true,signal:{schema_version:'1.0',external_signal_id:correlation,correlation_id:correlation,source_type:'tradingview',action:'OPEN',side,symbol,
-  order:{type:'MARKET',volume:{mode:'RISK_PERCENT',value:risk},stop_loss:sl,take_profits:tps,...(ref>0?{reference_price:ref}:{})},
+  order:{type:'MARKET',volume,stop_loss:sl,take_profits:tps,...(ref>0?{reference_price:ref}:{})},
   occurred_at:new Date(occurred).toISOString(),expires_at:new Date(occurred+300_000).toISOString(),metadata:signalMetadata({strategy:'GOD MODE',timeframe:p.timeframe??p.tf,engines:p.engines??p.engine??p.voters})}};
 }
