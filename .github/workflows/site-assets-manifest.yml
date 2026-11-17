@@ -1,0 +1,42 @@
+name: Site static assets manifest audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/public/**
+      - .github/workflows/site-assets-manifest.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print reproducible Cloudflare asset manifest (no secrets)
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          const base='site/public', manifest={};
+          function scan(dir){
+            for (const item of fs.readdirSync(dir,{withFileTypes:true})){
+              const f=path.join(dir,item.name);
+              if(item.isDirectory())scan(f);
+              else if(item.isFile()){
+                const rel=f.slice(base.length+1).replace(/\\/g,'/');
+                const buf=fs.readFileSync(f);
+                const ext=path.extname(rel).slice(1);
+                const hash=crypto.createHash('sha256').update(buf.toString('base64')+ext).digest('hex').slice(0,32);
+                manifest['/'+rel]={hash,size:buf.length};
+              }
+            }
+          }
+          scan(base);
+          console.log('CLOUDFLARE_MANIFEST_START');
+          console.log(JSON.stringify(manifest));
+          console.log('CLOUDFLARE_MANIFEST_END');
+          JS
