@@ -406,5 +406,26 @@ export const UI_COMPLETENESS_PHRASES=[
   "Bağlayın:",
   "Подключите",
   "कनेक्ट करें"
- ]
+ ],
+ ["Dashboard", "داشبورد", "Gösterge paneli", "Панель управления", "डैशबोर्ड"],
+ ["Client workspace", "فضای کاربری", "Müşteri çalışma alanı", "Рабочее пространство клиента", "क्लाइंट कार्यक्षेत्र"],
+ ["MT5 unverified", "اتصال MT5 تأیید نشده", "MT5 doğrulanmadı", "Подключение MT5 не подтверждено", "MT5 कनेक्शन सत्यापित नहीं है"],
+ ["Net P/L", "سود و زیان خالص", "Net K/Z", "Чистая прибыль и убыток", "शुद्ध लाभ/हानि"],
+ ["Net of broker costs", "پس از کسر هزینه‌های بروکر", "Aracı kurum masrafları düşüldükten sonra", "За вычетом расходов брокера", "ब्रोकर शुल्क घटाने के बाद"],
+ ["Account equity", "ارزش حساب", "Hesap özkaynağı", "Средства на счёте", "खाते की इक्विटी"],
+ ["Current account equity", "ارزش فعلی حساب", "Güncel hesap özkaynağı", "Текущие средства на счёте", "खाते की मौजूदा इक्विटी"],
+ ["Closed-trade statistics required", "نیازمند آمار معاملات بسته‌شده", "Kapanmış işlem istatistikleri gerekli", "Нужна статистика закрытых сделок", "बंद ट्रेडों के आँकड़े आवश्यक हैं"],
+ ["Broker daily cumulative profit and loss", "سود و زیان تجمعی روزانهٔ بروکر", "Aracı kurumun günlük birikimli kâr ve zararı", "Накопленная прибыль и убыток по дням", "ब्रोकर का दैनिक संचयी लाभ/हानि"],
+ ["Open service setup guide", "باز کردن راهنمای راه‌اندازی", "Kurulum kılavuzunu aç", "Открыть руководство по настройке", "सेटअप गाइड खोलें"],
+ ["SignalBridge license", "لایسنس سیگنال بریج", "SignalBridge lisansı", "Лицензия SignalBridge", "SignalBridge लाइसेंस"],
+ ["Personal MT5 webhook", "وب‌هوک شخصی MT5", "Kişisel MT5 webhook adresi", "Персональный вебхук MT5", "निजी MT5 वेबहुक"],
+ ["Selected Telegram channel webhook", "وب‌هوک کانال تلگرام انتخاب‌شده", "Seçili Telegram kanalının webhook adresi", "Вебхук выбранного канала Telegram", "चुने गए Telegram चैनल का वेबहुक"],
+ ["Requires a personal webhook and explicit DEMO execution approval", "به وب‌هوک شخصی و تأیید صریح اجرای دمو نیاز دارد", "Kişisel webhook ve açık demo işlem onayı gerekir", "Нужен персональный вебхук и явное подтверждение исполнения на демосчёте", "निजी वेबहुक और डेमो ट्रेड की स्पष्ट अनुमति आवश्यक है"],
+ ["Sign in to load your setup.", "برای نمایش تنظیمات وارد حساب شوید.", "Kurulum ayarlarını görmek için giriş yapın.", "Войдите, чтобы открыть настройки.", "अपना सेटअप देखने के लिए साइन इन करें।"],
+ ["Support · @DrFXGOD", "پشتیبانی · @DrFXGOD", "Destek · @DrFXGOD", "Поддержка · @DrFXGOD", "सहायता · @DrFXGOD"],
+ ["Return to the official Signal Bridge bot. Send /code to receive your private EA serial, or tap Open DrFX Mini App for the dashboard — not Open website.", "به بات رسمی Signal Bridge برگردید. برای دریافت کد EA دستور /code را بفرستید یا دکمه Open DrFX Mini App را بزنید؛ نه Open website.", "Resmî Signal Bridge botuna dönün. EA kodunuzu almak için /code gönderin veya panel için Open DrFX Mini App düğmesine dokunun.", "Вернитесь в официальный бот Signal Bridge. Отправьте /code, чтобы получить код EA, или нажмите Open DrFX Mini App, чтобы открыть панель.", "आधिकारिक Signal Bridge बॉट में लौटें। EA कोड के लिए /code भेजें या डैशबोर्ड के लिए Open DrFX Mini App पर टैप करें।"],
+ ["Gold broker symbol", "نماد طلای بروکر", "Aracı kurumun altın sembolü", "Символ золота у брокера", "ब्रोकर का गोल्ड सिंबल"],
+ ["EA connection", "اتصال اکسپرت", "EA bağlantısı", "Подключение советника", "EA कनेक्शन"],
+ ["Update the EA to verify", "برای بررسی، اکسپرت را به‌روز کنید", "Doğrulamak için EA’yı güncelleyin", "Обновите советник для проверки", "जाँच के लिए EA अपडेट करें"],
+ ["Connect the EA to verify", "برای بررسی، اکسپرت را متصل کنید", "Doğrulamak için EA’yı bağlayın", "Подключите советник для проверки", "जाँच के लिए EA कनेक्ट करें"]
 ];

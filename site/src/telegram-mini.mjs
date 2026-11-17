@@ -119,7 +119,7 @@ nav.bottom button[aria-selected=true]{color:#66f3d7!important}
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
- <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button type="button" id="langToggle" class="lang-toggle" title="Language" aria-label="Choose app language" aria-expanded="false" aria-haspopup="true" aria-controls="miniLangOptions"><svg class="mini-globe-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.5 4.5 5.5 4.5 9S15 18.5 12 21M12 3C9 5.5 7.5 8.5 7.5 12S9 18.5 12 21"/></svg><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div id="miniLangOptions" class="mini-lang-options" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">LANGUAGE / زبان</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
+ <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button type="button" id="langToggle" class="lang-toggle" title="Language" aria-label="Choose app language" aria-expanded="false" aria-haspopup="true" aria-controls="miniLangOptions"><svg class="mini-globe-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.5 4.5 5.5 4.5 9S15 18.5 12 21M12 3C9 5.5 7.5 8.5 7.5 12S9 18.5 12 21"/></svg><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div id="miniLangOptions" class="mini-lang-options" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">Language</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
 <div class="mini-account-actions" role="group" aria-label="Account access">
  <a id="miniAuthAction" href="https://drfx.company/?auth=1" rel="noopener noreferrer" class="mini-account-action mini-account-action--auth"><span>Sign In / Sign Up</span><span aria-hidden="true">↗</span></a>
@@ -236,7 +236,7 @@ export const MINI_JS=String.raw`(() => {
  // Shared language catalog, including native RTL layout.
  const dictionary=window.DrFXI18N?.text||{en:{}};
  const locales=[...document.querySelectorAll('#miniLangOptions [data-mini-lang]')].map(button=>button.dataset.miniLang);
- const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
+ const english=new WeakMap([...document.querySelectorAll('[data-tr]')].map(el=>[el,el.textContent]));
  let locale='en';
  const englishLookup=Object.fromEntries(Object.entries(dictionary.en||{}).map(([key,value])=>[value,key]));
  const localeError=err=>window.DrFXI18N?.error?.(err,locale)??'Something went wrong. Try again.';
@@ -252,7 +252,8 @@ export const MINI_JS=String.raw`(() => {
   document.documentElement.dir=locale==='fa'?'rtl':'ltr';
   document.querySelectorAll('[data-tr]').forEach(el=>{
    const key=el.dataset.tr;
-   el.textContent=dictionary[locale]?.[key]||english[key];
+   const label=dictionary[locale]?.[key]??english.get(el);
+   if(label!==undefined&&el.textContent!==label)el.textContent=label;
   });
   document.querySelectorAll('[data-i18n-attr-aria-label],[data-i18n-attr-title],[data-i18n-attr-placeholder]').forEach(el=>{
    for(const attr of ['aria-label','title','placeholder']){
