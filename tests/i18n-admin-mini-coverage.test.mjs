@@ -33,7 +33,8 @@ test('English source text and locale-aware mobile styles preserve the account ac
  const sample=markCommonText('<span>Sign In / Sign Up</span>','data-i18n');
  assert.match(sample,/data-i18n="common_\d+"/);
  assert.ok(mini.includes('.mini-account-action>span:first-child{min-width:0;white-space:normal;overflow-wrap:anywhere;'));
- assert.ok(mini.includes('html[dir=rtl] .mini-lang-options{right:auto;left:0}'));
+ assert.match(mini,/\.mini-lang-options\{position:absolute;[^}]*right:0/);
+ assert.doesNotMatch(mini,/html\[dir=rtl\] \.mini-lang-options\{right:auto/);
  assert.ok(mini.includes("html[lang=hi] .mini-lang-options button[data-mini-lang=hi]>span"));
  assert.ok(site.includes('.drfx-mobile-account-actions .drfx-account-cta span:first-child{min-width:0;white-space:normal;overflow-wrap:anywhere;'));
  assert.ok(mini.includes("document.documentElement.dir=locale==='fa'?'rtl':'ltr'"));

@@ -75,7 +75,6 @@ html[dir=rtl] .container{text-align:right}html[dir=rtl] .bar,html[dir=rtl] .rout
 .mini-account-action{white-space:normal}
 .mini-account-action>span:first-child{min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.25}
 .mini-lang-options button>span{min-width:0;overflow-wrap:anywhere}
-html[dir=rtl] .mini-lang-options{right:auto;left:0}
 html[lang=hi] .mini-lang-options button[data-mini-lang=hi]>span{font-family:'Noto Sans Devanagari','Nirmala UI',system-ui,sans-serif}
 ${SXM_CSS}
 ${CHM_CSS}
@@ -116,7 +115,7 @@ nav.bottom button[aria-selected=true]{color:#66f3d7!important}
 @media(prefers-reduced-motion:reduce){.route-line:after{animation:none!important}}
 
 </style>
-<script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261029-sixlangs" defer></script></head>
+<script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261117-language-picker" defer></script></head>
 <body data-tab="home"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
@@ -174,7 +173,7 @@ ${CHM_HOME_HTML}${SXM_HOME_HTML} <div class="grid">
  <code class="mini-webhook-url" id="miniWebhookUrl">No webhook created</code>
  <div class="buttons"><button type="button" class="btn primary" id="miniCreateWebhook" data-tr="createWebhook">Create Webhook</button><button type="button" class="btn" id="miniCopyWebhook" data-tr="copyWebhook" disabled>Copy URL</button><button type="button" class="btn subtle" id="miniRotateWebhook" data-tr="rotateWebhook" disabled>Regenerate</button></div>
  <p id="miniWebhookInfo" class="mini-note" role="status">Create your private endpoint to receive TradingView alerts.</p>
- ${EXECUTION_HTML.replace('<button data-sb-tab="settings">⚙ Settings</button></nav>','<button data-sb-tab="settings">⚙ Settings</button><button type="button" data-jump="scalper">◎ Scalper Pro</button><button type="button" data-jump="channels">📡 Channels</button></nav>').replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
+ ${EXECUTION_HTML.replace('<option value="ar">العربية</option>','').replace('<button data-sb-tab="settings">⚙ Settings</button></nav>','<button data-sb-tab="settings">⚙ Settings</button><button type="button" data-jump="scalper">◎ Scalper Pro</button><button type="button" data-jump="channels">📡 Channels</button></nav>').replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
 <section class="tab-panel" data-panel="license" id="panel-license" hidden>
@@ -236,7 +235,7 @@ export const MINI_JS=String.raw`(() => {
 
  // Shared language catalog, including native RTL layout.
  const dictionary=window.DrFXI18N?.text||{en:{}};
- const locales=window.DrFXI18N?.languages||['en','fa','tr','ru','hi'];
+ const locales=[...document.querySelectorAll('#miniLangOptions [data-mini-lang]')].map(button=>button.dataset.miniLang);
  const english=Object.fromEntries([...document.querySelectorAll('[data-tr]')].map(el=>[el.dataset.tr,el.textContent]));
  let locale='en';
  const englishLookup=Object.fromEntries(Object.entries(dictionary.en||{}).map(([key,value])=>[value,key]));
@@ -262,6 +261,7 @@ export const MINI_JS=String.raw`(() => {
    }
   });
   $('miniLangCurrent').textContent=locale.toUpperCase();
+  $('memberLanguage').value=locale;
   $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.miniLang===locale)));
   closeMiniLanguage();
   if(state.user){
