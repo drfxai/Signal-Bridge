@@ -14,7 +14,7 @@ const counts={users:12,valid_licenses:11,trials:6,subscriptions:5,quarterly:3,an
 const overview={ok:true,generated_at:new Date().toISOString(),users:{total:18,new_7d:4,suspended:1},signalbridge:{...counts,orders:{paid:4,pending:1,paid_usd:306}},scalper:{users:5,issued_keys:7,monthly_keys:3,quarterly_keys:4,orders:{paid:5,paid_usd:155}},health:{licensing:true,scalper_signing:true,payments:true,telegram:true,email:true,ea_hub:true},registrations:[{day:new Date().toISOString().slice(0,10),count:4}],activity:[{id:'aud_test',action:'grant_plan',subject_id:owner,detail:'annual',telegram_name:'Owner',occurred_at:new Date().toISOString()}]};
 const errors=[];await mkdir('/tmp/drfx-admin-ui',{recursive:true});
 try{
- for(const [surface,surfacePath] of [['mini','/telegram'],['site','/']]){
+ for(const [surface,surfacePath] of [['mini','/telegram?view=account'],['site','/']]){
  for(const [label,width,locale,role] of [['mobile-en',390,'en','admin'],['mobile-fa',360,'fa','admin'],['desktop-en',1280,'en','admin'],['member',390,'en','user']]){
   const page=await browser.newPage({viewport:{width,height:900},locale:locale==='fa'?'fa-IR':'en-US'});await page.addInitScript(()=>window.addEventListener('signalbridge-tour-started',()=>document.getElementById('stEnd')?.click()));page.on('pageerror',e=>errors.push(surface+' '+label+': '+e.message));
   await page.addInitScript(locale=>localStorage.setItem('drfx-language',locale),locale);

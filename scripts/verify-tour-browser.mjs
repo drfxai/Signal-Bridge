@@ -31,7 +31,7 @@ try{
    else if(path==='/api/webhook')data={ok:true,webhook:{exists:false}};
    await route.fulfill({status,json:data});
   });
-  console.log('Opening '+label);await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram'),{waitUntil:'networkidle'});
+  console.log('Opening '+label);await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram?view=account'),{waitUntil:'networkidle'});
   if(surface==='site')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
   assert.equal(await page.locator('html').getAttribute('lang'),locale,'English default must ignore browser language');console.log('Loaded '+label);await page.locator('#refHelp').waitFor({state:'visible'});
   await page.waitForFunction(()=>!document.getElementById('setupTour').hidden&&!document.getElementById('stNext').disabled);await page.locator('#stEnd').click();

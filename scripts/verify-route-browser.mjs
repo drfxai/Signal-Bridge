@@ -32,7 +32,7 @@ try{
    else if(path==='/api/webhook')data={ok:true,webhook:{exists:false}};
    await route.fulfill({status,json:data});
   });
-  await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram'),{waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram?view=account'),{waitUntil:'networkidle'});
   if(surface==='site')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
   await page.waitForFunction(()=>!document.getElementById('setupTour').hidden&&!document.getElementById('stNext').disabled);await page.locator('#stEnd').click();
   await page.evaluate(()=>document.querySelector('.sb-top nav [data-sb-tab=setup]').click());
