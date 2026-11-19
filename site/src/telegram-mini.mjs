@@ -286,6 +286,8 @@ export const MINI_JS='const drfxStartCopy='+JSON.stringify(START_COPY)+';'+Strin
 
  // Shared language catalog, including native RTL layout.
  const dictionary=window.DrFXI18N?.text||{en:{}};
+ const languagePicker=$('miniLangPicker');
+ const languageHome=languagePicker.parentElement;
  const locales=[...document.querySelectorAll('#miniLangOptions [data-mini-lang]')].map(button=>button.dataset.miniLang);
  const english=new WeakMap([...document.querySelectorAll('[data-tr]')].map(el=>[el,el.textContent]));
  let locale='en';
@@ -404,15 +406,20 @@ export const MINI_JS='const drfxStartCopy='+JSON.stringify(START_COPY)+';'+Strin
   document.body.dataset.tab=tab;
   if(tab==='admin')loadMiniAdmin();
   document.body.classList.toggle('workspace-home',tab==='home'&&!!state.user);
+  const pickerHost=tab==='home'?document.querySelector('#connectionActions .ref-header-actions'):languageHome;
+  if(pickerHost&&languagePicker.parentElement!==pickerHost){
+   closeMiniLanguage();
+   pickerHost.prepend(languagePicker);
+  }
   document.querySelectorAll('[data-panel]').forEach(e=>e.hidden=e.dataset.panel!==tab);
-  document.querySelectorAll('[data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
+  document.querySelectorAll('nav.bottom [data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
   $('startBack').hidden=['start','language','menu'].includes(tab);
   if(tg?.BackButton){if(['menu','start'].includes(tab))tg.BackButton.hide();else tg.BackButton.show();}
   if(tab==='plans')loadStarStore();
   window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth'});
   tg?.HapticFeedback?.selectionChanged?.();
  }
- document.querySelectorAll('[data-tab]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.tab)));
+ document.querySelectorAll('nav.bottom [data-tab]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.tab)));
  document.querySelectorAll('[data-jump]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.jump)));
  tg?.BackButton?.onClick?.(()=>show(document.body.dataset.tab==='language'?'start':'menu'));
  document.querySelectorAll('[data-start-language]').forEach(button=>button.addEventListener('click',()=>{
