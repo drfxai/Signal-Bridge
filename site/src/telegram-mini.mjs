@@ -129,6 +129,7 @@ body .start-tile.btn{min-height:90px;display:flex;flex-direction:column;align-it
 body:is([data-tab=start],[data-tab=language],[data-tab=menu],[data-tab=downloads],[data-tab=trial],[data-tab=license],[data-tab=plans]) nav.bottom{display:none!important}
 body:is([data-tab=start],[data-tab=language],[data-tab=menu],[data-tab=downloads],[data-tab=license]) .auth-state{display:none}
 .auth-state .message.success{display:none}
+body:not([data-tab=home]) #miniAdminShortcut{display:none}
 </style>
 <script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261117-language-picker" defer></script></head>
 <body data-tab="start"><main class="container">
@@ -190,12 +191,12 @@ body:is([data-tab=start],[data-tab=language],[data-tab=menu],[data-tab=downloads
  <p id="trialNotice" class="meta" role="status"></p>
 </section>
 <button class="btn subtle start-back" type="button" id="startBack" data-jump="menu" data-start-text="menu" hidden>Main menu</button>
+${ADMIN_HOME_HTML}
 <section class="tab-panel" data-panel="home" id="panel-home">
 <div class="mini-account-actions" role="group" aria-label="Account access">
  <a id="miniAuthAction" href="https://drfx.company/?auth=1" rel="noopener noreferrer" class="mini-account-action mini-account-action--auth"><span>Sign In / Sign Up</span><span aria-hidden="true">↗</span></a>
  <button id="miniClientPortalAction" type="button" class="mini-account-action mini-account-action--portal"><span class="mini-account-dot" aria-hidden="true"></span><span>Client Portal</span><span aria-hidden="true">↗</span></button>
 </div>
-${ADMIN_HOME_HTML}
  <div class="section-head"><h2 data-tr="command">Your dashboard</h2><small data-tr="privateCaption">PRIVATE ACCOUNT</small></div>
  <article class="card gold">
   <div class="split"><div><div class="micro" data-tr="memberCaption">CURRENT MEMBERSHIP</div><div id="memberPlan" class="value">Not signed in</div></div><span class="indicator" aria-hidden="true">♛</span></div>
