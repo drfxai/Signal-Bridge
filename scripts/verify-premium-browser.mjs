@@ -32,7 +32,7 @@ try{
    else if(path==='/api/webhook')data={ok:true,webhook:{exists:false}};
    await route.fulfill({status,json:data});
   });
-  await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram'),{waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram?view=account'),{waitUntil:'networkidle'});
   if(surface==='site')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
   if(hostWidth)await page.addStyleTag({content:(surface==='site'?'#portalOverlay .portal-content':'#panel-home')+'{width:'+hostWidth+'px!important;max-width:'+hostWidth+'px!important}'});
   await page.waitForFunction(()=>!['—',''].includes(document.getElementById('ppNet').textContent));

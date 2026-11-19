@@ -1,6 +1,7 @@
 import {onboardingView,onboardingPages,localizeWorkspace} from '../site/src/telegram-onboarding.mjs';
 import {createRequire} from 'node:module';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,readFile} from 'node:fs/promises';
+import siteWorker from '../site/src/worker.mjs';
 import assert from 'node:assert/strict';
 import {BOT_WORKSPACE_WIDGET_HTML,workspaceView,widgetViewData} from '../site/src/telegram-workspace.mjs';
 import {SIGNAL_HISTORY_WIDGET_HTML,signalHistoryWidgetData} from '../site/src/telegram-signal-widget.mjs';
@@ -32,6 +33,65 @@ try{
   const state=signalHistoryWidgetData(sample),stub='<script>window.TelegramWidget={chatData:'+JSON.stringify(state)+',onEvent(){},ready(){},request(){return Promise.resolve({result:"{}"})},copyText(){}};<\/script>';
   await page.setContent(stub+SIGNAL_HISTORY_WIDGET_HTML);assert.ok((await page.locator('.shell').boundingBox()).height<=560);
   if(width===390)await page.screenshot({path:'artifacts/telegram-workspace/signal-card.png',fullPage:true});
+  await page.close();
+ }
+
+ const startArt=await readFile('site/public/media/signal-bridge/premium-card.jpg');
+ for(const width of [320,390,600,1280]){
+  const page=await browser.newPage({viewport:{width,height:750}});
+  page.on('pageerror',e=>errors.push(width+'px Mini App: '+String(e)));
+  await page.route('**/*',async route=>{
+   const req=route.request(),url=new URL(req.url()),path=url.pathname;
+   if(url.hostname==='telegram.org')return route.fulfill({contentType:'application/javascript',body:
+    'window.Telegram={WebApp:{initData:"test-data",openInvoice(url,cb){window.invoice=url;cb("paid")}}}'});
+   if(path==='/api/config')return route.fulfill({json:{ok:true,telegram:true}});
+   if(path==='/api/me')return route.fulfill({json:{ok:true,user:{id:'u1',telegram_id:'123',role:'user',telegram:'Demo',plan:'trial',license_status:'active',activation_code:'test-code'}}});
+   if(path==='/api/telegram/scalper/trial')return route.fulfill({json:{ok:true,account_login:'12345678',key:'test-trial'}});
+   if(path==='/api/telegram/store/invoice'){
+    assert.equal(req.postDataJSON().plan,'scalper_1y');
+    assert.equal(req.postDataJSON().account_login,'12345678');
+    return route.fulfill({json:{ok:true,url:'https://t.me/$test_invoice'}});
+   }
+   if(path.startsWith('/api/')&&path!=='/api/telegram/store')return route.fulfill({json:{ok:true}});
+   if(path==='/media/signal-bridge/premium-card.jpg')return route.fulfill({body:startArt,contentType:'image/jpeg'});
+   if(path.startsWith('/media/'))return route.fulfill({status:404});
+   const response=await siteWorker.fetch(new Request(req.url()),{...env,TELEGRAM_STAR_PRICES:'{"semiannual":5000,"scalper_1y":6000}'});
+   return route.fulfill({body:Buffer.from(await response.arrayBuffer()),status:response.status,headers:Object.fromEntries(response.headers)});
+  });
+  await page.goto('https://drfx.company/telegram');
+  await page.waitForFunction(()=>document.querySelector('.start-art').naturalWidth>0);
+  assert.equal(await page.locator('.start-art').evaluate(img=>getComputedStyle(img).objectFit),'contain');
+  await page.getByRole('button',{name:'Start',exact:true}).click();
+  await page.locator('[data-start-language='+ (width===390?'fa':'en') +']').click();
+  assert.equal(await page.locator('html').getAttribute('dir'),width===390?'rtl':'ltr');
+  for(const view of ['downloads','license','trial','plans']){
+   await page.locator('[data-panel=menu] [data-jump='+view+']').click();
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),view+' overflow at '+width+'px');
+   if(view==='downloads')assert.equal(await page.locator('[data-panel=downloads] a').count(),2);
+   if(view==='license')assert.equal(await page.locator('#setupSteps li').count(),5);
+   if(view==='trial'){
+    await page.waitForFunction(()=>document.querySelector('#connection').classList.contains('verified'));
+    await page.locator('#trialBridgeReveal').click();
+    assert.equal(await page.locator('#trialBridgeCode').innerText(),'test-code');
+    await page.locator('#trialScalperLogin').fill('12345678');
+    await page.locator('#trialScalperForm button').click();
+    await page.locator('#trialScalperCode').waitFor();
+    assert.equal(await page.locator('#trialScalperCode').innerText(),'test-trial');
+   }
+   if(view==='plans'){
+    await page.locator('#starPlans button').last().click();
+    assert.equal(await page.locator('#starPlans button').count(),5);
+    await page.locator('#starMt5').fill('12345678');
+    await page.locator('#starAccepted').check();
+    await page.locator('#starCheckout button').click();
+    await page.waitForFunction(()=>window.invoice==='https://t.me/$test_invoice');
+   }
+   await page.locator('#startBack').click();
+  }
+  if(width===390){
+   await mkdir('artifacts/ui-verification',{recursive:true});
+   await page.screenshot({path:'artifacts/ui-verification/telegram-mini-menu.png',fullPage:true});
+  }
   await page.close();
  }
 

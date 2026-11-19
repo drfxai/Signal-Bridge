@@ -1,12 +1,16 @@
 import {widgetText} from './telegram-onboarding.mjs';
+import {START_COPY} from './telegram-start.mjs';
 import {validLogin,issueScalperKey} from './scalper.mjs';
 
 export const STAR_PLANS=Object.freeze({
  quarterly:{label:'Signal Bridge · 3 months',duration:'+3 months',stars:2350},
+ semiannual:{label:'Signal Bridge · 6 months',duration:'+6 months',memberPlan:'quarterly'},
  annual:{label:'Signal Bridge · 12 months',duration:'+1 year',stars:8250},
  scalper_1m:{label:'Scalper Pro · 30 days',days:30,stars:950},
- scalper_3m:{label:'Scalper Pro · 90 days',days:90,stars:2450}
+ scalper_3m:{label:'Scalper Pro · 90 days',days:90,stars:2450},
+ scalper_1y:{label:'Scalper Pro · 1 year',days:365}
 });
+export const TELEGRAM_STORE_PLANS=Object.freeze(['semiannual','annual','scalper_1m','scalper_3m','scalper_1y']);
 export const TERMS_VERSION='2026-11-11';
 export const LICENSE_TERMS='DrFX digital license terms · '+TERMS_VERSION+'\nSignal Bridge: duration starts on first activation; renewals extend the current expiry.\nScalper Pro: the key is bound to the MT5 account shown on your invoice. Check that account before paying. Purchases do not guarantee trading returns.\nFor billing, delivery or refund requests use /paysupport and include your order ID. Payment uses Telegram Stars; website USD prices are separate. Your license and receipt stay in your private account.';
 const localTerms={
@@ -40,6 +44,9 @@ export function licenseTerms(language){
  return terms?[terms[0]+' · '+TERMS_VERSION,...terms.slice(1)].join('\n'):LICENSE_TERMS;
 }
 export const LICENSE_TERMS_FA=licenseTerms('fa');
+export function starPlanLabel(language,plan){
+ return (START_COPY[language]||START_COPY.en).planNames[plan]||widgetText(language,STAR_PLANS[plan]?.label||plan);
+}
 export function starPrice(env,plan){
  if(!Object.hasOwn(STAR_PLANS,plan))return null;
  let prices={};try{prices=JSON.parse(env.TELEGRAM_STAR_PRICES||'{}')}catch{return null}
@@ -63,12 +70,40 @@ export async function sendPrivateLicenses(env,h,user,product='bridge'){
   await h.api(env,'sendMessage',{chat_id:user.telegram_id,text,parse_mode:'HTML',protect_content:true});
  }else{
   const r=await h.licenseRecord(env,user);
-  if(r.status!=='active'){await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:t('Your license is not active. Use the menu to renew or get help.')});return;}
+  const expiry=r.expires_at?Date.parse(String(r.expires_at).replace(' ','T')+(/Z$/.test(r.expires_at)?'':'Z')):Infinity;
+  if(r.status!=='active'||expiry<=Date.now()){await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:t('Your license is not active. Use the menu to renew or get help.')});return;}
   const key=await h.decryptCode(env,r.encrypted_code,r.nonce);
   const text=['<b>'+esc(t('Your Signal Bridge activation code'))+'</b>','<code>'+esc(key)+'</code>',
-   esc(t('Plan'))+': '+esc(r.plan),esc(t('Expires'))+': '+esc(r.expires_at||t('Starts on first activation')),
+   esc(t('Plan'))+': '+esc(r.stars_plan?starPlanLabel(h.language,r.stars_plan):r.plan),esc(t('Expires'))+': '+esc(r.expires_at||t('Starts on first activation')),
    esc(t('Paste this code into the MT5 EA license setting.'))].join('\n');
   await h.api(env,'sendMessage',{chat_id:user.telegram_id,text,parse_mode:'HTML',protect_content:true,reply_markup:{inline_keyboard:[[{text:t('Copy activation code'),copy_text:{text:key}}]]}});
+ }
+}
+
+function invoiceBody(order,language){
+ const title=starPlanLabel(language,order.plan);
+ return {title,description:title+(order.account_login?' · MT5 #'+order.account_login:''),
+  payload:order.id,currency:'XTR',prices:[{label:title,amount:order.stars}]};
+}
+
+export async function createStarsInvoice(env,h,user,plan,accountLogin,termsVersion){
+ const stars=starPrice(env,plan);
+ if(!TELEGRAM_STORE_PLANS.includes(plan)||!stars)throw Error('PLAN_UNAVAILABLE');
+ if(termsVersion!==TERMS_VERSION)throw Error('TERMS_REQUIRED');
+ if(!env.LICENSE_VAULT_KEY||(STAR_PLANS[plan].days&&!env.SCALPER_LICENSE_SECRET))throw Error('LICENSING_NOT_CONFIGURED');
+ const login=STAR_PLANS[plan].days?validLogin(accountLogin):null;
+ if(STAR_PLANS[plan].days&&!login)throw Error('INVALID_MT5_ACCOUNT');
+ if(!login)await h.licenseRecord(env,user);
+ const id='tso_'+crypto.randomUUID().replace(/-/g,'');
+ await env.DB.prepare("INSERT INTO telegram_star_orders (id,user_id,telegram_id,plan,stars,account_login,terms_version,status,accepted_at) VALUES (?,?,?,?,?,?,?,'pending',CURRENT_TIMESTAMP)")
+  .bind(id,user.id,String(user.telegram_id),plan,stars,login,TERMS_VERSION).run();
+ try{
+  const invoice=await h.api(env,'createInvoiceLink',invoiceBody({id,plan,stars,account_login:login},h.language));
+  if(typeof invoice!=='string'||!/^https:\/\/t\.me\/(?:\$|invoice\/)[A-Za-z0-9_-]+$/.test(invoice))throw Error('INVALID_INVOICE_URL');
+  return invoice;
+ }catch(error){
+  await env.DB.prepare("UPDATE telegram_star_orders SET status='failed' WHERE id=? AND status='pending'").bind(id).run();
+  throw error;
  }
 }
 
@@ -86,7 +121,7 @@ export async function purchaseQuote(env,h,user,plan,accountLogin){
  if(!p.days)await h.licenseRecord(env,user);
  const id='tso_'+crypto.randomUUID().replace(/-/g,'');
  await env.DB.prepare('INSERT INTO telegram_star_orders (id,user_id,telegram_id,plan,stars,account_login,terms_version) VALUES (?,?,?,?,?,?,?)').bind(id,user.id,String(user.telegram_id),plan,stars,login,TERMS_VERSION).run();
- const summary=[t(p.label),t('Price')+': '+stars+' Telegram Stars',
+ const summary=[starPlanLabel(h.language,plan),t('Price')+': '+stars+' Telegram Stars',
   ...(login?[t('MT5 account')+': '+login]:[]),t('Order')+': '+id,'',licenseTerms(h.language),'',
   t('Tap Accept & pay to accept these terms and open your invoice.')].join('\n');
  await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:summary,protect_content:true,reply_markup:{inline_keyboard:[[{text:t('Accept & pay')+' · '+stars+' Stars',callback_data:'tgpay:'+id}]]}});
@@ -106,8 +141,7 @@ export async function acceptStarQuote(q,env,h){
    if(claimed.meta?.changes===1){
     // Claim before sendInvoice: repeated taps never send a second payable invoice.
     await h.api(env,'answerCallbackQuery',{callback_query_id:q.id,text:t('Preparing invoice…')});
-    const p=STAR_PLANS[o.plan];
-    const invoice=await h.api(env,'sendInvoice',{chat_id:from,title:t(p.label),description:t(p.label)+(o.account_login?' · MT5 #'+o.account_login:'')+' · '+t('Terms accepted')+' '+TERMS_VERSION,payload:o.id,provider_token:'',currency:'XTR',prices:[{label:t(p.label),amount:o.stars}],start_parameter:o.id,protect_content:true});
+    const invoice=await h.api(env,'sendInvoice',{...invoiceBody(o,language),chat_id:from,start_parameter:o.id,protect_content:true});
     await env.DB.prepare('UPDATE telegram_star_orders SET invoice_message_id=? WHERE id=?').bind(String(invoice.message_id),id).run();
     return true;
    }
@@ -119,7 +153,12 @@ export async function acceptStarQuote(q,env,h){
 }
 export async function starPreCheckout(q,env,h){
  const o=await env.DB.prepare("SELECT o.*,u.status AS user_status FROM telegram_star_orders o JOIN site_users u ON u.id=o.user_id AND u.telegram_id=o.telegram_id WHERE o.id=? AND o.created_at>datetime('now','-1 hour')").bind(String(q.invoice_payload||'')).first();
- const ok=matchesPayment(o,q.from?.id,q)&&o.status==='pending'&&!!o.accepted_at&&o.user_status==='active';
+ let ok=!!q.id&&matchesPayment(o,q.from?.id,q)&&o.status==='pending'&&!!o.accepted_at&&o.user_status==='active';
+ if(ok){
+  const claimed=await env.DB.prepare("UPDATE telegram_star_orders SET checkout_query_id=? WHERE id=? AND status='pending' AND (checkout_query_id IS NULL OR checkout_query_id=?)")
+   .bind(q.id,o.id,q.id).run();
+  ok=claimed.meta?.changes===1;
+ }
  const language=!ok&&o&&String(q.from?.id)===o.telegram_id&&h.locale?await h.locale(env,o.telegram_id).catch(()=>h.language):h.language;
  await h.api(env,'answerPreCheckoutQuery',{pre_checkout_query_id:q.id,ok,...(!ok?{error_message:widgetText(language,'Order expired, unavailable or payment details changed. Send /buy for a new invoice.')}:{})});
  return {ok:true};
@@ -139,12 +178,21 @@ export async function starSuccessfulPayment(msg,env,h){
  const plan=STAR_PLANS[o.plan];if(!plan)throw Error('STAR_PLAN_MISSING');
  const statements=[];
  if(plan.days){
-  const k=await issueScalperKey(env,h,{userId:user.id,login:o.account_login,plan:o.plan,orderId:o.id});
+  const k=await issueScalperKey(env,h,{userId:user.id,login:o.account_login,plan:o.plan,orderId:o.id,days:plan.days});
   statements.push(env.DB.prepare("INSERT INTO scalper_keys (id,user_id,order_id,account_login,plan,days,serial,encrypted_key,nonce,issued_by) SELECT ?,?,?,?,?,?,?,?,?,'telegram_stars' WHERE EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')").bind(k.id,user.id,o.id,o.account_login,o.plan,k.days,k.serial,k.sealed.cipher,k.sealed.iv,o.id));
  }else{
   const r=await h.licenseRecord(env,user);
-  statements.push(env.DB.prepare("UPDATE ea_licenses SET plan=?,duration_modifier=?,status='active',expires_at=CASE WHEN activated_at IS NULL THEN NULL ELSE datetime(CASE WHEN expires_at>CURRENT_TIMESTAMP THEN expires_at ELSE CURRENT_TIMESTAMP END,?) END,updated_at=CURRENT_TIMESTAMP WHERE agent_id=? AND EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')").bind(o.plan,plan.duration,plan.duration,r.agent_id,o.id));
-  statements.push(env.DB.prepare("UPDATE site_users SET plan=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')").bind(o.plan,user.id,o.id));
+  const memberPlan=plan.memberPlan||o.plan;
+  const duration=plan.memberPlan?'+3 months':plan.duration;
+  const months=plan.duration==='+1 year'?12:Number.parseInt(plan.duration,10);
+  statements.push(env.DB.prepare("UPDATE ea_licenses SET plan=?,duration_modifier=?,stars_plan=?,status='active',"+
+   "initial_duration_override=CASE WHEN activated_at IS NOT NULL THEN NULL "+
+   "WHEN plan='trial' THEN ? ELSE printf('+%d months',?+CASE WHEN initial_duration_override IS NOT NULL THEN CAST(initial_duration_override AS INTEGER) "+
+   "WHEN duration_modifier='+1 year' THEN 12 ELSE CAST(duration_modifier AS INTEGER) END) END,"+
+   "expires_at=CASE WHEN activated_at IS NULL THEN NULL ELSE datetime(CASE WHEN expires_at>CURRENT_TIMESTAMP THEN expires_at ELSE CURRENT_TIMESTAMP END,?) END,"+
+   "updated_at=CURRENT_TIMESTAMP WHERE agent_id=? AND EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')")
+   .bind(memberPlan,duration,plan.memberPlan?o.plan:null,plan.memberPlan?plan.duration:null,months,plan.duration,r.agent_id,o.id));
+  statements.push(env.DB.prepare("UPDATE site_users SET plan=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')").bind(memberPlan,user.id,o.id));
  }
  statements.push(env.DB.prepare("INSERT INTO site_audit (id,actor_id,action,subject_id,detail) SELECT ?,?,'telegram_stars_paid',?,? WHERE EXISTS(SELECT 1 FROM telegram_star_orders WHERE id=? AND status='pending')").bind(h.uid('aud'),user.id,user.id,o.id+' · '+o.plan+' · '+o.stars+' Stars',o.id));
  statements.push(env.DB.prepare("UPDATE telegram_star_orders SET status='paid',charge_id=?,paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'").bind(payment.telegram_payment_charge_id,o.id));
@@ -153,7 +201,7 @@ export async function starSuccessfulPayment(msg,env,h){
  if(results.at(-1)?.meta?.changes!==1)return {ok:true,duplicate:true};
  try{
   const language=h.locale?await h.locale(env,o.telegram_id).catch(()=>h.language):h.language;
-  await h.api(env,'sendMessage',{chat_id:o.telegram_id,text:widgetText(language,'Payment received')+' · '+o.stars+' Stars\n'+widgetText(language,plan.label)+'\n'+widgetText(language,'Order')+': '+o.id+'\n'+widgetText(language,'Retrieve your license anytime with')+' '+(plan.days?'/scalper':'/code')+'.',protect_content:true});
+  await h.api(env,'sendMessage',{chat_id:o.telegram_id,text:widgetText(language,'Payment received')+' · '+o.stars+' Stars\n'+starPlanLabel(language,o.plan)+'\n'+widgetText(language,'Order')+': '+o.id+'\n'+widgetText(language,'Retrieve your license anytime with')+' '+(plan.days?'/scalper':'/code')+'.',protect_content:true});
   await sendPrivateLicenses(env,{...h,language},user,plan.days?'scalper':'bridge');
   await env.DB.prepare('UPDATE telegram_star_orders SET notified_at=CURRENT_TIMESTAMP WHERE id=?').bind(o.id).run();
  }catch{console.warn('Telegram Stars license delivery pending; retrieve with /code or /scalper');}
@@ -161,6 +209,6 @@ export async function starSuccessfulPayment(msg,env,h){
 }
 export async function starOrders(env,h,user){
  const rows=(await env.DB.prepare('SELECT id,plan,stars,status,created_at FROM telegram_star_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 10').bind(user.id).all()).results||[];
- await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:rows.length?rows.map(o=>o.id+'\n'+widgetText(h.language,STAR_PLANS[o.plan].label)+' · '+o.stars+' Stars · '+o.status+'\n'+o.created_at+' UTC').join('\n\n'):widgetText(h.language,'No Telegram Stars orders yet. Send /buy to view plans.'),protect_content:true});
+ await h.api(env,'sendMessage',{chat_id:user.telegram_id,text:rows.length?rows.map(o=>o.id+'\n'+starPlanLabel(h.language,o.plan)+' · '+o.stars+' Stars · '+o.status+'\n'+o.created_at+' UTC').join('\n\n'):widgetText(h.language,'No Telegram Stars orders yet. Send /buy to view plans.'),protect_content:true});
 }
 

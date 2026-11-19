@@ -31,7 +31,7 @@ try{
    else if(path==='/api/webhook')data={ok:true,webhook:{exists:false}};
    await route.fulfill({status,json:data});
   });
-  console.log('Opening '+label);await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram'),{waitUntil:'networkidle'});
+  console.log('Opening '+label);await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram?view=account'),{waitUntil:'networkidle'});
   if(surface==='site')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
   assert.equal(await page.locator('html').getAttribute('lang'),locale,'English default must ignore browser language');console.log('Loaded '+label);await page.locator('#refHelp').waitFor({state:'visible'});
   await page.waitForFunction(()=>!document.getElementById('setupTour').hidden&&!document.getElementById('stNext').disabled);await page.locator('#stEnd').click();
@@ -52,7 +52,7 @@ try{
   await page.locator('#refHelp').click();await page.waitForFunction(()=>!document.getElementById('stNext').disabled);await page.keyboard.press('Escape');assert.equal(await page.locator('#setupTour').isVisible(),false);assert.equal(await page.locator('#connectionActions').isVisible(),true);
   await page.locator('#refAccount').click();await page.locator('#profileHelp').click();await page.waitForFunction(()=>!document.getElementById('stNext').disabled);assert.equal(await page.locator('#setupTour').isVisible(),true);await page.locator('#stEnd').click();
   await page.locator('#refAccount').click();await page.locator('#profileMembership').click();await page.waitForFunction(()=>document.getElementById('acName').textContent==='Alexandra Morgan');assert.equal(await page.locator('#accountWorkspace').isVisible(),true);assert.equal(await page.locator('#workspaceDetail .sb-account-group').first().isVisible(),false);assert.equal(await page.locator('#policyPartial').isVisible(),true);assert.equal(await page.locator('#acEmail').textContent(),user.email);await page.screenshot({path:'/tmp/drfx-tour/'+label+'-account16.png'});await page.locator('#workspaceDetailClose').click();
-  if(surface==='mini'){await page.locator('#langToggle').click();await page.locator('[data-mini-lang=en]').click();assert.equal(await page.locator('html').getAttribute('lang'),'en')}
+  if(surface==='mini'){await page.locator('#startBack').click();await page.locator('#langToggle').click();await page.locator('[data-mini-lang=en]').click();assert.equal(await page.locator('html').getAttribute('lang'),'en')}
   await page.close();console.log('PASS '+label+': 11 steps, geometry, masking, replay, Escape and profile guide');
  }
  assert.deepEqual(errors,[]);console.log('PASS: no browser errors.');

@@ -50,7 +50,7 @@ test('Telegram mini app renders premium UI and does not expose dummy metrics or 
  assert.match(MINI_HTML,/Telegram Mini App/);
  assert.match(MINI_HTML,/\/assets\/telegram-mini\.js/);
  assert.match(MINI_HTML,/telegram\.org\/js\/telegram-web-app\.js/);
- for(const text of ['$0','$47','$165','One Month Free','3 Months Premium','Annual Elite'])assert.ok(MINI_HTML.includes(text),text);
+ for(const text of ['Buy with Stars','Download EA','Free trial','Signal Bridge · 3 months','Scalper Pro · 7 days'])assert.ok(MINI_HTML.includes(text),text);
  for(const id of ['statusMessage','serialValue','memberPlan','revealSerial','copySerial','panel-license','panel-plans','paymentStatus'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
  assert.doesNotThrow(()=>new Function(MINI_JS));
  assert.match(MINI_JS,/tg\.initData/);
@@ -91,8 +91,8 @@ test('the existing bot uses Telegram web_app buttons and does not silently merge
 test('mobile-first design is readable, wide, and retains DrFX brand colors',()=>{
  for(const token of [
    '--obsidian:#030406','--gold:#d4af37','--gold-light:#f7e7b4','--emerald:#10b981',
-   'Your signals.','One powerful bridge.','Your dashboard','route-stage',
-   'TRADINGVIEW · TELEGRAM · MT5','SignalBridge','TradingView / TG',
+   'Start','Download EA','Your dashboard','start-art',
+   'Buy with Stars','SignalBridge','Setup guide',
    'MT5 EA','data-tr="navHome"','data-tr="navPlans"','id="langToggle"',
    'prefers-reduced-motion:reduce','env(safe-area-inset-bottom)',
    'width:100%','max-width:680px','data-panel="home"',
@@ -155,10 +155,10 @@ test('Mini App clears private EA activation material on failed session refresh',
 });
 test('Persian translation covers account safety, MT5 onboarding, and error states',()=>{
  for(const label of [
-  'data-tr="licenseNote"','data-tr="step1"','data-tr="step2"','data-tr="step3"','data-tr="step4"',
+  'data-tr="licenseNote"','id="setupSteps"','data-start-text="bridgeTrial"','data-start-text="scalperTrial"',
   'data-tr="help1"','data-tr="help2"','data-tr="help3"','data-tr="help4"',
   'data-tr="memberCaption"','data-tr="mt5Caption"','data-tr="eaCaption"',
-  'data-tr="premiumNote"','data-tr="securityTitle"'
+  'data-start-text="accepted"','data-tr="securityTitle"'
  ])assert.ok(MINI_HTML.includes(label),label);
  assert.match(MINI_JS,/مینی‌اپ را از داخل بات رسمی/);
  assert.match(MINI_JS,/کد فعال‌سازی/);
@@ -275,8 +275,8 @@ test('Mini App has matching accessible globe language picker and factual product
  assert.ok(MINI_HTML.includes('data-mini-lang="en"'));
  assert.ok(MINI_HTML.includes('data-mini-lang="fa"'));
  assert.deepEqual([...MINI_HTML.matchAll(/data-mini-lang="([a-z]+)"/g)].map(match=>match[1]),['en','fa','tr','ru','hi']);
- assert.ok(MINI_HTML.includes('Your signals.'));
- assert.ok(MINI_HTML.includes('One powerful bridge.'));
+ assert.ok(MINI_HTML.includes('Download your EA'));
+ assert.ok(MINI_HTML.includes('Choose your language'));
  assert.ok(!MINI_HTML.includes('github.com'));
  assert.ok(!MINI_HTML.includes('fictional trading profits'));
 });

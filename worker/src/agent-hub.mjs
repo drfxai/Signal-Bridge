@@ -44,7 +44,7 @@ export class AgentHub{
   // Atomic first-use claim. A stolen or reused code cannot attach another account.
   const updated=await this.env.DB.prepare(
    "UPDATE ea_licenses SET account_login=?,account_server=?,activated_at=CURRENT_TIMESTAMP, " +
-   "expires_at=datetime('now',duration_modifier),last_connected_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP " +
+   "expires_at=datetime('now',COALESCE(initial_duration_override,duration_modifier)),last_connected_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP " +
    "WHERE id=? AND agent_id=? AND status='active' AND activated_at IS NULL " +
    "AND account_login IS NULL AND account_server IS NULL AND token_sha256=?"
   ).bind(account.login,account.server,a.licenseId,a.agentId,a.licenseHash).run();

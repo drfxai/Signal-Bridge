@@ -144,7 +144,7 @@ test('Mini App ships the Channels flow, nav entry and home card',()=>{
  for(const id of ['panel-channels','chmAddChannel','chmAddGroup','chmChats','chmHook','chmStep1','chmStep2','chmStep3'])assert.ok(MINI_HTML.includes('id="'+id+'"'),id);
  assert.ok(MINI_HTML.includes('data-tab="channels"'));assert.ok(MINI_HTML.includes('class="chm-promo" data-jump="channels"'));
  assert.ok(MINI_JS.includes("'/api/channels'"));assert.ok(MINI_JS.includes('window.chMiniLoad'));
- assert.ok(MINI_JS.includes("['home','license','plans','scalper','channels','help','admin']"));
+ assert.ok(MINI_JS.includes("['channels','channels']"));
  const ops=readFileSync(new URL('../scripts/configure-company-telegram-bot.mjs',import.meta.url),'utf8');
  assert.ok(ops.includes('commands:BOT_COMMANDS_VISIBLE'));assert.ok(BOT_MENU_COMMANDS.some(c=>c.command==='channels'));
 });

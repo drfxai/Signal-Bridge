@@ -76,5 +76,5 @@ test('five-language dynamic account errors, admin and webhook labels have no unt
   assert.ok(pair,'missing English source: '+text);
   for(const locale of LOCALES)assert.ok(TRANSLATIONS[locale][pair[0]],locale+':'+text);
  }
- for(const key of ['adminTitle','adminSearch','adminRefresh','personalWebhook','testConnection','createWebhook','copyWebhook','rotateWebhook','oneMonth','threeMonth','annualElite'])assert.ok(MINI_HTML.includes('data-tr="'+key+'"'),key);
+ for(const key of ['adminTitle','adminSearch','adminRefresh','personalWebhook','testConnection','createWebhook','copyWebhook','rotateWebhook'])assert.ok(MINI_HTML.includes('data-tr="'+key+'"'),key);
 });

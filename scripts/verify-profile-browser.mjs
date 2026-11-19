@@ -30,7 +30,7 @@ try{
    else if(path==='/api/webhook')data={ok:true,webhook:{exists:false}};
    await route.fulfill({status,json:data});
   });
-  await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram'),{waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:4211'+(surface==='site'?'/':'/telegram?view=account'),{waitUntil:'networkidle'});
   if(surface==='site')await page.evaluate(async()=>{await refreshProfile();show('portalOverlay')});
   await page.locator('#refAccount').waitFor({state:'visible'});await page.screenshot({path:'/tmp/drfx-profile/screenshots/'+label+'-header.png'});
   const header=await page.locator('.sb-top').evaluate(e=>e.scrollWidth<=e.clientWidth+1);assert.ok(header,label+' header overflow');

@@ -1,3 +1,4 @@
+import {START_COPY,START_LANGUAGES,DOWNLOADS,SUPPORT_URL,COMMUNITY_URL} from './telegram-start.mjs';
 import {markCommonText} from './i18n.mjs';
 import {ADMIN_HOME_HTML,ADMIN_PANEL_HTML,ADMIN_CSS,ADMIN_JS} from './admin-mini.mjs';
 import {versionUiAssets} from './ui-release.mjs';
@@ -114,34 +115,28 @@ nav.bottom button[aria-selected=true]{color:#66f3d7!important}
 @media(max-width:420px){.container{padding:0 13px}.hero{padding-top:17px}.route-stage{border-radius:17px}.card{border-radius:17px}}
 @media(prefers-reduced-motion:reduce){.route-line:after{animation:none!important}}
 
+
+/* Start menu and readable, full-frame media in the Telegram viewport. */
+.start-view{padding:16px 0 4px}.start-view h1{font-size:clamp(28px,8vw,42px);line-height:1.12;margin:0 0 16px}.start-view h2{margin:0 0 12px}
+.start-intro{margin:0 0 18px;color:#b8ccd7;font-size:15px}.start-art{display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#050b13;border:1px solid #275366;border-radius:16px;margin:0 0 18px}
+.start-primary{width:100%}.start-tiles,.start-language{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+body .start-tile.btn{min-height:90px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;text-align:start;padding:12px 14px;border:1px solid #326176;background:linear-gradient(145deg,#132c3c,#102033);color:#eefbff;line-height:1.35;white-space:normal}
+.start-tile span{font-size:20px;color:#8ce9d4}.start-tile b{font-size:14px}.start-tile.start-highlight{border-color:#65bda8;background:linear-gradient(145deg,#164338,#102938)}
+.start-links{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:16px 0}.start-links a{color:#bce5e3;padding-block:12px}.start-links button{min-height:44px}
+.start-list,.start-form{display:grid;gap:10px}.start-list .btn{display:flex;justify-content:space-between;text-align:start;gap:12px;text-decoration:none;white-space:normal}.start-form input:not([type=checkbox]){display:block;width:100%;margin:4px 0 0;padding:10px;min-height:44px;border:1px solid #468293;border-radius:10px;background:#081722;color:#eef8ff;font:inherit}
+.start-form details p{white-space:pre-line;color:#b8ccd7;font-size:13px}.start-check{display:flex;align-items:center;gap:8px}.start-back{margin-top:18px}.start-steps{display:grid;gap:12px;padding-inline-start:26px}
+.start-steps li{padding:13px 16px;border:1px solid #2b5666;border-radius:12px;background:#102332;overflow-wrap:anywhere}.start-steps li::marker{color:#8ce9d4;font-weight:700}.start-steps p{margin:5px 0 0;color:#c8dce7}
+body:is([data-tab=start],[data-tab=language],[data-tab=menu],[data-tab=downloads],[data-tab=trial],[data-tab=license],[data-tab=plans]) nav.bottom{display:none!important}
+body:is([data-tab=start],[data-tab=language],[data-tab=menu],[data-tab=downloads],[data-tab=license]) .auth-state{display:none}
+.auth-state .message.success{display:none}
+body:not([data-tab=home]) #miniAdminShortcut{display:none}
 </style>
 <script src="/assets/i18n.js?v=20261029" defer></script><script src="/assets/telegram-mini.js?v=20261117-language-picker" defer></script></head>
-<body data-tab="home"><main class="container">
+<body data-tab="start"><main class="container">
 <header class="brand-bar">
  <div class="brand"><div class="mark" aria-hidden="true">DFX</div><div class="brandname"><span class="name">DrFX <em>Company</em></span><small>SignalBridge · Private access</small></div></div>
  <div class="header-actions"><div class="mini-lang-picker" id="miniLangPicker"><button type="button" id="langToggle" class="lang-toggle" title="Language" aria-label="Choose app language" aria-expanded="false" aria-haspopup="true" aria-controls="miniLangOptions"><svg class="mini-globe-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 2.5 4.5 5.5 4.5 9S15 18.5 12 21M12 3C9 5.5 7.5 8.5 7.5 12S9 18.5 12 21"/></svg><span id="miniLangCurrent">EN</span><span aria-hidden="true" class="mini-lang-chevron">⌄</span></button><div id="miniLangOptions" class="mini-lang-options" role="group" aria-label="Available languages" hidden><div class="mini-lang-title">Language</div><button type="button" data-mini-lang="en" aria-pressed="true"><b>EN</b><span>English</span><i>✓</i></button><button type="button" data-mini-lang="fa" aria-pressed="false"><b>FA</b><span>فارسی</span><i>✓</i></button><button type="button" data-mini-lang="tr" aria-pressed="false"><b>TR</b><span>Türkçe</span><i>✓</i></button><button type="button" data-mini-lang="ru" aria-pressed="false"><b>RU</b><span>Русский</span><i>✓</i></button><button type="button" data-mini-lang="hi" aria-pressed="false"><b>HI</b><span>हिन्दी</span><i>✓</i></button></div></div><span id="connection" class="chip">Checking</span></div>
 </header>
-<div class="mini-account-actions" role="group" aria-label="Account access">
- <a id="miniAuthAction" href="https://drfx.company/?auth=1" rel="noopener noreferrer" class="mini-account-action mini-account-action--auth"><span>Sign In / Sign Up</span><span aria-hidden="true">↗</span></a>
- <button id="miniClientPortalAction" type="button" class="mini-account-action mini-account-action--portal"><span class="mini-account-dot" aria-hidden="true"></span><span>Client Portal</span><span aria-hidden="true">↗</span></button>
-</div>
-${ADMIN_HOME_HTML}
-<section class="hero">
- <span class="eyebrow" data-tr="eyebrow">YOUR TRADING WORKSPACE</span>
- <h1><span data-tr="hero1">Your signals.</span><br><em data-tr="hero2">One powerful bridge.</em></h1>
- <p class="desc" data-tr="desc">Manage your personal MT5 EA license, TradingView alerts, Telegram signals and membership through one powerful private workspace.</p>
- <div class="hero-kicker"><span><i></i> Private license</span><span>Telegram verified sign-in</span></div>
-</section>
-<div class="route-stage" aria-label="Illustrative route from alerts through SignalBridge to MetaTrader 5">
- <div class="route-head"><strong>SignalBridge</strong><small>TRADINGVIEW · TELEGRAM · MT5</small></div>
- <div class="route-steps">
-  <div class="route-node"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="3"/><path d="M7 16l3-4 3 2 4-6"/></svg><b>Alerts</b><small>TradingView / TG</small></div>
-  <div class="route-line"></div>
-  <div class="route-node"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="5"/><path d="M8 12h8M12 8v8"/></svg><b>Bridge</b><small>Cloudflare</small></div>
-  <div class="route-line"></div>
-  <div class="route-node"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><b>MT5 EA</b><small>Execution</small></div>
- </div>
-</div>
 <div class="auth-state" role="group" aria-label="Account sign-in status"><p class="message" id="statusMessage" role="status" aria-live="polite">Checking your Telegram identity…</p><button id="retrySignIn" class="btn subtle retry-auth" type="button" hidden>Retry connection ↻</button><a id="openBot" class="btn primary bot-launch" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Signal Bridge bot ↗</a><p id="launchHint" class="launch-hint" hidden>In the Signal Bridge bot, send /start and tap <strong>Open DrFX Mini App</strong> under the bot's message. Do not use Open website.</p>
  <section id="otpLogin" class="otp-login" hidden aria-labelledby="otpHeading">
   <h2 id="otpHeading">Sign in with a Telegram code</h2>
@@ -149,7 +144,59 @@ ${ADMIN_HOME_HTML}
   <form id="otpForm" autocomplete="off"><label for="otpInput">One-time sign-in code</label><input id="otpInput" name="login_code" type="text" inputmode="text" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" maxlength="64" minlength="8" pattern="[A-Za-z0-9_-]{8,64}" required placeholder="Paste code from /login" aria-describedby="otpInstructions otpStatus"/><button id="otpSubmit" class="btn primary" type="submit">Sign in securely</button></form>
   <p id="otpStatus" class="otp-status" role="status" aria-live="polite"></p>
  </section></div>
+<section class="tab-panel start-view" data-panel="start" id="panel-start">
+ <h1>Signal Bridge</h1>
+ <p class="start-intro" data-start-text="intro">Download your EA, get a trial and connect MetaTrader 5.</p>
+ <img class="start-art" src="/media/signal-bridge/premium-card.jpg" alt="" decoding="async">
+ <button class="btn primary start-primary" type="button" data-jump="language" data-start-text="start">Start</button>
+</section>
+<section class="tab-panel start-view" data-panel="language" hidden>
+ <h1 data-start-text="language">Choose your language</h1>
+ <div class="start-language">${START_LANGUAGES.map(([id,name])=>`<button type="button" class="btn subtle" data-start-language="${id}">${name}</button>`).join('')}</div>
+</section>
+<section class="tab-panel start-view" data-panel="menu" hidden>
+ <h1 data-start-text="menu">Main menu</h1>
+ <div class="start-tiles">
+  <button type="button" class="btn start-tile" data-jump="downloads"><span aria-hidden="true">↓</span><b data-start-text="downloads">Download EA</b></button>
+  <button type="button" class="btn start-tile start-highlight" data-jump="trial"><span aria-hidden="true">✦</span><b data-start-text="trial">Free trial</b></button>
+  <button type="button" class="btn start-tile" data-jump="license"><span aria-hidden="true">▤</span><b data-start-text="setup">Setup guide</b></button>
+  <button type="button" class="btn start-tile" data-jump="plans"><span aria-hidden="true">★</span><b data-start-text="buy">Buy with Stars</b></button>
+ </div>
+ <div class="start-links">
+  <a data-telegram-support href="${SUPPORT_URL}" data-start-text="support">Support</a>
+  <a data-telegram-support href="${COMMUNITY_URL}" data-start-text="community">Community</a>
+  <button type="button" class="btn subtle" data-jump="home" data-start-text="portal">My account</button>
+ </div>
+</section>
+<section class="tab-panel start-view" data-panel="downloads" hidden>
+ <h1 data-start-text="downloads">Download EA</h1>
+ <div class="start-list">
+  <a class="btn subtle" target="_blank" rel="noopener noreferrer" href="${DOWNLOADS.signalbridge.url}">Signal Bridge · EX5 <span aria-hidden="true">↓</span></a>
+  <a class="btn subtle" target="_blank" rel="noopener noreferrer" href="${DOWNLOADS.scalper.url}">Scalper Pro · EX5 <span aria-hidden="true">↓</span></a>
+ </div>
+</section>
+<section class="tab-panel start-view" data-panel="trial" hidden>
+ <h1 data-start-text="trial">Free trial</h1>
+ <article class="card"><h2 data-start-text="bridgeTrial">Signal Bridge · 3 months</h2>
+  <button type="button" class="btn primary" id="trialBridgeReveal" data-start-text="getCode">Get activation code</button>
+  <code id="trialBridgeCode" class="code" dir="ltr" hidden></code>
+ </article>
+ <article class="card"><h2 data-start-text="scalperTrial">Scalper Pro · 7 days</h2>
+  <form id="trialScalperForm" class="start-form"><label for="trialScalperLogin" data-start-text="mt5">MT5 account number</label>
+   <input id="trialScalperLogin" type="text" inputmode="numeric" dir="ltr" pattern="[1-9][0-9]{3,18}" maxlength="19" required>
+   <button class="btn primary" data-start-text="claim">Get trial key</button>
+  </form>
+  <code id="trialScalperCode" class="code" dir="ltr" hidden></code>
+ </article>
+ <p id="trialNotice" class="meta" role="status"></p>
+</section>
+<button class="btn subtle start-back" type="button" id="startBack" data-jump="menu" data-start-text="menu" hidden>Main menu</button>
+${ADMIN_HOME_HTML}
 <section class="tab-panel" data-panel="home" id="panel-home">
+<div class="mini-account-actions" role="group" aria-label="Account access">
+ <a id="miniAuthAction" href="https://drfx.company/?auth=1" rel="noopener noreferrer" class="mini-account-action mini-account-action--auth"><span>Sign In / Sign Up</span><span aria-hidden="true">↗</span></a>
+ <button id="miniClientPortalAction" type="button" class="mini-account-action mini-account-action--portal"><span class="mini-account-dot" aria-hidden="true"></span><span>Client Portal</span><span aria-hidden="true">↗</span></button>
+</div>
  <div class="section-head"><h2 data-tr="command">Your dashboard</h2><small data-tr="privateCaption">PRIVATE ACCOUNT</small></div>
  <article class="card gold">
   <div class="split"><div><div class="micro" data-tr="memberCaption">CURRENT MEMBERSHIP</div><div id="memberPlan" class="value">Not signed in</div></div><span class="indicator" aria-hidden="true">♛</span></div>
@@ -176,23 +223,22 @@ ${CHM_HOME_HTML}${SXM_HOME_HTML} <div class="grid">
  ${EXECUTION_HTML.replace('<option value="ar">العربية</option>','').replace('<button data-sb-tab="settings">⚙ Settings</button></nav>','<button data-sb-tab="settings">⚙ Settings</button><button type="button" data-jump="scalper">◎ Scalper Pro</button><button type="button" data-jump="channels">📡 Channels</button></nav>').replace('<button data-sb-tab="settings">⚙<span>Settings</span></button></div>','<button data-sb-tab="settings">⚙<span>Settings</span></button><button type="button" data-jump="scalper" class="sxm-sb-scalper">◎<span>Scalper</span></button></div>')}
  </section><div class="action-grid"><button type="button" class="btn subtle" data-jump="license" data-tr="guide">MT5 setup guide ↗</button><button type="button" class="btn subtle" data-jump="plans" data-tr="explore">Explore plans ↗</button></div>
 </section>
-<section class="tab-panel" data-panel="license" id="panel-license" hidden>
- <p class="tab-kicker" data-tr="eaKicker">EXPERT ADVISOR</p><h2 class="section-title" data-tr="connect">Connect your <span>MT5 account</span></h2>
- <div class="card gold"><div class="micro">ONE EA · ONE PRIVATE CODE</div><h2 style="font-size:22px;margin-top:10px" data-tr="setupTitle">Set up SignalBridge</h2>
-  <ol class="list"><li data-tr="step1">Install the official compiled DrFX EX5 Expert Advisor in MetaTrader 5.</li><li data-tr="step2">Allow https://signalbridge.drfx.online in MT5 Expert Advisors.</li><li data-tr="step3">Enter your activation code as the first EA setting.</li><li data-tr="step4">Check the MT5 Experts tab for the verified license state.</li></ol>
-  <span class="inline-tag" data-tr="demoOnly">PRACTICE ACCOUNTS ONLY · LIVE-MONEY TRADING UNAVAILABLE</span>
- </div><button class="btn primary" type="button" data-jump="home" data-tr="back">View activation code ↗</button>
+<section class="tab-panel start-view" data-panel="license" id="panel-license" hidden>
+ <h1 data-start-text="setup">Setup guide</h1>
+ <ol id="setupSteps" class="start-steps">${START_COPY.en.steps.map(([title,body])=>`<li><strong>${title}</strong><p>${body}</p></li>`).join('')}</ol>
+ <div class="buttons"><button type="button" class="btn primary" data-jump="home" data-start-text="portal">My account</button><button type="button" class="btn subtle" data-jump="downloads" data-start-text="downloads">Download EA</button></div>
 </section>
-<section class="tab-panel" data-panel="plans" id="panel-plans" hidden>
- <p class="tab-kicker" data-tr="plansKicker">DRFX MEMBERSHIP</p><h2 class="section-title" data-tr="advantage">Choose your plan</h2>
- <div class="card">
-  <div class="plan"><div><b data-tr="oneMonth">One Month Free</b><small>Free trial and private EA activation</small></div><div class="plan-price">$0</div></div>
-  <div class="plan featured"><div><b data-tr="threeMonth">3 Months Premium</b><small>SignalBridge and 52 premium indicators*</small></div><div class="plan-price">$47</div></div>
-  <div class="plan"><div><b data-tr="annualElite">Annual Elite</b><small>All features and personalized options*</small></div><div class="plan-price">$165</div></div>
-  <p id="paymentStatus" class="meta" role="status">Paid checkout is not configured yet.</p>
-  <button id="openPricing" type="button" class="btn primary" style="width:100%;margin-top:15px" data-tr="pricing">View website plans ↗</button>
-  <p class="meta" data-tr="premiumNote">* Premium content requires separate authorized release. This Mini App does not collect payments.</p>
- </div>
+<section class="tab-panel start-view" data-panel="plans" id="panel-plans" hidden>
+ <h1 data-start-text="buy">Buy with Stars</h1>
+ <div id="starPlans" class="start-list" role="group" aria-label="Telegram Stars"></div>
+ <form id="starCheckout" class="card start-form" hidden>
+  <h2 id="starSelected"></h2>
+  <div id="starAccount"><label for="starMt5" data-start-text="mt5">MT5 account number</label><input id="starMt5" type="text" inputmode="numeric" dir="ltr" pattern="[1-9][0-9]{3,18}" maxlength="19"></div>
+  <details><summary id="starTermsTitle">License terms</summary><p id="starTerms"></p></details>
+  <label class="start-check"><input id="starAccepted" type="checkbox" required><span data-start-text="accepted">I accept the license terms.</span></label>
+  <button type="submit" class="btn primary" data-start-text="buy">Buy with Stars</button>
+ </form>
+ <p id="paymentStatus" class="meta" role="status"></p>
 </section>
 ${SXM_PANEL_HTML}${CHM_PANEL_HTML}<section class="tab-panel" data-panel="help" id="panel-help" hidden>
  <p class="tab-kicker" data-tr="helpKicker">SUPPORT &amp; ACCOUNT SAFETY</p><h2 class="section-title" data-tr="support">Help &amp; security</h2>
@@ -202,7 +248,7 @@ ${SXM_PANEL_HTML}${CHM_PANEL_HTML}<section class="tab-panel" data-panel="help" i
  </div>
 </section>
 ${ADMIN_PANEL_HTML}
-<footer class="page-footer">© 2026 DrFXAi · SignalBridge<br><a href="https://t.me/DrFXGOD" target="_blank" rel="noopener noreferrer" data-telegram-support style="color:inherit">Support · @DrFXGOD</a><br>Connection diagram is illustrative. No simulated trades are presented as live.</footer>
+<footer class="page-footer">DrFXAi · Signal Bridge</footer>
 </main>
 <nav class="bottom" aria-label="Telegram Mini App navigation">
  <button data-tab="home" type="button" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg><span data-tr="navHome">Home</span></button>
@@ -213,12 +259,16 @@ ${ADMIN_PANEL_HTML}
 </nav></body></html>`;
 export const MINI_HTML=versionUiAssets(markCommonText(MINI_BASE_HTML,'data-tr'));
 
-export const MINI_JS=String.raw`(() => {
+export const MINI_JS='const drfxStartCopy='+JSON.stringify(START_COPY)+';'+String.raw`(() => {
  'use strict';
  const $ = id => document.getElementById(id);
  const tg = window.Telegram?.WebApp || null;
  const explicitlySignedOut=()=>{try{return sessionStorage.getItem('drfx-explicit-signout')==='1'}catch{return false}};
  const state = {user:null, serialVisible:false,telegramEnabled:false};
+ const params=new URLSearchParams(location.search);
+ const launchTabs=new Map([['account','home'],['trial','trial'],['plans','plans'],['setup','license'],['channels','channels'],['scalper','scalper']]);
+ let store=null,selectedPlan=null,storeRequest=0;
+ const startText=()=>drfxStartCopy[locale]||drfxStartCopy.en;
 
  // Recover readable mobile sizing when a Telegram external/custom tab enforces a desktop-width layout.
  // Do not apply to tablets, ordinary desktop browsers or correctly sized Telegram WebViews.
@@ -226,6 +276,7 @@ export const MINI_JS=String.raw`(() => {
   const w=window.innerWidth||0,sw=window.screen?.width||0;
   if(navigator.maxTouchPoints>0&&sw>=270&&sw<=600&&w>sw*1.6){
    const scale=Math.min(3.5,w/sw);
+   document.documentElement.style.width=(100/scale)+'%';
    document.documentElement.style.zoom=String(scale);
    document.documentElement.dataset.mobileViewportFixed='true';
   }
@@ -235,6 +286,8 @@ export const MINI_JS=String.raw`(() => {
 
  // Shared language catalog, including native RTL layout.
  const dictionary=window.DrFXI18N?.text||{en:{}};
+ const languagePicker=$('miniLangPicker');
+ const languageHome=languagePicker.parentElement;
  const locales=[...document.querySelectorAll('#miniLangOptions [data-mini-lang]')].map(button=>button.dataset.miniLang);
  const english=new WeakMap([...document.querySelectorAll('[data-tr]')].map(el=>[el,el.textContent]));
  let locale='en';
@@ -261,12 +314,18 @@ export const MINI_JS=String.raw`(() => {
     if(key)el.setAttribute(attr,dictionary[locale]?.[key]||dictionary.en?.[key]||el.getAttribute(attr));
    }
   });
+  for(const item of document.querySelectorAll('[data-start-text]'))item.textContent=startText()[item.dataset.startText];
+  $('setupSteps').replaceChildren(...startText().steps.map(([title,body])=>{
+   const li=document.createElement('li'),heading=document.createElement('strong'),text=document.createElement('p');
+   heading.textContent=title;text.textContent=body;li.append(heading,text);return li;
+  }));
+  if(document.body.dataset.tab==='plans')loadStarStore();
   $('miniLangCurrent').textContent=locale.toUpperCase();
   $('memberLanguage').value=locale;
   $('miniLangOptions').querySelectorAll('[data-mini-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.miniLang===locale)));
   closeMiniLanguage();
   if(state.user){
-   set('memberPlan',planLabel(state.user.plan));
+   set('memberPlan',planLabel(state.user.stars_plan||state.user.plan));
    set('mt5Status',ui(state.user.mt5_account?'Linked':'Not connected','متصل نیست'));
    set('licenseBadge',ui(state.user.license_status==='active'?'ACTIVE':'INACTIVE','غیرفعال'));
    set('activationDate',ui(state.user.activated_at?'Activated':'Not started','شروع نشده'));
@@ -279,7 +338,9 @@ export const MINI_JS=String.raw`(() => {
   window.dispatchEvent(new CustomEvent('drfx-language-change',{detail:{lang:locale}}));
  }
  function planLabel(plan){
-  const name={trial:'oneMonth',quarterly:'threeMonth',annual:'annualElite'}[plan];
+  if(plan==='trial')return startText().bridgeTrial;
+  if(plan==='semiannual')return startText().planNames.semiannual;
+  const name={quarterly:'threeMonth',annual:'annualElite'}[plan];
   return dictionary[locale]?.[name]||dictionary.en?.[name]||'Membership';
  }
  function closeMiniLanguage(){$('miniLangOptions').hidden=true;$('langToggle').setAttribute('aria-expanded','false');}
@@ -309,7 +370,10 @@ export const MINI_JS=String.raw`(() => {
  function message(text,kind='') {const e=$('statusMessage');e.textContent=text;e.className='message '+kind;}
  function clearPrivateAccount(){
   leaveMiniAdmin(true);
-  state.user=null;state.serialVisible=false;document.body.classList.remove('workspace-home');
+  state.user=null;state.serialVisible=false;
+  for(const id of ['trialBridgeCode','trialScalperCode']){$(id).hidden=true;set(id,'');}
+  $('trialScalperLogin').value='';$('starMt5').value='';$('starAccepted').checked=false;
+  document.body.classList.remove('workspace-home');
   $('miniAdminTab').hidden=true;document.body.classList.remove('admin-visible');
   $('miniWebhookUrl').textContent='No webhook created';$('miniCopyWebhook').disabled=true;$('miniRotateWebhook').disabled=true;
   set('memberPlan',ui('Not signed in','وارد نشده'));
@@ -334,7 +398,7 @@ export const MINI_JS=String.raw`(() => {
   $('retrySignIn').hidden=false;
  });
  function show(tab){
-  if(!['home','license','plans','scalper','channels','help','admin'].includes(tab))return;
+  if(!['start','language','menu','downloads','trial','home','license','plans','scalper','channels','help','admin'].includes(tab))return;
   if(tab==='admin'&&state.user?.role!=='admin')return;
   if(tab!=='admin')leaveMiniAdmin();
   if(tab==='scalper')window.sxMiniLoad?.();else window.sxMiniLeave?.();
@@ -342,15 +406,25 @@ export const MINI_JS=String.raw`(() => {
   document.body.dataset.tab=tab;
   if(tab==='admin')loadMiniAdmin();
   document.body.classList.toggle('workspace-home',tab==='home'&&!!state.user);
+  const pickerHost=tab==='home'?document.querySelector('#connectionActions .ref-header-actions'):languageHome;
+  if(pickerHost&&languagePicker.parentElement!==pickerHost){
+   closeMiniLanguage();
+   pickerHost.prepend(languagePicker);
+  }
   document.querySelectorAll('[data-panel]').forEach(e=>e.hidden=e.dataset.panel!==tab);
-  document.querySelectorAll('[data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
-  if(tg?.BackButton){if(tab==='home')tg.BackButton.hide();else tg.BackButton.show();}
+  document.querySelectorAll('nav.bottom [data-tab]').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===tab)));
+  $('startBack').hidden=['start','language','menu'].includes(tab);
+  if(tg?.BackButton){if(['menu','start'].includes(tab))tg.BackButton.hide();else tg.BackButton.show();}
+  if(tab==='plans')loadStarStore();
   window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth'});
   tg?.HapticFeedback?.selectionChanged?.();
  }
- document.querySelectorAll('[data-tab]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.tab)));
+ document.querySelectorAll('nav.bottom [data-tab]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.tab)));
  document.querySelectorAll('[data-jump]').forEach(e=>e.addEventListener('click',()=>show(e.dataset.jump)));
- tg?.BackButton?.onClick?.(()=>show('home'));
+ tg?.BackButton?.onClick?.(()=>show(document.body.dataset.tab==='language'?'start':'menu'));
+ document.querySelectorAll('[data-start-language]').forEach(button=>button.addEventListener('click',()=>{
+  language(button.dataset.startLanguage);try{localStorage.setItem('drfx-mini-started','1')}catch{}show('menu');
+ }));
 
  document.querySelectorAll('[data-telegram-support]').forEach(link=>link.addEventListener('click',e=>{if(tg?.openTelegramLink){e.preventDefault();navigate(link.href)}}));
  function navigate(url){try{if(url.startsWith('https://t.me/')&&tg?.openTelegramLink)tg.openTelegramLink(url);else if(tg?.openLink)tg.openLink(url);else window.location.assign(url);}catch{window.location.assign(url);}}
@@ -359,12 +433,11 @@ export const MINI_JS=String.raw`(() => {
   navigate('https://drfx.company/?auth=1');
  });
  $('miniClientPortalAction').addEventListener('click',async()=>{
-  if(state.user){show('license');return;}
+  if(state.user){show('home');return;}
   await offerBotLaunch();
   $('otpLogin').scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth',block:'center'});
  });
  $('openWebsite').addEventListener('click',()=>navigate('https://drfx.company'));
- $('openPricing').addEventListener('click',()=>navigate('https://drfx.company/#plans'));
  async function api(path,body){
   const options={credentials:'same-origin',headers:{accept:'application/json'}};
   if(body!==undefined){options.method='POST';options.headers['content-type']='application/json';options.body=JSON.stringify(body);}
@@ -373,6 +446,87 @@ export const MINI_JS=String.raw`(() => {
   if(resp.status===401)clearPrivateAccount();
   if(!resp.ok)throw Error(data.error||'SERVICE_UNAVAILABLE');return data;
  }
+ function needTelegram(notice){
+  if(state.user?.telegram_id)return false;
+  set(notice,startText().signIn);
+  if(!$('openBot').hidden)$('openBot').focus();
+  return true;
+ }
+ function selectStarPlan(plan){
+  selectedPlan=plan;
+  $('starCheckout').hidden=!plan;
+  $('starAccepted').checked=false;
+  if(!plan)return;
+  set('starSelected',plan.label+' · '+plan.stars+' ★');
+  $('starAccount').hidden=!plan.requires_account;
+  $('starMt5').required=plan.requires_account;
+  if(plan.requires_account&&!$('starMt5').value)$('starMt5').value=state.user?.mt5_account?.login||'';
+ }
+ async function loadStarStore(){
+  const request=++storeRequest;
+  try{
+   const data=await api('/api/telegram/store?lang='+encodeURIComponent(locale));
+   if(request!==storeRequest)return;
+   store=data;
+   set('starTermsTitle',startText().terms);
+   set('starTerms',store.terms);
+   $('starPlans').replaceChildren(...store.plans.map(plan=>{
+    const button=document.createElement('button');
+    button.type='button';button.className='btn subtle';button.disabled=!plan.stars;
+    const label=document.createElement('span'),price=document.createElement('bdi');
+    label.textContent=plan.label;price.textContent=plan.stars?plan.stars+' ★':startText().unavailable;
+    button.append(label,price);
+    button.addEventListener('click',()=>{set('paymentStatus','');selectStarPlan(plan);});
+    return button;
+   }));
+   const preferred=selectedPlan?.id||params.get('plan');
+   selectStarPlan(store.plans.find(plan=>plan.id===preferred&&plan.stars)||null);
+  }catch(error){if(request===storeRequest)set('paymentStatus',localeError(error.message));}
+ }
+ $('starCheckout').addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(!selectedPlan||needTelegram('paymentStatus'))return;
+  const button=event.currentTarget.querySelector('button');
+  if(button.disabled)return;
+  button.disabled=true;set('paymentStatus','');
+  try{
+   const result=await api('/api/telegram/store/invoice',{plan:selectedPlan.id,account_login:$('starMt5').value,
+    terms_version:store.terms_version,language:locale});
+   if(tg?.initData&&typeof tg.openInvoice==='function'){
+    try{
+     tg.openInvoice(result.url,status=>{
+      button.disabled=false;
+      if(status==='paid'||status==='pending')set('paymentStatus',startText().pending);
+      if(status==='failed')set('paymentStatus',localeError('PAYMENT_FAILED'));
+     });
+     return;
+    }catch{navigate(result.url);}
+   }else navigate(result.url);
+  }catch(error){set('paymentStatus',localeError(error.message));}
+  button.disabled=false;
+ });
+ $('trialBridgeReveal').addEventListener('click',()=>{
+  if(needTelegram('trialNotice'))return;
+  set('trialNotice','');
+  const user=state.user;
+  const expiry=user.expires_at?Date.parse(user.expires_at.replace(' ','T')+(/Z$/.test(user.expires_at)?'':'Z')):Infinity;
+  if(user.license_status!=='active'||expiry<=Date.now()){set('trialNotice',startText().expired);return;}
+  set('trialBridgeCode',user.activation_code);$('trialBridgeCode').hidden=false;
+ });
+ $('trialScalperForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(needTelegram('trialNotice'))return;
+  const button=event.currentTarget.querySelector('button'),member=state.user.id;
+  if(button.disabled)return;
+  button.disabled=true;set('trialNotice','');
+  try{
+   const r=await api('/api/telegram/scalper/trial',{account_login:$('trialScalperLogin').value});
+   if(state.user?.id!==member)return;
+   set('trialScalperCode',r.key);$('trialScalperCode').hidden=false;
+   $('trialScalperLogin').value=r.account_login;
+  }catch(error){set('trialNotice',localeError(error.message));}
+  finally{button.disabled=false;}
+ });
 async function refreshMiniConnection(){
  if(!state.user)return;
  try{
@@ -408,7 +562,7 @@ ${ADMIN_JS}
   $('miniAdminShortcut').hidden=user.role!=='admin';
   $('miniAdminTab').hidden=user.role!=='admin';document.body.classList.toggle('admin-visible',user.role==='admin');
   refreshMiniConnection();
-  set('memberPlan',planLabel(user.plan));
+  set('memberPlan',planLabel(user.stars_plan||user.plan));
   set('memberIdentity',user.email||user.telegram||'Telegram account');
   set('licenseBadge',ui(user.license_status==='active'?'ACTIVE':'INACTIVE',user.license_status==='active'?'فعال':'غیرفعال'));
   $('licenseBadge').dataset.active=String(user.license_status==='active');
@@ -492,7 +646,6 @@ ${ADMIN_JS}
    if(explicitlySignedOut()){clearPrivateAccount();message(ui('You are signed out. Tap Retry sign-in to return.','از حساب خارج شده‌اید؛ برای ورود، تلاش مجدد ورود را بزنید.'));$('retrySignIn').hidden=false;return;}
    const config=await api('/api/config');
    state.telegramEnabled=!!config.telegram;
-   set('paymentStatus',config.payments?ui('The payment provider is configured on the website.','درگاه پرداخت در سایت پیکربندی شده است.'):ui('Paid memberships are not accepting payments yet.','پرداخت اشتراک هنوز فعال نیست.'));
    if(tg?.initData&&state.telegramEnabled){
     // Verify the signed Telegram principal before reading a user session.
     await api('/api/auth/telegram/webapp',{init_data:tg.initData});
@@ -527,8 +680,11 @@ ${ADMIN_JS}
  $('retrySignIn').addEventListener('click',()=>{try{sessionStorage.removeItem('drfx-explicit-signout')}catch{}start()});
  let initialLanguage='en';
  try{initialLanguage=localStorage.getItem('drfx-language')||'en'}catch{}
- language(initialLanguage);
- show('home');
+ let visited=false;
+ try{visited=localStorage.getItem('drfx-mini-started')==='1'}catch{}
+ const launchLanguage=params.get('lang');
+ language(locales.includes(launchLanguage)?launchLanguage:initialLanguage);
+ show(launchTabs.get(params.get('view')||params.get('tab'))||(visited?'menu':'start'));
  start();
 })();`+EXECUTION_JS+SXM_JS+CHM_JS;
 

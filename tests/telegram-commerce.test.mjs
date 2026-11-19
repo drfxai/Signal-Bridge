@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import {deflateSync} from 'node:zlib';
-import {STAR_PLANS,starPrice,matchesPayment,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,sendPrivateLicenses,licenseTerms} from '../site/src/telegram-commerce.mjs';
+import {STAR_PLANS,TELEGRAM_STORE_PLANS,TERMS_VERSION,createStarsInvoice,starPrice,matchesPayment,purchaseQuote,acceptStarQuote,starPreCheckout,starSuccessfulPayment,sendPrivateLicenses,licenseTerms} from '../site/src/telegram-commerce.mjs';
 import {LICENSE_SHOP_WIDGET_HTML} from '../site/src/telegram-license-shop.mjs';
 
 function fixture(){
  const db=new DatabaseSync(':memory:');
- db.exec("CREATE TABLE site_users(id TEXT PRIMARY KEY,telegram_id TEXT,status TEXT,plan TEXT,updated_at TEXT); INSERT INTO site_users VALUES('u1','123','active','trial',NULL); CREATE TABLE site_audit(id TEXT PRIMARY KEY,actor_id TEXT,action TEXT,subject_id TEXT,detail TEXT); CREATE TABLE ea_licenses(agent_id TEXT PRIMARY KEY,plan TEXT,duration_modifier TEXT,status TEXT,expires_at TEXT,activated_at TEXT,updated_at TEXT); INSERT INTO ea_licenses VALUES('ea1','trial','+1 month','active','2099-01-01','2026-01-01',NULL);");
+ db.exec("CREATE TABLE site_users(id TEXT PRIMARY KEY,telegram_id TEXT,status TEXT,plan TEXT,updated_at TEXT); INSERT INTO site_users VALUES('u1','123','active','trial',NULL); CREATE TABLE site_audit(id TEXT PRIMARY KEY,actor_id TEXT,action TEXT,subject_id TEXT,detail TEXT); CREATE TABLE ea_licenses(id TEXT PRIMARY KEY,agent_id TEXT UNIQUE,plan TEXT,duration_modifier TEXT,status TEXT,expires_at TEXT,activated_at TEXT,updated_at TEXT); INSERT INTO ea_licenses VALUES('lic1','ea1','trial','+1 month','active','2099-01-01','2026-01-01',NULL); CREATE TABLE site_licenses(license_id TEXT); INSERT INTO site_licenses VALUES ('lic1');");
  db.exec(readFileSync(new URL('../site/migrations/0014_scalper_pro.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../site/migrations/20261111_telegram_stars.sql',import.meta.url),'utf8'));
+ db.exec(readFileSync(new URL('../site/migrations/20261119_telegram_store.sql',import.meta.url),'utf8'));
  const DB={prepare(sql){
   const stmt=db.prepare(sql);
   return {bind(...params){
@@ -20,7 +21,7 @@ function fixture(){
  },async batch(statements){db.exec('BEGIN');try{const rows=statements.map(s=>s._run());db.exec('COMMIT');return rows}catch(e){db.exec('ROLLBACK');throw e}}};
  const env={DB,LICENSE_VAULT_KEY:'test-vault',SCALPER_LICENSE_SECRET:'test-signing-secret'};
  const calls=[];
- const h={api:async(e,method,body)=>{calls.push({method,body});return {message_id:100}},licenseRecord:async()=>({agent_id:'ea1',encrypted_code:'sealed',nonce:'iv',status:'active',plan:'quarterly'}),encryptCode:async()=>({cipher:'sealed-key',iv:'nonce'}),decryptCode:async()=>('test-activation-code'),uid:p=>p+'_'+crypto.randomUUID()};
+ const h={api:async(e,method,body)=>{calls.push({method,body});return method==='createInvoiceLink'?'https://t.me/$test_invoice':{message_id:100}},licenseRecord:async()=>({agent_id:'ea1',encrypted_code:'sealed',nonce:'iv',status:'active',plan:'quarterly'}),encryptCode:async()=>({cipher:'sealed-key',iv:'nonce'}),decryptCode:async()=>('test-activation-code'),uid:p=>p+'_'+crypto.randomUUID()};
  const user={id:'u1',telegram_id:'123',status:'active'};
  const order=(id='tso_'+('a'.repeat(32)),plan='quarterly',stars=2350)=>{db.prepare("INSERT INTO telegram_star_orders(id,user_id,telegram_id,plan,stars,account_login,status,terms_version,accepted_at) VALUES(?,'u1','123',?,?,'12345678','pending','2026-11-11',CURRENT_TIMESTAMP)").run(id,plan,stars);return id};
  const payment=(id,charge='charge-1')=>({chat:{id:123,type:'private'},from:{id:123},successful_payment:{invoice_payload:id,currency:'XTR',total_amount:2350,telegram_payment_charge_id:charge}});
@@ -38,7 +39,10 @@ test('prices are integers, allow server overrides, and fail closed on invalid co
  assert.equal(starPrice({TELEGRAM_STAR_PRICES:'{"quarterly":4000}'},'quarterly'),4000);
  for(const v of ['null','[]','{bad','{"quarterly":-1}','{"quarterly":"2350"}'])assert.equal(starPrice({TELEGRAM_STAR_PRICES:v},'quarterly'),null);
  assert.equal(starPrice({},'constructor'),null);
- assert.equal(Object.keys(STAR_PLANS).length,4);
+ assert.equal(TELEGRAM_STORE_PLANS.length,5);
+ assert.equal(starPrice({},'semiannual'),null);
+ assert.equal(starPrice({},'scalper_1y'),null);
+ assert.equal(starPrice({TELEGRAM_STAR_PRICES:'{"semiannual":5000}'},'semiannual'),5000);
 });
 test('quotes require MT5 login for Scalper; acceptance sends just one invoice on repeated taps',async()=>{
  const f=fixture();
@@ -61,6 +65,8 @@ test('precheckout rejects wrong owner, amount, currency, expired order or suspen
  for(const q of [{...base,from:{id:999}},{...base,total_amount:1},{...base,currency:'USD'}]){
   await starPreCheckout(q,f.env,f.h);assert.equal(f.calls.at(-1).body.ok,false);
  }
+ await starPreCheckout(base,f.env,f.h);assert.equal(f.calls.at(-1).body.ok,true);
+ await starPreCheckout({...base,id:'second-query'},f.env,f.h);assert.equal(f.calls.at(-1).body.ok,false);
  await starPreCheckout(base,f.env,f.h);assert.equal(f.calls.at(-1).body.ok,true);
  f.db.exec("UPDATE site_users SET status='suspended'");
  await starPreCheckout(base,f.env,f.h);assert.equal(f.calls.at(-1).body.ok,false);
@@ -125,4 +131,27 @@ test('checkout terms, consent and invoice follow the selected language in every 
    if(language!=='en')assert.notEqual(invoice.title,STAR_PLANS.quarterly.label);
   }finally{f.db.close()}
  }
+});
+
+
+test('Mini App invoice requires terms and fulfills the selected six-month or annual Scalper plan',async()=>{
+ const f=fixture();
+ f.env.TELEGRAM_STAR_PRICES='{"semiannual":5000,"scalper_1y":6000}';
+ await assert.rejects(createStarsInvoice(f.env,f.h,f.user,'semiannual',null,'old'),/TERMS_REQUIRED/);
+ await assert.rejects(createStarsInvoice(f.env,f.h,f.user,'scalper_1y',null,TERMS_VERSION),/INVALID_MT5_ACCOUNT/);
+ f.db.exec("UPDATE ea_licenses SET activated_at=NULL,expires_at=NULL");
+ for(const [plan,stars,login] of [['semiannual',5000,null],['scalper_1y',6000,'12345678']]){
+  assert.equal(await createStarsInvoice(f.env,f.h,f.user,plan,login,TERMS_VERSION),'https://t.me/$test_invoice');
+  const invoice=f.calls.at(-1).body;
+  assert.equal(invoice.currency,'XTR');
+  assert.equal(invoice.prices[0].amount,stars);
+  const q={id:'checkout-'+plan,from:{id:123},invoice_payload:invoice.payload,currency:'XTR',total_amount:stars};
+  await starPreCheckout(q,f.env,f.h);
+  assert.equal(f.calls.at(-1).body.ok,true);
+  const payment=f.payment(invoice.payload,'charge-'+plan);
+  payment.successful_payment.total_amount=stars;
+  await starSuccessfulPayment(payment,f.env,f.h);
+ }
+ assert.equal(f.db.prepare('SELECT initial_duration_override FROM ea_licenses').get().initial_duration_override,'+6 months');
+ assert.equal(f.db.prepare('SELECT days FROM scalper_keys').get().days,365);
 });
