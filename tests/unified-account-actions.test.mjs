@@ -29,6 +29,6 @@ test('Telegram Mini App has unified sign in/up and an authenticated Client Porta
  assert.match(MINI_HTML,/id="miniClientPortalAction"/);
  assert.match(MINI_HTML,/\.mini-account-actions\{display:grid;grid-template-columns:1fr 1fr/);
  assert.doesNotThrow(()=>new vm.Script(MINI_JS,{filename:'mini.js'}));
- assert.match(MINI_JS,/if\(state\.user\)\{show\('license'\);return;\}/);
+ assert.match(MINI_JS,/if\(state\.user\)\{show\('home'\);return;\}/);
  assert.match(MINI_JS,/await offerBotLaunch\(\)/);
 });

@@ -17,7 +17,7 @@ export const SX_SUITE_HTML = String.raw`<section id="suite" class="sx-suite" ari
     <h3>SignalBridge</h3>
     <p>TradingView alerts and Telegram signals become MT5 orders in milliseconds, through your own private webhook and EA licence.</p>
     <ul><li>Private TradingView webhook</li><li>Telegram channel routing</li><li>TP1/TP2/TP3, break-even and daily drawdown guard</li></ul>
-    <span class="sx-product-cta">30 days free · then from $47 <b>→</b></span>
+    <span class="sx-product-cta">3 months free · then from $47 <b>→</b></span>
    </a>
    <a class="sx-product sx-product-gold sx-reveal" href="#scalper" data-sx-tilt>
     <span class="sx-product-glow" aria-hidden="true"></span>
