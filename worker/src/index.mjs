@@ -98,16 +98,20 @@ async function acceptTradingView(request,env,token,ctx){
  // Route preference and broker execution mode must never be conflated.
  // Always retain the accepted signal for the independent TV→Telegram relay,
  // but never deliver an MT5 command if the owner turned TV→MT5 off.
- const preference=await env.DB.prepare('SELECT tv_to_mt5 FROM member_signal_settings WHERE user_id=?')
-  .bind(conn.tenant_id).first();
- const tvMt5Enabled=preference?.tv_to_mt5!==0;
- const dispatch=tvMt5Enabled?await createAndDispatch(env,{
-  tenantId:conn.tenant_id,agentId:conn.agent_id,sourceType:'tradingview',sourceRef:conn.id,
-  signalId,signal,mode:conn.delivery_mode
- }):{command_id:null,status:'ROUTE_DISABLED',delivered:0};
+ // Acknowledge the durable signal before dispatch to stay within TradingView's webhook deadline.
+ const route=(async()=>{
+  const preference=await env.DB.prepare('SELECT tv_to_mt5 FROM member_signal_settings WHERE user_id=?')
+   .bind(conn.tenant_id).first();
+  if(preference?.tv_to_mt5===0)return;
+  await createAndDispatch(env,{
+   tenantId:conn.tenant_id,agentId:conn.agent_id,sourceType:'tradingview',sourceRef:conn.id,
+   signalId,signal,mode:conn.delivery_mode
+  });
+ })().catch(e=>console.error('tv dispatch',signalId,e?.name||'Error'));
+ if(ctx)ctx.waitUntil(route);else await route;
  return json({
   accepted:true,duplicate,signal_id:signalId,status:'RECEIVED',execution_enabled:false,demo_execution_supported:true,
-  command_id:dispatch.command_id,dispatch_status:dispatch.status,delivered:dispatch.delivered,execution_mode:conn.delivery_mode
+  dispatch_status:'QUEUED',execution_mode:conn.delivery_mode
  },duplicate?200:202);
 }
 

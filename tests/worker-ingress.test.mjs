@@ -60,14 +60,51 @@ test('object serialization is canonical',()=>assert.equal(stableStringify({b:1,a
 test('method and path restrictions',async()=>{const db=await setup();assert.equal((await handleRequest(new Request(endpoint),{DB:db})).status,405);assert.equal((await handleRequest(new Request('https://signalbridge.example/private'),{DB:db})).status,404);});
 test('retry after D1 failure did not persist any signal',async()=>{const db=await setup();db.broken=true;assert.equal((await handleRequest(req(),{DB:db})).status,503);db.broken=false;assert.equal((await handleRequest(req(),{DB:db})).status,202);assert.equal(db.writes,1);});
 
-test('TV→MT5 OFF stores alert but does not dispatch to EA and leaves TV→Telegram relay independent',async()=>{
+test('TV→MT5 OFF stores the alert without dispatching to EA and relays to Telegram independently',async()=>{
  const db=await setup();db.tvMt5=0;
- const r=await handleRequest(req(),{DB:db});
+ db.connections.values().next().value.agent_id='agent-1';
+ const pending=[];
+ const relayCalls=[];
+ let hubCalls=0;
+ const env={
+  DB:db,
+  AGENT_HUB:{idFromName(){hubCalls++;throw Error('Disabled MT5 route must not use AgentHub');}},
+  TELEGRAM_RELAY:{async fetch(request){relayCalls.push(await request.json());return new Response(null,{status:202});}}
+ };
+ const r=await handleRequest(req(),env,{waitUntil(promise){pending.push(promise);}});
  assert.equal(r.status,202);
  const body=await read(r);
  assert.equal(body.accepted,true);
  assert.equal(body.execution_enabled,false);
- assert.equal(body.dispatch_status,'ROUTE_DISABLED');
- assert.equal(body.command_id,null);
+ assert.equal(body.dispatch_status,'QUEUED');
+ assert.equal('command_id' in body,false);
+ assert.equal('delivered' in body,false);
  assert.equal(db.writes,1);
+ assert.equal(pending.length,2);
+ await Promise.all(pending);
+ assert.equal(hubCalls,0);
+ assert.deepEqual(relayCalls,[{signal_id:body.signal_id}]);
+});
+
+test('TradingView receives 202 after D1 insert while MT5 routing is still blocked',{timeout:3000},async()=>{
+ const db=await setup();
+ const {promise:routeGate,resolve:resumeRoute}=Promise.withResolvers();
+ const prepare=db.prepare.bind(db);
+ let routingStarted=false;
+ db.prepare=sql=>{
+  if(!sql.includes('SELECT tv_to_mt5 FROM member_signal_settings'))return prepare(sql);
+  return {bind(){return this;},async first(){routingStarted=true;await routeGate;return {tv_to_mt5:0};}};
+ };
+ const pending=[];
+ try{
+  const r=await handleRequest(req(),{DB:db},{waitUntil(promise){pending.push(promise);}});
+  assert.equal(r.status,202);
+  assert.equal((await read(r)).dispatch_status,'QUEUED');
+  assert.equal(db.writes,1);
+  assert.equal(routingStarted,true);
+  assert.equal(pending.length,1);
+ }finally{
+  resumeRoute();
+  await Promise.all(pending);
+ }
 });
