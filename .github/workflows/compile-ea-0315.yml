@@ -21,7 +21,15 @@ jobs:
           $jwt=(Invoke-RestMethod -Uri ($env:ACTIONS_ID_TOKEN_REQUEST_URL+'&audience=drfx-ea-build-0315') -Headers @{Authorization=('Bearer '+$env:ACTIONS_ID_TOKEN_REQUEST_TOKEN)}).value
           Write-Output "::add-mask::$jwt"
           $source=Join-Path $env:RUNNER_TEMP 'drfx-ea-source.zip'
-          Invoke-WebRequest -Uri 'https://sb-ea-0315-compile.drfxai.workers.dev/source' -Headers @{Authorization=('Bearer '+$jwt)} -OutFile $source
+          try {
+            Invoke-WebRequest -Uri 'https://sb-ea-0315-compile.drfxai.workers.dev/source' -Headers @{Authorization=('Bearer '+$jwt)} -OutFile $source
+          } catch {
+            $segment=$jwt.Split('.')[1].Replace('-','+').Replace('_','/')
+            $segment=$segment.PadRight($segment.Length + ((4 - ($segment.Length % 4)) % 4), '=')
+            $claims=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($segment)) | ConvertFrom-Json
+            $claims | Select-Object aud,iss,repository,repository_id,runner_environment,sub,ref,head_ref,base_ref,event_name,workflow_ref,workflow_sha,exp,nbf | ConvertTo-Json -Compress | Out-Host
+            throw
+          }
           $actual=(Get-FileHash $source -Algorithm SHA256).Hash.ToLowerInvariant()
           if($actual -ne 'adf0613275e6b7dd4498bd5188738ac6f194d88aaa8ba5f17f8e0d91669c8785'){throw 'Unexpected source digest'}
           Expand-Archive -Path $source -DestinationPath (Join-Path $env:RUNNER_TEMP 'private-sb-source')
