@@ -5,8 +5,8 @@
 #property copyright "DrFXAi"
 #property link      "https://github.com/drfxai/Signal-Bridge"
 #property strict
-#property version   "0.303"
-#property description "SignalBridge EA v0.30.3: broker-verified gold aliases and SignalBridge execution fix."
+#property version   "0.304"
+#property description "SignalBridge EA v0.30.4: durable receipt retries and lower Cloudflare traffic."
 #property description "Signals remain DEMO-only. Explicitly confirmed, opt-in account-bound LIVE tests are supported."
 #property description "Enter your private activation code in the first EA input. No compilation required for EX5 users."
 
@@ -71,6 +71,9 @@ input int InpUiScale=0;      // 0 = follow Windows display scaling; or 100-300 (
 #define SBP "SB290_"
 #define MAX_PENDING 32
 #define MAX_RECEIPTS 64
+#define RECEIPT_RETRY_INITIAL_MS 5000
+#define RECEIPT_RETRY_MAX_MS 300000
+#define HEARTBEAT_INTERVAL_MS 30000
 CTrade trade;
 int g_socket=INVALID_HANDLE;
 bool g_wsReady=false;
@@ -78,7 +81,7 @@ bool g_licenseActive=false;
 string g_licenseExpires="";
 uchar g_frameBuf[];
 string g_lastSignal="WAITING",g_lastExecution="NO COMMAND",g_lastTicket="-";
-ulong g_lastConnectTry=0,g_lastHb=0,g_lastReconcile=0,g_lastPing=0,g_pingStarted=0,g_lastUiUpdate=0;
+ulong g_lastConnectTry=0,g_lastHb=0,g_lastReconcile=0,g_lastTargetFlush=0,g_lastTestStatus=0,g_lastPing=0,g_pingStarted=0,g_lastUiUpdate=0;
 double g_cloudRttMs=0;
 bool g_compact=false;
 long g_serverMs=0,g_licenseExpiryMs=0;
@@ -103,6 +106,7 @@ string NoteSource(string note){if(StringFind(note,"SB:")!=0||StringLen(note)<17|
 string g_connStage="ACTIVATION CODE REQUIRED";
 string g_pendingTag[MAX_PENDING],g_pendingId[MAX_PENDING];
 string g_receiptId[MAX_RECEIPTS],g_receiptStatus[MAX_RECEIPTS],g_receiptTicket[MAX_RECEIPTS],g_receiptRetcode[MAX_RECEIPTS],g_receiptDetail[MAX_RECEIPTS];
+ulong g_receiptRetryAt[MAX_RECEIPTS],g_receiptRetryDelay[MAX_RECEIPTS];
 color C_BG=C'0,0,0',C_BG2=C'6,26,45',C_BORDER=C'23,68,109',C_TEXT=C'234,245,255',C_MUTED=C'139,160,184',C_CYAN=C'82,215,255',C_GREEN=C'69,213,161',C_AMBER=C'243,189,98',C_RED=C'255,111,125';
 
 string N64(long v){return IntegerToString(v);}
@@ -161,7 +165,7 @@ void DisconnectCloud(){if(g_socket!=INVALID_HANDLE){SocketClose(g_socket);g_sock
 bool WsHandshake(){
  uchar nonce[];ArrayResize(nonce,16);for(int i=0;i<16;i++)nonce[i]=(uchar)(MathRand()&255);
  string key=Base64(nonce,16);
- string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.30.2\r\n\r\n";
+ string req="GET "+InpCloudPath+" HTTP/1.1\r\nHost: "+InpCloudHost+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: "+key+"\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: signalbridge-ea-v1, sb-token."+InpActivationCode+"\r\nUser-Agent: DrFX-SignalBridge-EA/0.30.4\r\n\r\n";
  if(!TlsSendString(req))return false;
  uchar pending[];ulong until=GetTickCount64()+5000;
  while(GetTickCount64()<until&&!IsStopped()){
@@ -357,7 +361,7 @@ string ConnectionTelemetry(){
  return "|"+permission+"|"+Safe(symbol==""?InpGoldSymbol:symbol)+"|"+mode;
 }
 void SendHello(){SendLine("HELLO|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry()+ConnectionTelemetry());g_lastHb=GetTickCount64();}
-void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry()+ConnectionTelemetry()))g_lastHb=GetTickCount64();FlushTargetEvents();}
+void SendHeartbeat(){if(SendLine("HB|"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+"|"+Safe(AccountInfoString(ACCOUNT_SERVER))+"|"+AccountMode()+"|"+F2(AccountInfoDouble(ACCOUNT_BALANCE))+"|"+F2(AccountInfoDouble(ACCOUNT_EQUITY))+"|"+IntegerToString(CountMyPositions())+"|"+F2(g_cloudRttMs)+"|"+TestCapabilities()+RiskTelemetry()+ReportTelemetry()+ConnectionTelemetry()))g_lastHb=GetTickCount64();}
 void EnsureCloud(){
  if(CloudConnected())return;ulong now=GetTickCount64();int retry=InpReconnectMs;if(retry<250)retry=250;if(retry>10000)retry=10000;if(now-g_lastConnectTry<(ulong)retry)return;g_lastConnectTry=now;DisconnectCloud();
  if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";return;}
@@ -379,23 +383,52 @@ void ReceiptLoad(){
  while(!FileIsEnding(h)&&slot<MAX_RECEIPTS){string line=FileReadString(h);StringTrimLeft(line);StringTrimRight(line);if(line=="")continue;string p[];ushort sep=StringGetCharacter("|",0);int n=StringSplit(line,sep,p);if(n<5)continue;g_receiptId[slot]=p[0];g_receiptStatus[slot]=p[1];g_receiptTicket[slot]=p[2];g_receiptRetcode[slot]=p[3];g_receiptDetail[slot]=p[4];slot++;}
  FileClose(h);
 }
-bool QueueReceipt(string id,string status,string ticket,long retcode,string detail){
- int slot=-1;
- for(int i=0;i<MAX_RECEIPTS;i++){if(g_receiptId[i]==id&&g_receiptStatus[i]==status){slot=i;break;}if(slot<0&&g_receiptId[i]=="")slot=i;}
- if(slot<0){Print("SignalBridge receipt outbox full; preserving existing receipts");return false;}
- g_receiptId[slot]=Safe(id);g_receiptStatus[slot]=Safe(status);g_receiptTicket[slot]=Safe(ticket);g_receiptRetcode[slot]=N64(retcode);g_receiptDetail[slot]=Safe(detail);ReceiptSave();return true;
+int FindReceipt(string id,string status){
+ for(int i=0;i<MAX_RECEIPTS;i++)if(g_receiptId[i]==id&&g_receiptStatus[i]==status)return i;
+ return -1;
+}
+int QueueReceipt(string id,string status,string ticket,long retcode,string detail){
+ int existing=FindReceipt(id,status);
+ if(existing>=0)return existing;
+ for(int i=0;i<MAX_RECEIPTS;i++){
+  if(g_receiptId[i]!="")continue;
+  g_receiptId[i]=Safe(id);g_receiptStatus[i]=Safe(status);g_receiptTicket[i]=Safe(ticket);
+  g_receiptRetcode[i]=N64(retcode);g_receiptDetail[i]=Safe(detail);
+  g_receiptRetryAt[i]=0;g_receiptRetryDelay[i]=0;
+  ReceiptSave();
+  return i;
+ }
+ Print("SignalBridge receipt outbox full; preserving existing receipts");
+ return -1;
 }
 void ClearReceipt(string id,string status){
- bool changed=false;for(int i=0;i<MAX_RECEIPTS;i++)if(g_receiptId[i]==id&&g_receiptStatus[i]==status){g_receiptId[i]="";g_receiptStatus[i]="";g_receiptTicket[i]="";g_receiptRetcode[i]="";g_receiptDetail[i]="";changed=true;}
+ bool changed=false;
+ for(int i=0;i<MAX_RECEIPTS;i++)if(g_receiptId[i]==id&&g_receiptStatus[i]==status){
+  g_receiptId[i]="";g_receiptStatus[i]="";g_receiptTicket[i]="";g_receiptRetcode[i]="";g_receiptDetail[i]="";
+  g_receiptRetryAt[i]=0;g_receiptRetryDelay[i]=0;changed=true;
+ }
  if(changed)ReceiptSave();
 }
+void SendReceipt(int slot,ulong now){
+ if(!LicenseReady()||now<g_receiptRetryAt[slot])return;
+ string line="RCPT|"+g_receiptId[slot]+"|"+g_receiptStatus[slot]+"|"+g_receiptTicket[slot]+"|"+g_receiptRetcode[slot]+"|"+g_receiptDetail[slot];
+ if(!SendLine(line))return;
+ ulong delay=g_receiptRetryDelay[slot];
+ if(delay==0)delay=RECEIPT_RETRY_INITIAL_MS;
+ else if(delay>=RECEIPT_RETRY_MAX_MS/2)delay=RECEIPT_RETRY_MAX_MS;
+ else delay*=2;
+ g_receiptRetryDelay[slot]=delay;g_receiptRetryAt[slot]=now+delay;
+}
 void FlushReceipts(){
- if(!CloudConnected())return;
- for(int i=0;i<MAX_RECEIPTS;i++)if(g_receiptId[i]!="")SendLine("RCPT|"+g_receiptId[i]+"|"+g_receiptStatus[i]+"|"+g_receiptTicket[i]+"|"+g_receiptRetcode[i]+"|"+g_receiptDetail[i]);
+ if(!LicenseReady())return;
+ ulong now=GetTickCount64();
+ for(int i=0;i<MAX_RECEIPTS;i++)if(g_receiptId[i]!="")SendReceipt(i,now);
 }
 bool Receipt(string id,string status,string ticket,long retcode,string detail){
- bool queued=QueueReceipt(id,status,ticket,retcode,detail);if(queued&&CloudConnected())FlushReceipts();
- g_activityTick=GetTickCount64();g_lastExecution=status+" · "+detail;if(ticket!="")g_lastTicket=ticket;return queued;
+ int slot=QueueReceipt(id,status,ticket,retcode,detail);
+ if(slot>=0)SendReceipt(slot,GetTickCount64());
+ g_activityTick=GetTickCount64();g_lastExecution=status+" · "+detail;if(ticket!="")g_lastTicket=ticket;
+ return slot>=0;
 }
 
 string PendingFile(){return "SignalBridge_pending_"+N64(AccountInfoInteger(ACCOUNT_LOGIN))+".txt";}
@@ -518,7 +551,7 @@ bool HasAnyPositionOnSymbol(string sym){
  return false;
 }
 bool HistoryHasTag(string tag,ulong &dealOut){string want="SB:"+tag;if(!HistorySelect(TimeCurrent()-7*86400,TimeCurrent()+60))return false;for(int i=HistoryDealsTotal()-1;i>=0;i--){ulong d=HistoryDealGetTicket(i);if(d==0)continue;if((long)HistoryDealGetInteger(d,DEAL_MAGIC)!=InpMagic)continue;if(StringFind(HistoryDealGetString(d,DEAL_COMMENT),want)>=0){dealOut=d;return true;}}return false;}
-void ReconcilePending(){if(!CloudConnected()||!HasPending())return;for(int i=0;i<MAX_PENDING;i++){string tag=g_pendingTag[i],id=g_pendingId[i];if(tag==""||id=="")continue;ulong ticket=0;string sym="";double volume=0,open=0,sl=0,tp=0;if(FindPosition(tag,ticket,sym,volume,open,sl,tp)){Receipt(id,"FILLED",N64((long)ticket),0,"reconciled open position after terminal restart");continue;}ulong deal=0;if(HistoryHasTag(tag,deal))Receipt(id,"FILLED",N64((long)deal),0,"reconciled broker history after terminal restart");}}
+void ReconcilePending(){if(!CloudConnected()||!HasPending())return;for(int i=0;i<MAX_PENDING;i++){string tag=g_pendingTag[i],id=g_pendingId[i];if(tag==""||id==""||FindReceipt(id,"FILLED")>=0||FindReceipt(id,"BROKER_REJECTED")>=0||FindReceipt(id,"DUPLICATE")>=0)continue;ulong ticket=0;string sym="";double volume=0,open=0,sl=0,tp=0;if(FindPosition(tag,ticket,sym,volume,open,sl,tp)){Receipt(id,"FILLED",N64((long)ticket),0,"reconciled open position after terminal restart");continue;}ulong deal=0;if(HistoryHasTag(tag,deal))Receipt(id,"FILLED",N64((long)deal),0,"reconciled broker history after terminal restart");}}
 bool DemoGate(string id){if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO){Receipt(id,"ACCOUNT_MISMATCH","",0,"DEMO execution refused on non-demo account");return false;}if(!InpEnableDemoExecution){Receipt(id,"REJECTED","",0,"enable InpEnableDemoExecution first");return false;}if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)||!MQLInfoInteger(MQL_TRADE_ALLOWED)){Receipt(id,"REJECTED","",0,"Algo Trading disabled");return false;}return true;}
 
 void HandleOpen(string id,string mode,string side,string requested,string tag,string volumeMode,double volumeValue,double referencePrice,double sl,double tp1,double tp2,double tp3,long expiresMs,bool exactGoldSymbol,string commentDetail){
@@ -688,7 +721,7 @@ void ProcessLine(string line){
   long server=(long)StringToInteger(p[1]);string expiryText=p[2];StringReplace(expiryText,"-",".");datetime expiry=StringToTime(expiryText);
   if(server<=0||expiry<=0||(long)expiry*1000<=server){g_licenseActive=false;g_connStage="LICENSE EXPIRED / INVALID";return;}
   g_serverMs=server;g_licenseVerifiedTick=GetTickCount64();g_licenseExpiryMs=(long)expiry*1000;
-  g_licenseActive=true;g_licenseExpires=p[2];g_connStage="LICENSE ACTIVE";if(g_policyDirty)SendLine("POLICY_UPDATE|"+g_policy1+"|"+g_policy2+"|"+g_policy3+"|"+F2(g_policyPartial)+"|"+IntegerToString(g_policyBuffer));SendTestStatus();return;
+  g_licenseActive=true;g_licenseExpires=p[2];g_connStage="LICENSE ACTIVE";if(g_policyDirty)SendLine("POLICY_UPDATE|"+g_policy1+"|"+g_policy2+"|"+g_policy3+"|"+F2(g_policyPartial)+"|"+IntegerToString(g_policyBuffer));return;
  }
  if((p[0]=="DEAL_ACK"||p[0]=="DEAL_NACK")&&n>=3){HandleDealBatchAck(p);return;}
  if(p[0]=="TEST_ACK"&&n>=3&&p[1]==g_testId&&p[2]==g_testPhase&&(p[2]=="CLOSED"||p[2]=="REJECTED")){
@@ -1283,7 +1316,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    if(id==CHARTEVENT_CHART_CHANGE&&g_sbReady)PanelPlace((int)g_hCur);
   }
 
-int OnInit(){if(InpPartialPercent<=0||InpPartialPercent>=100||InpBreakEvenBufferPoints<0||(InpTP1Action!=SB_EXIT_CLOSE&&InpTP2Action!=SB_EXIT_CLOSE&&InpTP3Action!=SB_EXIT_CLOSE)||InpDefaultLots<=0||InpDefaultLots>InpMaxLot||(InpEnableDailyDrawdown&&(InpDailyDrawdownPercent<=0||InpDailyDrawdownPercent>100))||InpTestSymbol==""){Print("SignalBridge: invalid lot, symbol or daily drawdown input");return INIT_PARAMETERS_INCORRECT;}RiskInit();DealCursorLoad();LoadPolicyDefaults();RiskCheck();RecoverClosedTargets();MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.30.3 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
+int OnInit(){if(InpPartialPercent<=0||InpPartialPercent>=100||InpBreakEvenBufferPoints<0||(InpTP1Action!=SB_EXIT_CLOSE&&InpTP2Action!=SB_EXIT_CLOSE&&InpTP3Action!=SB_EXIT_CLOSE)||InpDefaultLots<=0||InpDefaultLots>InpMaxLot||(InpEnableDailyDrawdown&&(InpDailyDrawdownPercent<=0||InpDailyDrawdownPercent>100))||InpTestSymbol==""){Print("SignalBridge: invalid lot, symbol or daily drawdown input");return INIT_PARAMETERS_INCORRECT;}RiskInit();DealCursorLoad();LoadPolicyDefaults();RiskCheck();RecoverClosedTargets();MathSrand((int)(GetTickCount64()^(ulong)AccountInfoInteger(ACCOUNT_LOGIN)));Print("SignalBridge EA v0.30.4 starting. Account: ",AccountMode(),"; server: ",InpCloudHost," (no secret printed).");if(!ValidActivationCode(InpActivationCode)){g_connStage=InpActivationCode==""?"ACTIVATION CODE REQUIRED":"INVALID ACTIVATION CODE";Print("SignalBridge: activation code missing or invalid; obtain a 43-character code from your DrFX client portal.");}if(AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO)Print("SignalBridge: non-DEMO account detected. Automatic signal execution remains DEMO-only; LIVE tests require explicit opt-in.");g_compact=InpCompact;PendingLoad();ReceiptLoad();g_testLock=FileOpen(TimedTestFile()+".lock",FILE_COMMON|FILE_READ|FILE_WRITE|FILE_BIN);if(g_testLock!=INVALID_HANDLE)LoadTimedTest();trade.SetExpertMagicNumber(InpMagic);trade.SetDeviationInPoints(InpSlippagePoints);trade.LogLevel(LOG_LEVEL_ERRORS);int ms=InpTimerMs;if(ms<20)ms=20;if(ms>1000)ms=1000;if(!EventSetMillisecondTimer(ms)){PrintFormat("SignalBridge: timer initialization failed (%d)",GetLastError());return INIT_FAILED;}CloseTimedTest();if(!TimedTestActive())EnsureCloud();RenderPanel();return INIT_SUCCEEDED;}
 void OnDeinit(const int reason){EventKillTimer();PanelDestroy();if(g_testLock!=INVALID_HANDLE){FileClose(g_testLock);g_testLock=INVALID_HANDLE;}DisconnectCloud();DeletePanel();ChartRedraw(0);}
 void OnTick(){RiskCheck();ProcessPositionTargets();CloseTimedTest();}
 void OnTimer(){
@@ -1292,7 +1325,7 @@ void OnTimer(){
  if(TimedTestActive()){if(GetTickCount64()-g_lastUiUpdate>=(ulong)UiRefresh()){g_lastUiUpdate=GetTickCount64();RenderPanel();}return;}
  EnsureCloud();PumpCloud();
  if(g_licenseActive&&!LicenseReady()){g_licenseActive=false;g_connStage="LICENSE EXPIRED / RECHECK REQUIRED";}
- ulong now=GetTickCount64();if(CloudConnected()&&now-g_lastHb>5000)SendHeartbeat();if(CloudConnected())SendDealBatch();if(CloudConnected()&&now-g_lastPing>10000){g_lastPing=now;g_pingStarted=now;SendLine("PING|"+N64((long)now));}if(CloudConnected()&&now-g_lastReconcile>2000){g_lastReconcile=now;RecoverClosedTargets();FlushReceipts();if(HasPending())ReconcilePending();}if(now-g_lastUiUpdate>=(ulong)UiRefresh()){g_lastUiUpdate=now;RenderPanel();}}
+ ulong now=GetTickCount64();if(CloudConnected()&&now-g_lastHb>=HEARTBEAT_INTERVAL_MS)SendHeartbeat();if(CloudConnected())SendDealBatch();if(g_testId!=""&&LicenseReady()&&now-g_lastTestStatus>=5000){g_lastTestStatus=now;SendTestStatus();}if(LicenseReady()&&now-g_lastTargetFlush>=5000){g_lastTargetFlush=now;FlushTargetEvents();}if(CloudConnected()&&now-g_lastPing>10000){g_lastPing=now;g_pingStarted=now;SendLine("PING|"+N64((long)now));}if(CloudConnected()&&now-g_lastReconcile>2000){g_lastReconcile=now;RecoverClosedTargets();FlushReceipts();if(HasPending())ReconcilePending();}if(now-g_lastUiUpdate>=(ulong)UiRefresh()){g_lastUiUpdate=now;RenderPanel();}}
 void OnTradeTransaction(const MqlTradeTransaction &trans,const MqlTradeRequest &request,const MqlTradeResult &result){
  if(trans.type==TRADE_TRANSACTION_DEAL_ADD&&trans.deal>0&&HistoryDealSelect(trans.deal)&&HistoryDealGetInteger(trans.deal,DEAL_REASON)==DEAL_REASON_TP){long pid=HistoryDealGetInteger(trans.deal,DEAL_POSITION_ID);for(int i=GlobalVariablesTotal()-1;i>=0;i--){string k=GlobalVariableName(i);if(StringFind(k,"SBP_")!=0||(long)GlobalVariableGet(k)!=pid)continue;string tag=StringSubstr(k,4);if(!GlobalVariableCheck(PK(tag,"vol")))continue;int closeIndex=-1;for(int j=0;j<3;j++)if((int)GlobalVariableGet(PK(tag,"a"+IntegerToString(j)))==2){closeIndex=j;break;}for(int j=0;j<=closeIndex;j++){if(GlobalVariableGet(PK(tag,"t"+IntegerToString(j)))>0)PolicyHit(tag,j);if(j==closeIndex&&!HasPositionIdentifier(pid)){GlobalVariableSet(PK(tag,"s"+IntegerToString(j)),2);QueueTargetEvent(tag,j,2);}}}}
 

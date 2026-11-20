@@ -58,7 +58,7 @@ test('active EA sockets lose command access after personal code rotation',async(
 
 test('EA reports activation and connectivity errors without exposing the code',()=>{
  const mq5=readFileSync('mt5/DrFX_SignalBridge_EA.mq5','utf8');
- assert.match(mq5,/#property version\s+"0\.303"/);
+ assert.match(mq5,/#property version\s+"0\.304"/);
  assert.match(mq5,/bool ValidActivationCode\(string code\)/);
  assert.match(mq5,/ACTIVATION CODE REQUIRED/);
  assert.match(mq5,/WEBSOCKET REFUSED \(HTTP\)/);

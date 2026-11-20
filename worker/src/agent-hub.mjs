@@ -2,6 +2,8 @@ import {tradeComment} from './signal-metadata.mjs';
 import {memberPolicy,policyFields,validatePolicy} from './member-policy.mjs';
 import {ingestDealBatch} from './deal-history.mjs';
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
+const RECEIPT_CACHE_MS=60_000;
+const RECEIPT_CACHE_LIMIT=128;
 const RECEIPT_STATES=new Set(['PREVIEWED','SUBMITTED','FILLED','BROKER_REJECTED','REJECTED','ACCOUNT_MISMATCH','EXPIRED','ERROR','DUPLICATE']);
 export function receiptTransitionAllowed(from,to){if(from===to)return true;if(from==='PENDING'||from==='DELIVERED')return RECEIPT_STATES.has(to);if(from==='SUBMITTED')return ['FILLED','BROKER_REJECTED','ERROR','DUPLICATE'].includes(to);return false}
 export function terminalReadyAttachment(a){return !!(a&&a.terminalOnline===true&&a.account&&a.account.login&&a.account.server)}
@@ -21,7 +23,7 @@ function encodeEaCommand(c){
 }
 
 export class AgentHub{
- constructor(ctx,env){this.ctx=ctx;this.env=env}
+ constructor(ctx,env){this.ctx=ctx;this.env=env;this.receiptAcks=new Map()}
  broadcast(event){for(const ws of this.ctx.getWebSockets()){const a=ws.deserializeAttachment()||{};if(a.role==='observer'&&ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(event))}catch{}}}}
  currentExecutionSockets(){return this.ctx.getWebSockets().filter(ws=>{const a=ws.deserializeAttachment()||{};return (a.role==='agent'||a.role==='ea')&&ws.readyState===WebSocket.OPEN})}
  currentAgentSockets(){return this.currentExecutionSockets()}
@@ -110,10 +112,11 @@ export class AgentHub{
       ['FULL','BUY_ONLY','SELL_ONLY','CLOSE_ONLY','DISABLED','NOT_FOUND'].includes(symbolMode)){
     account.connection_checks={trade_permission:tradePermission,broker_symbol:safe(p[33],32),symbol_mode:symbolMode};
    }
-   if(!account.login||!account.server||!await this.bindEaAccount(a,account,ws))return;
+   const wasReady=terminalReadyAttachment(a);
+   if(!account.login||!account.server||(!wasReady&&!await this.bindEaAccount(a,account,ws)))return;
    if(!await this.licenseIsValid({...a,account})){ws.send('ERR|LICENSE_INVALID');ws.close(1008,'license invalid');return;}
    a.capabilities=String(p[8]||'').split(',').filter(c=>['timed-test-v1','timed-test-v2','live-test-v2','test-config-v1','risk-v1','exit-policy-v1','reports-v1','deal-history-v1','broker-symbol-v1'].includes(c));
-   const wasReady=terminalReadyAttachment(a);a.account=account;a.terminalOnline=true;
+   a.account=account;a.terminalOnline=true;
    const config=JSON.stringify(eaConfiguration(a));
    if(a.lastConfigSignature!==config){
     try{await this.env.DB.prepare("INSERT INTO site_audit (id,actor_id,action,subject_id,detail) VALUES (?,?, 'ea_configuration',?,?)").bind(crypto.randomUUID(),a.tenantId||null,a.agentId,config).run();a.lastConfigSignature=config;}catch{/* Diagnostic logging must never disrupt heartbeat or execution. */}
@@ -128,13 +131,39 @@ export class AgentHub{
   if(p[0]==='RCPT'){
    const commandId=safe(p[1],64),status=safe(p[2],32);if(!commandId||!RECEIPT_STATES.has(status)){ws.send('ERR|INVALID_RECEIPT');return}
    const ticket=safe(p[3],64)||null,retcode=Number.isFinite(Number(p[4]))?Number(p[4]):null,detail=safe(p.slice(5).join('|'),300)||null;
+   const ackPrefix='RACK|'+commandId+'|'+status+'|';
+   const cacheKey=JSON.stringify([a.agentId,commandId,status]);
+   const cached=this.receiptAcks.get(cacheKey);
+   if(cached&&cached.expires>Date.now()){ws.send(ackPrefix+cached.reply);return;}
+   const reply=(value,cache=true)=>{
+    if(cache){
+     this.receiptAcks.delete(cacheKey);
+     this.receiptAcks.set(cacheKey,{reply:value,expires:Date.now()+RECEIPT_CACHE_MS});
+     if(this.receiptAcks.size>RECEIPT_CACHE_LIMIT)this.receiptAcks.delete(this.receiptAcks.keys().next().value);
+    }
+    ws.send(ackPrefix+value);
+   };
    const current=await this.env.DB.prepare('SELECT status,source_type FROM commands WHERE id=? AND agent_id=? LIMIT 1').bind(commandId,a.agentId).first();
-   if(!current){ws.send('RACK|'+commandId+'|'+status+'|0|COMMAND_NOT_FOUND');return}
-   if(!receiptTransitionAllowed(current.status,status)){ws.send('RACK|'+commandId+'|'+status+'|0|INVALID_TRANSITION');return}
-   const result=await this.env.DB.prepare(`UPDATE commands SET status=?,broker_ticket=COALESCE(?,broker_ticket),broker_retcode=COALESCE(?,broker_retcode),last_error=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND agent_id=? AND status=?`).bind(status,ticket,retcode,(status==='REJECTED'||status==='BROKER_REJECTED'||status==='ERROR'||status==='ACCOUNT_MISMATCH')?detail:null,commandId,a.agentId,current.status).run();
-   const stored=result?.meta?.changes===1;
-   if(stored&&current.source_type==='test'&&['REJECTED','BROKER_REJECTED','EXPIRED','ACCOUNT_MISMATCH'].includes(status))await this.env.DB.prepare("UPDATE connection_tests SET status='REJECTED',detail=?,updated_at=CURRENT_TIMESTAMP WHERE command_id=? AND agent_id=? AND status='ARMED'").bind(detail,commandId,a.agentId).run();
-   ws.serializeAttachment(a);if(stored)this.broadcast({type:'receipt',command_id:commandId,status,broker_ticket:ticket,broker_retcode:retcode,detail,server_time:new Date().toISOString()});ws.send('RACK|'+commandId+'|'+status+'|'+(stored?'1':'0'));return;
+   if(!current){reply('0|COMMAND_NOT_FOUND');return;}
+   if(current.status===status){reply('1');return;}
+   if(!receiptTransitionAllowed(current.status,status)){
+    // A late submission cannot replace a final result. Existing EAs may discard it too.
+    reply(status==='SUBMITTED'?'1|SUPERSEDED':'0|INVALID_TRANSITION');return;
+   }
+   const update=this.env.DB.prepare(`UPDATE commands SET status=?,broker_ticket=COALESCE(?,broker_ticket),broker_retcode=COALESCE(?,broker_retcode),last_error=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND agent_id=? AND status=?`)
+    .bind(status,ticket,retcode,['REJECTED','BROKER_REJECTED','ERROR','ACCOUNT_MISMATCH'].includes(status)?detail:null,commandId,a.agentId,current.status);
+   let result;
+   if(current.source_type==='test'&&['REJECTED','BROKER_REJECTED','EXPIRED','ACCOUNT_MISMATCH'].includes(status)){
+    const rejectTest=this.env.DB.prepare(`UPDATE connection_tests SET status='REJECTED',detail=?,updated_at=CURRENT_TIMESTAMP
+     WHERE command_id=? AND agent_id=? AND status='ARMED'
+       AND EXISTS (SELECT 1 FROM commands WHERE id=? AND agent_id=? AND status=?)`)
+     .bind(detail,commandId,a.agentId,commandId,a.agentId,current.status);
+    [,result]=await this.env.DB.batch([rejectTest,update]);
+   }else result=await update.run();
+   if(!result?.success||result.meta?.changes!==1){reply('0|RETRY',false);return;}
+   ws.serializeAttachment(a);
+   this.broadcast({type:'receipt',command_id:commandId,status,broker_ticket:ticket,broker_retcode:retcode,detail,server_time:new Date().toISOString()});
+   reply('1');return;
   }
   ws.send('ERR|UNSUPPORTED_MESSAGE');
  }
