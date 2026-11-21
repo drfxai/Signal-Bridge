@@ -43,6 +43,6 @@ test('reference signal routes default ON but execution requires separate explici
  assert.ok(controls.includes('tv_to_mt5=excluded.tv_to_mt5'));
  assert.match(migration,/DEFAULT 1 CHECK\(tv_to_mt5 IN \(0,1\)\)/);
  assert.ok(ingress.includes("SELECT tv_to_mt5 FROM member_signal_settings"));
- assert.ok(ingress.includes("status:'ROUTE_DISABLED'"));
+ assert.match(ingress,/if\(preference\?\.tv_to_mt5===0\)return/);
  assert.doesNotThrow(()=>new Function(SETUP_JS));
 });
